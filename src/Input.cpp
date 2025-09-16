@@ -4,6 +4,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#ifdef USE_SDL
+#include <SDL2/SDL.h>
+#endif
+
 static struct termios oldt;
 
 void Input::Init() {
@@ -21,6 +25,23 @@ void Input::Shutdown() {
 }
 
 int Input::PollKey() {
+#ifdef USE_SDL
+    // Poll SDL events first (if SDL is used for windowing/input)
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT) return 'q';
+        if (e.type == SDL_KEYDOWN) {
+            SDL_Keycode kc = e.key.keysym.sym;
+            if (kc == SDLK_a) return 'a';
+            if (kc == SDLK_d) return 'd';
+            if (kc == SDLK_SPACE) return ' ';
+            if (kc == SDLK_q) return 'q';
+            if (kc == SDLK_z) return 'z';
+            if (kc == SDLK_x) return 'x';
+        }
+    }
+#endif
+
     unsigned char ch;
     ssize_t n = read(STDIN_FILENO, &ch, 1);
     if (n == 1) return ch;
@@ -29,9 +50,8 @@ int Input::PollKey() {
 
 #else
 #include "Input.h"
-#include <iostream>
 
-void Input::Init() { }
-void Input::Shutdown() { }
+void Input::Init() {}
+void Input::Shutdown() {}
 int Input::PollKey() { return -1; }
 #endif

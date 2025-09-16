@@ -1,0 +1,46 @@
+Breakpoint 1 at 0x3710
+
+This GDB supports auto-downloading debuginfo from the following URLs:
+  <https://debuginfod.ubuntu.com>
+Enable debuginfod for this session? (y or [n]) [answered N; input not from terminal]
+Debuginfod has been disabled.
+To make this setting permanent, add 'set debuginfod enabled off' to .gdbinit.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+warning: could not find '.gnu_debugaltlink' file for /lib/x86_64-linux-gnu/libpulse.so.0
+warning: could not find '.gnu_debugaltlink' file for /lib/x86_64-linux-gnu/libgbm.so.1
+warning: could not find '.gnu_debugaltlink' file for /usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-16.1.so
+warning: could not find '.gnu_debugaltlink' file for /lib/x86_64-linux-gnu/libcap.so.2
+Star Engine Initializing...
+[Detaching after fork from child process 125629]
+warning: could not find '.gnu_debugaltlink' file for /lib/x86_64-linux-gnu/libtinfo.so.6
+[New Thread 0x7fffe5c896c0 (LWP 125637)]
+[New Thread 0x7fffe54886c0 (LWP 125638)]
+[New Thread 0x7fffe4c876c0 (LWP 125639)]
+[New Thread 0x7fffe397d6c0 (LWP 125640)]
+[New Thread 0x7fffe0f206c0 (LWP 125641)]
+Viewport3D: Using SDL2 for rendering.
+Simulation initialized. position=0 velocity=1
+Player initialized at (0, 0)
+[Detaching after vfork from child process 125642]
+Star Engine Fixed-Timestep Main Loop (update @ 60 Hz)
+FPS: 17  Simulation pos=1  Player x=0  Zoom=6.66319
+FPS: 16  Simulation pos=2.01667  Player x=0  Zoom=2.14338
+FPS: 16  Simulation pos=3.01667  Player x=0  Zoom=1.23084
+FPS: 16  Simulation pos=4.03333  Player x=0  Zoom=1.04661
+FPS: 16  Simulation pos=5.03333  Player x=0  Zoom=1.00941
+Star Engine Shutting down...
+[Thread 0x7fffe4c876c0 (LWP 125639) exited]
+[Thread 0x7fffe397d6c0 (LWP 125640) exited]
+[Thread 0x7fffe54886c0 (LWP 125638) exited]
+[Thread 0x7fffe5c896c0 (LWP 125637) exited]
+[Thread 0x7fffe0f206c0 (LWP 125641) exited]
+
+Thread 1 "star-engine" hit Breakpoint 1, __stack_chk_fail () at ./debug/stack_chk_fail.c:23
+warning: 23	./debug/stack_chk_fail.c: No such file or directory
+
+Thread 1 (Thread 0x7ffff646cec0 (LWP 125626) "star-engine"):
+#0  __stack_chk_fail () at ./debug/stack_chk_fail.c:23
+No locals.
+#1  0x00005555555688b0 in main ()
+No symbol table info available.
