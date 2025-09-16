@@ -1,0 +1,7 @@
+Star Engine Initializing...
+Viewport3D: Using SDL2 for rendering.
+Simulation initialized. position=0 velocity=1
+Player initialized at (0, 0)
+Star Engine Fixed-Timestep Main Loop (update @ 60 Hz)
+FPS: 22  Simulation pos=1  Player x=0
+Star Engine Shutting down...
