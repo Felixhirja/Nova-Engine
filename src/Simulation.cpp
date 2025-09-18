@@ -1,6 +1,9 @@
 
 
 #include "Simulation.h"
+#include "ecs/MovementSystem.h"
+#include "ecs/PlayerControlSystem.h"
+
 #include <algorithm>
 #include <iostream>
 #include <memory>
@@ -18,15 +21,41 @@ void Simulation::Init(EntityManager* externalEm) {
     activeEm = externalEm ? externalEm : &em;
     EntityManager* useEm = activeEm;
 
+    if (!externalEm) {
+        useEm->Clear();
+    }
+
+    systemManager.Clear();
+    systemManager.RegisterSystem<PlayerControlSystem>();
+    systemManager.RegisterSystem<MovementSystem>();
+
     // Create player entity in ECS
     playerEntity = useEm->CreateEntity();
     auto pos = std::make_shared<Position>();
-    pos->x = 0.0; pos->y = 0.0;
+    pos->x = 0.0;
+    pos->y = 0.0;
     useEm->AddComponent<Position>(playerEntity, pos);
 
     auto vel = std::make_shared<Velocity>();
-    vel->vx = 0.0; vel->vy = 0.0;
+    vel->vx = 0.0;
+    vel->vy = 0.0;
     useEm->AddComponent<Velocity>(playerEntity, vel);
+
+    auto acc = std::make_shared<Acceleration>();
+    acc->ax = 0.0;
+    acc->ay = 0.0;
+    useEm->AddComponent<Acceleration>(playerEntity, acc);
+
+    auto controller = std::make_shared<PlayerController>();
+    controller->moveLeft = false;
+    controller->moveRight = false;
+    useEm->AddComponent<PlayerController>(playerEntity, controller);
+
+    auto bounds = std::make_shared<MovementBounds>();
+    bounds->minX = -5.0;
+    bounds->maxX = 5.0;
+    bounds->clampX = true;
+    useEm->AddComponent<MovementBounds>(playerEntity, bounds);
 
     inputLeft = false;
     inputRight = false;
@@ -41,48 +70,15 @@ void Simulation::Update(double dt) {
 
     EntityManager* useEm = activeEm ? activeEm : &em;
 
-    // advance global simulation position
-    auto v = useEm->GetComponent<Velocity>(playerEntity);
-    auto p = useEm->GetComponent<Position>(playerEntity);
-    if (v && p) {
-        constexpr double acceleration = 4.0;
-        constexpr double maxPosition = 5.0;
-        constexpr double minPosition = -5.0;
+    if (auto* controller = useEm->GetComponent<PlayerController>(playerEntity)) {
+        controller->moveLeft = inputLeft;
+        controller->moveRight = inputRight;
+    }
 
-        double ax = 0.0;
-        if (inputLeft && !inputRight) {
-            ax = -acceleration;
-        } else if (inputRight && !inputLeft) {
-            ax = acceleration;
-        }
+    systemManager.UpdateAll(*useEm, dt);
 
-        v->vx += ax * dt;
-
-        if (!inputLeft && !inputRight) {
-            constexpr double damping = acceleration;
-            if (v->vx > 0.0) {
-                v->vx = std::max(0.0, v->vx - damping * dt);
-            } else if (v->vx < 0.0) {
-                v->vx = std::min(0.0, v->vx + damping * dt);
-            }
-        }
-
-        p->x += v->vx * dt;
-        p->y += v->vy * dt;
-
-        if (p->x > maxPosition) {
-            p->x = maxPosition;
-            if (v->vx > 0.0) {
-                v->vx = 0.0;
-            }
-        } else if (p->x < minPosition) {
-            p->x = minPosition;
-            if (v->vx < 0.0) {
-                v->vx = 0.0;
-            }
-        }
-
-        position = p->x; // mirror into simple position for compatibility
+    if (auto* p = useEm->GetComponent<Position>(playerEntity)) {
+        position = p->x;
     }
 }
 
