@@ -21,6 +21,7 @@ public:
 private:
     // Basic simulation state implemented with ECS
     EntityManager em;
+    EntityManager* activeEm = nullptr;
     Entity playerEntity = 0;
     // fallback scalar for global sim position if needed
     double position = 0.0;
