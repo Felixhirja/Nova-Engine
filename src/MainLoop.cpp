@@ -2,6 +2,7 @@
 #include "Viewport3D.h"
 #include "Input.h"
 #include "Simulation.h"
+#include "SceneManager.h"
 #include "ResourceManager.h"
 #include "Camera.h"
 #include "ecs/EntityManager.h"
