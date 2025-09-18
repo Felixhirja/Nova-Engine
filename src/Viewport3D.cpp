@@ -3,6 +3,7 @@
 #include <vector>
 #ifdef USE_SDL
 #include <SDL2/SDL.h>
+#include <cstdint>
 #include "ResourceManager.h"
 #include "Camera.h"
 #endif
@@ -172,6 +173,7 @@ void Viewport3D::DrawCameraMarker(const class Camera* camera) {
 #endif
 }
 
+#ifdef USE_SDL
 // Simple 3x5 pixel font for ASCII 0-9, '-', '.' (monochrome) drawn as small rectangles
 static const uint8_t tinyFont[][5] = {
     {0x1F,0x11,0x11,0x11,0x1F}, // 0
@@ -294,6 +296,7 @@ static void drawSevenSegDigit(SDL_Renderer* r, int x, int y, int segLen, int seg
     if (bits & 0x20) drawSeg(f_x, f_y, f_w, f_h); // f
     if (bits & 0x40) drawSeg(g_x, g_y, g_w, g_h); // g
 }
+#endif // USE_SDL
 
 void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX) {
     if (!usingSDL) return;
@@ -380,8 +383,8 @@ void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX)
 }
 
 bool Viewport3D::CaptureToBMP(const char* path) {
-    if (!usingSDL || !sdlRenderer) return false;
 #ifdef USE_SDL
+    if (!usingSDL || !sdlRenderer) return false;
     // Read pixels from current render target
     int w = width, h = height;
     int pitch = w * 3;
@@ -425,6 +428,7 @@ bool Viewport3D::CaptureToBMP(const char* path) {
     fclose(f);
     return true;
 #else
+    (void)path;
     return false;
 #endif
 }
