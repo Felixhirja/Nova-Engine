@@ -1,5 +1,6 @@
 #pragma once
 #include "Component.h"
+#include <limits>
 #include <string>
 
 struct Position : public Component {
@@ -51,4 +52,18 @@ struct AnimationState : public Component {
 
 struct Name : public Component {
     std::string value;
+};
+
+struct PlayerController : public Component {
+    bool moveLeft = false;
+    bool moveRight = false;
+};
+
+struct MovementBounds : public Component {
+    double minX = -std::numeric_limits<double>::infinity();
+    double maxX = std::numeric_limits<double>::infinity();
+    double minY = -std::numeric_limits<double>::infinity();
+    double maxY = std::numeric_limits<double>::infinity();
+    bool clampX = false;
+    bool clampY = false;
 };

@@ -1,8 +1,9 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
-#include "ecs/EntityManager.h"
 #include "ecs/Components.h"
+#include "ecs/EntityManager.h"
+#include "ecs/System.h"
 
 class Simulation {
 public:
@@ -27,6 +28,7 @@ private:
     double position = 0.0;
     bool inputLeft;
     bool inputRight;
+    SystemManager systemManager;
 };
 
 #endif // SIMULATION_H
