@@ -20,3 +20,8 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+# Build artifacts
+*.o
+/tests/test_simulation
+/tests/test_camera
+star-engine
