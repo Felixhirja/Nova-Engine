@@ -1,0 +1,36 @@
+SDL detected: building with SDL support
+g++ -std=c++17 -Wall -Wextra -IC:/msys64/mingw64/include -DUSE_SDL -DUSE_SDL3 -c src/Viewport3D.cpp -o src/Viewport3D.o
+In file included from src/Viewport3D.cpp:9:
+src/sdl_compat.h: In function 'int compat_RenderReadPixels(SDL_Renderer*, const SDL_Rect*, Uint32, void*, int)':
+src/sdl_compat.h:64:32: error: request for member 'format' in 'surf->SDL_Surface::format', which is of non-class type 'SDL_PixelFormat'
+   64 |     if (format != surf->format.format) {
+      |                                ^~~~~~
+src/sdl_compat.h:65:54: error: invalid conversion from 'Uint32' {aka 'unsigned int'} to 'SDL_PixelFormat' [-fpermissive]
+   65 |         SDL_Surface* conv = SDL_ConvertSurface(surf, format);
+      |                                                      ^~~~~~
+      |                                                      |
+      |                                                      Uint32 {aka unsigned int}
+In file included from C:/msys64/mingw64/include/SDL3/SDL_camera.h:75,
+                 from C:/msys64/mingw64/include/SDL3/SDL.h:41,
+                 from src/Viewport3D.h:9,
+                 from src/Viewport3D.cpp:1:
+C:/msys64/mingw64/include/SDL3/SDL_surface.h:925:100: note: initializing argument 2 of 'SDL_Surface* SDL_ConvertSurface(SDL_Surface*, SDL_PixelFormat)'
+  925 | extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_ConvertSurface(SDL_Surface *surface, SDL_PixelFormat format);
+      |                                                                                    ~~~~~~~~~~~~~~~~^~~~~~
+src/sdl_compat.h:71:9: warning: unused variable 'w' [-Wunused-variable]
+   71 |     int w = surf->w;
+      |         ^
+src/Viewport3D.cpp: In member function 'void Viewport3D::Init()':
+src/Viewport3D.cpp:34:41: error: too many arguments to function 'SDL_Window* SDL_CreateWindow(const char*, int, int, SDL_WindowFlags)'
+   34 |             sdlWindow = SDL_CreateWindow("Star Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, 0);
+      |                         ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from C:/msys64/mingw64/include/SDL3/SDL_dialog.h:43,
+                 from C:/msys64/mingw64/include/SDL3/SDL.h:44:
+C:/msys64/mingw64/include/SDL3/SDL_video.h:1129:42: note: declared here
+ 1129 | extern SDL_DECLSPEC SDL_Window * SDLCALL SDL_CreateWindow(const char *title, int w, int h, SDL_WindowFlags flags);
+      |                                          ^~~~~~~~~~~~~~~~
+src/Viewport3D.cpp: At global scope:
+src/Viewport3D.cpp:205:13: warning: 'void drawTinyCharSDL(SDL_Renderer*, int, int, char)' defined but not used [-Wunused-function]
+  205 | static void drawTinyCharSDL(SDL_Renderer* r, int x, int y, char c) {
+      |             ^~~~~~~~~~~~~~~
+make: *** [Makefile:42: src/Viewport3D.o] Error 1

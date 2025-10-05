@@ -1,17 +1,19 @@
 #include "Camera.h"
 #include <cmath>
 
-Camera::Camera() : x_(0.0), y_(0.0), zoom_(1.0) {}
-Camera::Camera(double x, double y, double zoom) : x_(x), y_(y), zoom_(zoom) {}
+Camera::Camera() : x_(0.0), y_(0.0), z_(0.0), pitch_(0.0), yaw_(0.0), zoom_(1.0) {}
+Camera::Camera(double x, double y, double z, double pitch, double yaw, double zoom) : x_(x), y_(y), z_(z), pitch_(pitch), yaw_(yaw), zoom_(zoom) {}
 
-void Camera::SetPosition(double x, double y) { x_ = x; y_ = y; }
-void Camera::MoveTo(double x, double y) { x_ = x; y_ = y; }
+void Camera::SetPosition(double x, double y, double z) { x_ = x; y_ = y; z_ = z; }
+void Camera::SetOrientation(double pitch, double yaw) { pitch_ = pitch; yaw_ = yaw; }
+void Camera::MoveTo(double x, double y, double z) { x_ = x; y_ = y; z_ = z; }
 void Camera::SetZoom(double z) { zoom_ = z; }
 
-void Camera::LerpTo(double targetX, double targetY, double alpha) {
+void Camera::LerpTo(double targetX, double targetY, double targetZ, double alpha) {
     // alpha in [0,1], where 1 = instant
     x_ = x_ + (targetX - x_) * alpha;
     y_ = y_ + (targetY - y_) * alpha;
+    z_ = z_ + (targetZ - z_) * alpha;
 }
 
 void Camera::SetTargetZoom(double z) {
@@ -34,9 +36,8 @@ void Camera::UpdateZoom(double dt) {
     zoom_ = newZoom;
 }
 
-void Camera::WorldToScreen(double wx, double wy, int screenW, int screenH, int &outX, int &outY) const {
-    // Simple orthographic center camera: world units map 1:1 scaled by zoom to pixels
-    // Center of screen corresponds to camera position
+void Camera::WorldToScreen(double wx, double wy, double wz, int screenW, int screenH, int &outX, int &outY) const {
+    // Simplified 3D to 2D projection approximation: ignore z for now, treat as 2D
     double sx = (wx - x_) * zoom_ + (double)screenW * 0.5;
     double sy = (wy - y_) * zoom_ + (double)screenH * 0.5;
     outX = static_cast<int>(sx + 0.5);

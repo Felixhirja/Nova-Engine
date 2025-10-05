@@ -1,0 +1,10 @@
+SDL detected: building with SDL support
+g++ -std=c++17 -Wall -Wextra -Dmain=SDL_main -IC:/msys64/mingw64/include -IC:/msys64/mingw64/include/SDL2 -DUSE_SDL -c src/main.cpp -o src/main.o
+src/main.cpp: In function 'int SDL_main(int, char**)':
+src/main.cpp:5:29: warning: unused parameter 'argc' [-Wunused-parameter]
+    5 | extern "C" int SDL_main(int argc, char** argv) {
+      |                         ~~~~^~~~
+src/main.cpp:5:42: warning: unused parameter 'argv' [-Wunused-parameter]
+    5 | extern "C" int SDL_main(int argc, char** argv) {
+      |                                   ~~~~~~~^~~~
+g++ -std=c++17 -Wall -Wextra -Dmain=SDL_main -IC:/msys64/mingw64/include -IC:/msys64/mingw64/include/SDL2 -DUSE_SDL  -o star-engine src/Camera.o src/Input.o src/main.o src/MainLoop.o src/Player.o src/ResourceManager.o src/SceneManager.o src/Simulation.o src/Transform.o src/Viewport3D.o src/ecs/EntityManager.o -LC:/msys64/mingw64/lib -lmingw32 -mwindows -lSDL2main -lSDL2

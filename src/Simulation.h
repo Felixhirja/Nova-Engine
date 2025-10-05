@@ -15,17 +15,24 @@ public:
     // Simple debug: get position
     double GetPosition() const;
     double GetPlayerX() const;
+    double GetPlayerY() const;
+    double GetPlayerZ() const;
     // Set player input state
-    void SetPlayerInput(bool left, bool right);
+    void SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw);
 
 private:
     // Basic simulation state implemented with ECS
-    EntityManager em;
+    EntityManager* entityManager; // Use external EntityManager
     Entity playerEntity = 0;
     // fallback scalar for global sim position if needed
     double position = 0.0;
-    bool inputLeft;
-    bool inputRight;
+    bool inputForward;
+    bool inputBackward;
+    bool inputUp;
+    bool inputDown;
+    bool inputStrafeLeft;
+    bool inputStrafeRight;
+    double inputCameraYaw;
 };
 
 #endif // SIMULATION_H

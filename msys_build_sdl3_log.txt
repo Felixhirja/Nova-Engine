@@ -1,0 +1,229 @@
+SDL detected: building with SDL support
+g++ -std=c++17 -Wall -Wextra -IC:/msys64/mingw64/include -DUSE_SDL -DUSE_SDL3 -c src/Camera.cpp -o src/Camera.o
+g++ -std=c++17 -Wall -Wextra -IC:/msys64/mingw64/include -DUSE_SDL -DUSE_SDL3 -c src/Input.cpp -o src/Input.o
+g++ -std=c++17 -Wall -Wextra -IC:/msys64/mingw64/include -DUSE_SDL -DUSE_SDL3 -c src/main.cpp -o src/main.o
+src/main.cpp: In function 'int SDL_main(int, char**)':
+src/main.cpp:5:29: warning: unused parameter 'argc' [-Wunused-parameter]
+    5 | extern "C" int SDL_main(int argc, char** argv) {
+      |                         ~~~~^~~~
+src/main.cpp:5:42: warning: unused parameter 'argv' [-Wunused-parameter]
+    5 | extern "C" int SDL_main(int argc, char** argv) {
+      |                                   ~~~~~~~^~~~
+g++ -std=c++17 -Wall -Wextra -IC:/msys64/mingw64/include -DUSE_SDL -DUSE_SDL3 -c src/MainLoop.cpp -o src/MainLoop.o
+src/MainLoop.cpp: In member function 'void MainLoop::Init()':
+src/MainLoop.cpp:46:10: warning: variable 'write_bmp' set but not used [-Wunused-but-set-variable]
+   46 |     auto write_bmp = [](const char* path, unsigned char r, unsigned char g, unsigned char b){
+      |          ^~~~~~~~~
+g++ -std=c++17 -Wall -Wextra -IC:/msys64/mingw64/include -DUSE_SDL -DUSE_SDL3 -c src/Player.cpp -o src/Player.o
+g++ -std=c++17 -Wall -Wextra -IC:/msys64/mingw64/include -DUSE_SDL -DUSE_SDL3 -c src/ResourceManager.cpp -o src/ResourceManager.o
+g++ -std=c++17 -Wall -Wextra -IC:/msys64/mingw64/include -DUSE_SDL -DUSE_SDL3 -c src/SceneManager.cpp -o src/SceneManager.o
+g++ -std=c++17 -Wall -Wextra -IC:/msys64/mingw64/include -DUSE_SDL -DUSE_SDL3 -c src/Simulation.cpp -o src/Simulation.o
+g++ -std=c++17 -Wall -Wextra -IC:/msys64/mingw64/include -DUSE_SDL -DUSE_SDL3 -c src/Transform.cpp -o src/Transform.o
+g++ -std=c++17 -Wall -Wextra -IC:/msys64/mingw64/include -DUSE_SDL -DUSE_SDL3 -c src/Viewport3D.cpp -o src/Viewport3D.o
+src/Viewport3D.cpp: In member function 'void Viewport3D::Init()':
+src/Viewport3D.cpp:29:120: error: 'SDL_WINDOW_SHOWN' was not declared in this scope; did you mean 'SDL_WINDOW_MODAL'?
+   29 |             sdlWindow = SDL_CreateWindow("Star Engine", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_SHOWN);
+      |                                                                                                                        ^~~~~~~~~~~~~~~~
+      |                                                                                                                        SDL_WINDOW_MODAL
+src/Viewport3D.cpp:31:65: error: 'SDL_RENDERER_ACCELERATED' was not declared in this scope
+   31 |                 sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+      |                                                                 ^~~~~~~~~~~~~~~~~~~~~~~~
+src/Viewport3D.cpp:31:92: error: 'SDL_RENDERER_PRESENTVSYNC' was not declared in this scope
+   31 |                 sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+      |                                                                                            ^~~~~~~~~~~~~~~~~~~~~~~~~
+src/Viewport3D.cpp: In member function 'void Viewport3D::DrawPlayer(double)':
+src/Viewport3D.cpp:85:37: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+   85 |     SDL_RenderFillRect(sdlRenderer, &rect);
+      |                                     ^~~~~
+      |                                     |
+      |                                     SDL_Rect*
+In file included from C:/msys64/mingw64/include/SDL3/SDL.h:75,
+                 from src/Viewport3D.h:9,
+                 from src/Viewport3D.cpp:1:
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+In file included from C:/msys64/mingw64/include/SDL3/SDL.h:88:
+src/Viewport3D.cpp: In member function 'void Viewport3D::DrawEntity(const Transform&, int, ResourceManager*, const Camera*, int)':
+src/Viewport3D.cpp:139:17: error: 'SDL_RenderCopy_renamed_SDL_RenderTexture' was not declared in this scope
+  139 |                 SDL_RenderCopy(sdlRenderer, tex, haveSrc ? &srcRect : nullptr, &dst);
+      |                 ^~~~~~~~~~~~~~
+src/Viewport3D.cpp:146:41: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  146 |         SDL_RenderFillRect(sdlRenderer, &dst);
+      |                                         ^~~~
+      |                                         |
+      |                                         SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp: In member function 'void Viewport3D::DrawCameraMarker(const Camera*)':
+src/Viewport3D.cpp:177:5: error: 'SDL_RenderDrawLine_renamed_SDL_RenderLine' was not declared in this scope
+  177 |     SDL_RenderDrawLine(sdlRenderer, cx - 8, cy, cx + 8, cy);
+      |     ^~~~~~~~~~~~~~~~~~
+src/Viewport3D.cpp: In lambda function:
+src/Viewport3D.cpp:208:43: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  208 |                     SDL_RenderFillRect(r, &px);
+      |                                           ^~~
+      |                                           |
+      |                                           SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp: In function 'void drawTinyCharSDL(SDL_Renderer*, int, int, char)':
+src/Viewport3D.cpp:219:31: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  219 |         SDL_RenderFillRect(r, &px);
+      |                               ^~~
+      |                               |
+      |                               SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:222:31: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  222 |         SDL_RenderFillRect(r, &px);
+      |                               ^~~
+      |                               |
+      |                               SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:226:31: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  226 |         SDL_RenderFillRect(r, &top);
+      |                               ^~~~
+      |                               |
+      |                               SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:227:31: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  227 |         SDL_RenderFillRect(r, &bot);
+      |                               ^~~~
+      |                               |
+      |                               SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:247:31: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  247 |         SDL_RenderFillRect(r, &d1);
+      |                               ^~~
+      |                               |
+      |                               SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:248:31: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  248 |         SDL_RenderFillRect(r, &d2);
+      |                               ^~~
+      |                               |
+      |                               SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp: In lambda function:
+src/Viewport3D.cpp:274:105: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  274 |     auto drawSeg = [&](int sx, int sy, int w, int h){ SDL_Rect rct{sx, sy, w, h}; SDL_RenderFillRect(r, &rct); };
+      |                                                                                                         ^~~~
+      |                                                                                                         |
+      |                                                                                                         SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp: In function 'void drawSevenSegDigit(SDL_Renderer*, int, int, int, int, char)':
+src/Viewport3D.cpp:291:31: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  291 |         SDL_RenderFillRect(r, &dot);
+      |                               ^~~~
+      |                               |
+      |                               SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp: In member function 'void Viewport3D::DrawHUD(const Camera*, double, double)':
+src/Viewport3D.cpp:315:37: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  315 |     SDL_RenderFillRect(sdlRenderer, &bg);
+      |                                     ^~~
+      |                                     |
+      |                                     SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:318:5: error: 'SDL_RenderDrawRect_renamed_SDL_RenderRect' was not declared in this scope
+  318 |     SDL_RenderDrawRect(sdlRenderer, &bg);
+      |     ^~~~~~~~~~~~~~~~~~
+src/Viewport3D.cpp:332:72: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  332 |     SDL_Rect rz1{ x, y, 4, segThick }; SDL_RenderFillRect(sdlRenderer, &rz1);
+      |                                                                        ^~~~
+      |                                                                        |
+      |                                                                        SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:333:96: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  333 |     SDL_Rect rz2{ x + segLen - 2, y + segThick, 4, segThick }; SDL_RenderFillRect(sdlRenderer, &rz2);
+      |                                                                                                ^~~~
+      |                                                                                                |
+      |                                                                                                SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:334:96: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  334 |     SDL_Rect rz3{ x, y + 2*(segThick + segLen), 4, segThick }; SDL_RenderFillRect(sdlRenderer, &rz3);
+      |                                                                                                ^~~~
+      |                                                                                                |
+      |                                                                                                SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:355:72: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  355 |     SDL_Rect rf1{ x, y, 6, segThick }; SDL_RenderFillRect(sdlRenderer, &rf1);
+      |                                                                        ^~~~
+      |                                                                        |
+      |                                                                        SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:356:87: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  356 |     SDL_Rect rf2{ x, y + segThick + 2, 6, segThick }; SDL_RenderFillRect(sdlRenderer, &rf2);
+      |                                                                                       ^~~~
+      |                                                                                       |
+      |                                                                                       SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:357:94: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  357 |     SDL_Rect rf3{ x, y + 2*(segThick+segLen), 6, segThick }; SDL_RenderFillRect(sdlRenderer, &rf3);
+      |                                                                                              ^~~~
+      |                                                                                              |
+      |                                                                                              SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:359:65: error: 'floor' is not a member of 'std'
+  359 |     char fbuf[16]; snprintf(fbuf, sizeof(fbuf), "%d", (int)std::floor(fps + 0.5));
+      |                                                                 ^~~~~
+src/Viewport3D.cpp:369:72: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  369 |     SDL_Rect rx1{ x, y, 6, segThick }; SDL_RenderFillRect(sdlRenderer, &rx1);
+      |                                                                        ^~~~
+      |                                                                        |
+      |                                                                        SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp:370:91: error: cannot convert 'SDL_Rect*' to 'const SDL_FRect*'
+  370 |     SDL_Rect rx2{ x + 8, y + segThick + 2, 6, segThick }; SDL_RenderFillRect(sdlRenderer, &rx2);
+      |                                                                                           ^~~~
+      |                                                                                           |
+      |                                                                                           SDL_Rect*
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2073:94: note: initializing argument 2 of 'bool SDL_RenderFillRect(SDL_Renderer*, const SDL_FRect*)'
+ 2073 | extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_FRect *rect);
+      |                                                                             ~~~~~~~~~~~~~~~~~^~~~
+src/Viewport3D.cpp: In member function 'bool Viewport3D::CaptureToBMP(const char*)':
+src/Viewport3D.cpp:400:29: error: too many arguments to function 'SDL_Surface* SDL_RenderReadPixels(SDL_Renderer*, const SDL_Rect*)'
+  400 |     if (SDL_RenderReadPixels(sdlRenderer, NULL, SDL_PIXELFORMAT_RGB24, pixels.data(), pitch) != 0) {
+      |         ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/msys64/mingw64/include/SDL3/SDL_render.h:2324:43: note: declared here
+ 2324 | extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect);
+      |                                           ^~~~~~~~~~~~~~~~~~~~
+src/Viewport3D.cpp: At global scope:
+src/Viewport3D.cpp:198:13: warning: 'void drawTinyCharSDL(SDL_Renderer*, int, int, char)' defined but not used [-Wunused-function]
+  198 | static void drawTinyCharSDL(SDL_Renderer* r, int x, int y, char c) {
+      |             ^~~~~~~~~~~~~~~
+make: *** [Makefile:42: src/Viewport3D.o] Error 1

@@ -1,6 +1,13 @@
 #include "ResourceManager.h"
 #ifdef USE_SDL
+#if defined(USE_SDL3)
+#include <SDL3/SDL.h>
+#elif defined(USE_SDL2)
 #include <SDL2/SDL.h>
+#else
+#include <SDL.h>
+#endif
+#include "sdl_compat.h"
 #endif
 #include <mutex>
 
@@ -9,7 +16,11 @@ ResourceManager::ResourceManager() {}
 ResourceManager::~ResourceManager() {
 #ifdef USE_SDL
     for (auto &p : surfaces_) {
+#if SDL_MAJOR_VERSION >= 3
+        if (p.second) compat_DestroySurface(static_cast<SDL_Surface*>(p.second));
+#else
         if (p.second) SDL_FreeSurface(static_cast<SDL_Surface*>(p.second));
+#endif
     }
     // free textures
     for (auto &r : textures_) {
@@ -41,7 +52,7 @@ void* ResourceManager::GetSurface(int handle) const {
     if (sit != surfaces_.end()) return sit->second;
     // not found: load now (const_cast for simplicity since surfaces_ is mutable cache)
     const std::string &path = it->second;
-    SDL_Surface* s = SDL_LoadBMP(path.c_str());
+    SDL_Surface* s = compat_LoadBMP(path.c_str());
     if (!s) return nullptr;
     // Store in non-const map via const_cast (ok for this simple demo)
     const_cast<std::unordered_map<int, void*>&>(surfaces_)[handle] = static_cast<void*>(s);
@@ -60,7 +71,7 @@ void* ResourceManager::GetTexture(void* rendererPtr, int handle) {
     SDL_Surface* surf = static_cast<SDL_Surface*>(GetSurface(handle));
     if (!surf) return nullptr;
     SDL_Renderer* ren = static_cast<SDL_Renderer*>(rendererPtr);
-    SDL_Texture* tex = SDL_CreateTextureFromSurface(ren, surf);
+    SDL_Texture* tex = compat_CreateTextureFromSurface(ren, surf);
     if (!tex) return nullptr;
     rendererMap[handle] = static_cast<void*>(tex);
     return static_cast<void*>(tex);

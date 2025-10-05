@@ -1,0 +1,5 @@
+Star Engine Initializing...
+Viewport3D: Using SDL3 for rendering.
+Simulation initialized. position=0
+Simulation: created player entity id=1
+Star Engine Fixed-Timestep Main Loop (update @ 60 Hz)

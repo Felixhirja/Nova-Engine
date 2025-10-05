@@ -1,25 +1,35 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra
+LDFLAGS =
 
-SDL_CFLAGS := $(shell pkg-config --cflags sdl2 2>/dev/null)
-SDL_LIBS  := $(shell pkg-config --libs sdl2 2>/dev/null)
+SHELL = /usr/bin/bash
 
-ifeq ($(SDL_LIBS),)
-$(info SDL2 not found; building ASCII fallback)
+GLFW_CFLAGS := $(shell pkg-config --cflags glfw3 2>/dev/null)
+GLFW_LIBS  := $(shell pkg-config --libs glfw3 2>/dev/null)
+
+# Fallback if pkg-config fails
+ifeq ($(GLFW_LIBS),)
+GLFW_CFLAGS := -IC:/msys64/mingw64/include
+GLFW_LIBS := -LC:/msys64/mingw64/lib -lglfw3
+endif
+
+ifneq ($(GLFW_LIBS),)
+	CXXFLAGS += $(GLFW_CFLAGS) -DUSE_GLFW
+	LDLIBS += $(GLFW_LIBS)
+	LDLIBS += -lopengl32 -lglu32 -lfreeglut
+$(info GLFW detected: building with GLFW support)
 else
-CXXFLAGS += $(SDL_CFLAGS) -DUSE_SDL
-LDLIBS += $(SDL_LIBS)
-$(info SDL2 detected: building with SDL2 support)
+$(info GLFW not found; building ASCII fallback)
 endif
 
 SRC := $(wildcard src/*.cpp) $(wildcard src/ecs/*.cpp)
-OBJ := $(patsubst %.cpp,%.o,$(SRC))
+OBJ := $(filter-out src/test_sdl.o src/main_test.o, $(patsubst %.cpp,%.o,$(SRC)))
 TARGET := star-engine
 
 all: $(TARGET)
 
 $(TARGET): $(OBJ)
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJ) $(LDLIBS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(OBJ) $(LDLIBS)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@

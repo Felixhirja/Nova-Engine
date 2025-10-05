@@ -5,7 +5,16 @@
 #include <string>
 #include <iostream>
 #ifdef USE_SDL
+#if defined(USE_SDL3)
+#include <SDL3/SDL.h>
+#elif defined(USE_SDL2)
 #include <SDL2/SDL.h>
+#else
+#include <SDL.h>
+#endif
+#endif
+#ifdef USE_GLFW
+#include <GLFW/glfw3.h>
 #endif
 
 // If SDL2 is available, this class will open a window and render a simple rectangle
@@ -16,10 +25,10 @@ public:
     ~Viewport3D();
 
     void Init();
-    void Render();
+    void Render(const class Camera* camera, double playerX, double playerY, double playerZ);
     void Resize(int width, int height);
     // Draw a player at world x coordinate (for simple ASCII demo)
-    void DrawPlayer(double x);
+    void DrawPlayer(double x, double y = 0.0, double z = 0.0);
     // Draw a generic entity given its transform (x,y,z)
     void DrawEntity(const Transform &t);
     // Draw entity with optional texture handle (0 == none). ResourceManager is optional and used only with SDL.
@@ -27,11 +36,25 @@ public:
     // Draw entity with camera transform
     void DrawEntity(const Transform &t, int textureHandle, class ResourceManager* resourceManager, const class Camera* camera, int currentFrame = 0);
     void Shutdown();
+    
+    // If OpenGL is in use this flag will be true and an OpenGL context will be owned
+    bool usingGL() const { return useGL; }
 
+    // Get the GLFW window (returns nullptr if not using GLFW)
+#ifdef USE_GLFW
+    GLFWwindow* GetGLFWWindow() const { return glfwWindow; }
+#else
+    void* GetGLFWWindow() const { return nullptr; }
+#endif
+
+    // Draw 3D coordinate system axes
+    void DrawCoordinateSystem();
+    // Draw visual representation of camera position and orientation
+    void DrawCameraVisual(const class Camera* camera);
     // Draw a small crosshair at camera center for debugging
     void DrawCameraMarker(const class Camera* camera);
     // Draw HUD (zoom, fps, player x)
-    void DrawHUD(const class Camera* camera, double fps, double playerX);
+    void DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ);
     // Capture current renderer contents to a simple 24-bit BMP file (path)
     bool CaptureToBMP(const char* path);
 
@@ -46,5 +69,12 @@ private:
 #ifdef USE_SDL
     SDL_Window* sdlWindow;
     SDL_Renderer* sdlRenderer;
+    // OpenGL context (SDL_GLContext is a typedef provided by SDL for OpenGL)
+    SDL_GLContext sdlGLContext;
+    bool useGL;
+#endif
+#ifdef USE_GLFW
+    GLFWwindow* glfwWindow;
+    bool useGL;
 #endif
 };

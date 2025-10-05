@@ -10,6 +10,14 @@
 #include <chrono>
 #include <thread>
 #include <algorithm>
+#include <fstream>
+#include <cmath>
+#ifdef USE_SDL
+#include <SDL2/SDL.h>
+#endif
+#ifdef USE_GLFW
+#include <GLFW/glfw3.h>
+#endif
 
 MainLoop::MainLoop() : running(false), version("1.0.0"), viewport(nullptr), simulation(nullptr) {}
 
@@ -20,19 +28,28 @@ MainLoop::~MainLoop() {
 
 void MainLoop::Init() {
     std::cout << "Star Engine Initializing..." << std::endl;
+    // Log to file
+    std::ofstream log("sdl_diag.log", std::ios::app);
+    log << "MainLoop::Init started" << std::endl;
+    log.close();
     running = true;
     Input::Init();
 
     viewport = std::make_unique<Viewport3D>();
     viewport->Init();
+    std::cout << "Viewport3D::Init() completed" << std::endl;
+
+    // Set GLFW window for input handling
+    Input::SetGLFWWindow(viewport->GetGLFWWindow());
 
     // Camera
-    camera = std::make_unique<Camera>(0.0, 0.0, 32.0); // zoom maps world units to pixels roughly
+    camera = std::make_unique<Camera>(0.0, 0.0, 5.0, 0.0, 0.0, 32.0); // fixed camera position at (0,0,5), zoom maps world units to pixels roughly
 
     // Create canonical ECS manager and initialize simulation with it
     entityManager = std::make_unique<EntityManager>();
     simulation = std::make_unique<Simulation>();
     simulation->Init(entityManager.get());
+    std::cout << "Simulation::Init() completed" << std::endl;
 
     // Resource manager & demo entity (use unique_ptr ownership)
     resourceManager = std::make_unique<ResourceManager>();
@@ -115,28 +132,18 @@ void MainLoop::Init() {
     resourceManager->RegisterSprite(demoHandle1, info);
     resourceManager->RegisterSprite(demoHandle2, info);
 
-    EntityData demoEntity1;
-    demoEntity1.name = "demo1";
-    demoEntity1.transform.x = -2.0;
-    demoEntity1.textureHandle = demoHandle1;
-    // Register demo entity in legacy scene storage removed; create ECS entity instead
-    // Also register this scene entity in the ECS so rendering can read components
+    // Register demo entities in ECS
     {
         Entity e = entityManager->CreateEntity();
-        auto p = std::make_shared<Position>(); p->x = demoEntity1.transform.x; p->y = demoEntity1.transform.y;
+        auto p = std::make_shared<Position>(); p->x = -2.0; p->y = 0.0; p->z = 0.0;
         entityManager->AddComponent<Position>(e, p);
         auto s = std::make_shared<Sprite>(); s->textureHandle = demoHandle1; s->frame = 0;
         entityManager->AddComponent<Sprite>(e, s);
     }
 
-    EntityData demoEntity2;
-    demoEntity2.name = "demo2";
-    demoEntity2.transform.x = 2.0;
-    demoEntity2.textureHandle = demoHandle2;
-    // Register demo entity in ECS
     {
         Entity e = entityManager->CreateEntity();
-        auto p = std::make_shared<Position>(); p->x = demoEntity2.transform.x; p->y = demoEntity2.transform.y;
+        auto p = std::make_shared<Position>(); p->x = 2.0; p->y = 0.0; p->z = 0.0;
         entityManager->AddComponent<Position>(e, p);
         auto s = std::make_shared<Sprite>(); s->textureHandle = demoHandle2; s->frame = 0;
         entityManager->AddComponent<Sprite>(e, s);
@@ -146,12 +153,17 @@ void MainLoop::Init() {
 }
 
 void MainLoop::MainLoopFunc(int maxSeconds) {
+    std::cout << "MainLoopFunc started" << std::endl;
+    // Log to file - REMOVED: was causing FPS drops
+    // std::ofstream log("sdl_diag.log", std::ios::app);
+    // log << "MainLoopFunc started" << std::endl;
+    // log.close();
     if (!running) { std::cout << "Engine not initialized!" << std::endl; return; }
 
     using clock = std::chrono::high_resolution_clock;
     const double updateHz = 60.0;
     const std::chrono::duration<double> fixedDt(1.0 / updateHz);
-    const double maxFPS = 240.0;
+    const double maxFPS = 144.0;  // INCREASED to 144 to allow higher FPS
     const std::chrono::duration<double> minFrameTime(1.0 / maxFPS);
     std::cout << "Star Engine Fixed-Timestep Main Loop (update @ " << updateHz << " Hz)" << std::endl;
 
@@ -163,36 +175,125 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     double currentFPS = 0.0;
 
     bool paused = false;
-    bool holdLeft = false;
-    bool holdRight = false;
+    const double turnSpeed = 2.0; // radians per second
 
     while (true) {
+        // Log to file - REMOVED: was causing massive FPS drops
+        // std::ofstream log("sdl_diag.log", std::ios::app);
+        // log << "MainLoopFunc loop iteration" << std::endl;
+        // log.close();
         auto current = clock::now();
         auto elapsed = current - previous;
         previous = current;
         lag += elapsed;
 
+        // Get keyboard state using Input class
+        // Get relative mouse movement for camera look
+        double mouseDeltaX = 0.0, mouseDeltaY = 0.0;
+#ifdef USE_GLFW
+        if (viewport && viewport->GetGLFWWindow()) {
+            GLFWwindow* window = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
+            double x, y;
+            glfwGetCursorPos(window, &x, &y);
+            int width, height;
+            glfwGetWindowSize(window, &width, &height);
+            double centerX = width / 2.0;
+            double centerY = height / 2.0;
+            // Calculate delta from center position
+            mouseDeltaX = x - centerX;
+            mouseDeltaY = y - centerY;
+            // Always recenter cursor for proper relative movement
+            glfwSetCursorPos(window, centerX, centerY);
+        }
+#endif
+#ifdef USE_SDL
+        int sdlMouseDeltaX, sdlMouseDeltaY;
+        SDL_GetRelativeMouseState(&sdlMouseDeltaX, &sdlMouseDeltaY);
+        mouseDeltaX = sdlMouseDeltaX;
+        mouseDeltaY = sdlMouseDeltaY;
+#endif
+
+        // Update input state for hold-based controls
+        Input::UpdateKeyState();
+
+        // Check for quit key (still poll-based for immediate response)
         int key = Input::PollKey();
         if (key != -1) {
-            if (key == 'q' || key == 'Q') break;
-            if (key == ' ') paused = !paused;
-            if (key == 'a' || key == 'A') holdLeft = !holdLeft;
-            if (key == 'd' || key == 'D') holdRight = !holdRight;
-            if ((key == 'z' || key == 'Z') && camera) {
-                double z = camera->targetZoom();
-                z *= 1.1;
-                if (z > 128.0) z = 128.0;
-                camera->SetTargetZoom(z);
-            }
-            if ((key == 'x' || key == 'X') && camera) {
-                double z = camera->targetZoom();
-                z /= 1.1;
-                if (z < 4.0) z = 4.0;
-                camera->SetTargetZoom(z);
-            }
+            std::cout << "Key pressed: " << key << " ('" << (char)key << "')" << std::endl;
+        }
+        if (key == 'q' || key == 'Q' || Input::IsKeyHeld('q') || Input::IsKeyHeld('Q') || key == 27) {
+            std::cout << "Quit key detected, exiting..." << std::endl;
+            break;
         }
 
-        if (simulation) simulation->SetPlayerInput(holdLeft, holdRight);
+        // Handle pause (still toggle-based)
+        if (key == 'p' || key == 'P') paused = !paused;
+
+        // Handle zoom keys (still poll-based for immediate response)
+        if ((key == 'z' || key == 'Z') && camera) {
+            double z = camera->targetZoom();
+            z *= 1.1;
+            if (z > 128.0) z = 128.0;
+            camera->SetTargetZoom(z);
+        }
+        if ((key == 'x' || key == 'X') && camera) {
+            double z = camera->targetZoom();
+            z /= 1.1;
+            if (z < 4.0) z = 4.0;
+            camera->SetTargetZoom(z);
+        }
+
+        // Set player input based on held keys using Input class
+        bool strafeLeft = Input::IsKeyHeld('a') || Input::IsKeyHeld('A');
+        bool strafeRight = Input::IsKeyHeld('d') || Input::IsKeyHeld('D');
+        bool forward = Input::IsKeyHeld('w') || Input::IsKeyHeld('W');
+        bool backward = Input::IsKeyHeld('s') || Input::IsKeyHeld('S');
+        bool up = Input::IsKeyHeld('e') || Input::IsKeyHeld('E');
+        bool down = Input::IsKeyHeld('c') || Input::IsKeyHeld('C');
+
+        // Camera movement with arrow keys
+        bool cameraForward = Input::IsArrowKeyHeld(GLFW_KEY_UP);
+        bool cameraBackward = Input::IsArrowKeyHeld(GLFW_KEY_DOWN);
+        bool cameraLeft = Input::IsArrowKeyHeld(GLFW_KEY_LEFT);
+        bool cameraRight = Input::IsArrowKeyHeld(GLFW_KEY_RIGHT);
+        bool cameraUp = Input::IsKeyHeld(' ') && Input::IsKeyHeld(GLFW_KEY_UP); // Space + Up for camera up
+        bool cameraDown = Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_DOWN); // Space + Down for camera down
+
+        if (simulation) simulation->SetPlayerInput(forward, backward, up, down, strafeLeft, strafeRight, camera->yaw());
+
+        // Apply camera movement
+        if (camera) {
+            double cameraMoveSpeed = 0.5; // units per second
+            double deltaTime = fixedDt.count();
+            double pi = acos(-1.0);
+            
+            if (cameraForward) {
+                double dx = sin(camera->yaw()) * cameraMoveSpeed * deltaTime;
+                double dy = -cos(camera->yaw()) * cameraMoveSpeed * deltaTime;
+                camera->SetPosition(camera->x() + dx, camera->y() + dy, camera->z());
+            }
+            if (cameraBackward) {
+                double dx = -sin(camera->yaw()) * cameraMoveSpeed * deltaTime;
+                double dy = cos(camera->yaw()) * cameraMoveSpeed * deltaTime;
+                camera->SetPosition(camera->x() + dx, camera->y() + dy, camera->z());
+            }
+            if (cameraLeft) {
+                double dx = sin(camera->yaw() - pi/2) * cameraMoveSpeed * deltaTime;
+                double dy = -cos(camera->yaw() - pi/2) * cameraMoveSpeed * deltaTime;
+                camera->SetPosition(camera->x() + dx, camera->y() + dy, camera->z());
+            }
+            if (cameraRight) {
+                double dx = sin(camera->yaw() + pi/2) * cameraMoveSpeed * deltaTime;
+                double dy = -cos(camera->yaw() + pi/2) * cameraMoveSpeed * deltaTime;
+                camera->SetPosition(camera->x() + dx, camera->y() + dy, camera->z());
+            }
+            if (cameraUp) {
+                camera->SetPosition(camera->x(), camera->y(), camera->z() + cameraMoveSpeed * deltaTime);
+            }
+            if (cameraDown) {
+                camera->SetPosition(camera->x(), camera->y(), camera->z() - cameraMoveSpeed * deltaTime);
+            }
+        }
 
         if (!paused) {
             while (lag >= fixedDt) {
@@ -204,19 +305,30 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
         if (viewport) {
             double playerX = simulation ? simulation->GetPlayerX() : 0.0;
+            double playerY = simulation ? simulation->GetPlayerY() : 0.0;
+            double playerZ = simulation ? simulation->GetPlayerZ() : 0.0;
             // Clear once per frame
             viewport->Clear();
-            viewport->DrawPlayer(playerX);
+            // Set up 3D rendering with camera looking at player
+            viewport->Render(camera.get(), playerX, playerY, playerZ);
+            // Draw player at its world position
+            viewport->DrawPlayer(playerX, playerY, playerZ);
             // Render all entities from scene
             {
                 // Advance animations and render
-                // Smoothly update camera to follow player (both X and Y)
-                if (camera && simulation) {
-                    double px = simulation->GetPlayerX();
-                    double py = 0.0; // simulation has no Y in this demo
-                    // compute an alpha based on fixed timestep to create smoothing
-                    double alpha = std::min(1.0, 5.0 * fixedDt.count());
-                    camera->LerpTo(px, py, alpha);
+                // Free look camera: update yaw and pitch based on mouse movement
+                if (camera) {
+                    // Mouse look (always active in relative mode)
+                    double mouseSensitivity = 0.002;
+                    double currentYaw = camera->yaw();
+                    double currentPitch = camera->pitch();
+                    currentYaw += mouseDeltaX * mouseSensitivity;
+                    currentPitch += mouseDeltaY * mouseSensitivity;
+                    // Clamp pitch to prevent flipping
+                    if (currentPitch > std::acos(-1.0)/2 - 0.1) currentPitch = std::acos(-1.0)/2 - 0.1;
+                    if (currentPitch < -std::acos(-1.0)/2 + 0.1) currentPitch = -std::acos(-1.0)/2 + 0.1;
+                    
+                    camera->SetOrientation(currentPitch, currentYaw);
                 }
 
                 // Render from ECS: iterate all entities that have a Sprite component
@@ -238,7 +350,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                             continue;
                         }
                     }
-                    Transform t; t.x = pos->x; t.y = pos->y; t.z = 0.0;
+                    Transform t; t.x = pos->x; t.y = pos->y; t.z = pos->z;
                     viewport->DrawEntity(t, th, resourceManager.get(), camera.get(), spr->frame);
                 }
                 // Draw camera debug marker on top and HUD
@@ -246,9 +358,11 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                     // Ensure smooth zoom is updated each frame
                     camera->UpdateZoom(fixedDt.count());
                     viewport->DrawCameraMarker(camera.get());
-                    // Draw HUD with currentFPS
+                    // Draw HUD with currentFPS - RE-ENABLED
                     double hudPlayerX = simulation ? simulation->GetPlayerX() : 0.0;
-                    viewport->DrawHUD(camera.get(), currentFPS, hudPlayerX);
+                    double hudPlayerY = simulation ? simulation->GetPlayerY() : 0.0;
+                    double hudPlayerZ = simulation ? simulation->GetPlayerZ() : 0.0;
+                    viewport->DrawHUD(camera.get(), currentFPS, hudPlayerX, hudPlayerY, hudPlayerZ);
                     // If STAR_CAPTURE env var is set, dump the renderer contents to BMP for inspection
                     const char* cap = std::getenv("STAR_CAPTURE");
                     if (cap && std::string(cap) == "1") {
@@ -265,14 +379,13 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             double simPos = simulation ? simulation->GetPosition() : 0.0;
             double playerX = simulation ? simulation->GetPlayerX() : 0.0;
             std::cout << "FPS: " << frames << "  Simulation pos=" << simPos << "  Player x=" << playerX << "  Zoom=" << (camera?camera->zoom():1.0) << std::endl;
+            currentFPS = frames;  // Update currentFPS for HUD display
             frames = 0;
             fpsTimer = current;
         }
 
         if (maxSeconds > 0) {
             if (std::chrono::duration<double>(current - demoStart).count() >= maxSeconds) break;
-        } else {
-            break;
         }
 
         auto frameEnd = clock::now();
