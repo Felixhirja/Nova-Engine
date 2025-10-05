@@ -28,20 +28,6 @@
 #include "ResourceManager.h"
 #include "Camera.h"
 #endif
-#ifdef USE_GLFW
-#include <GLFW/glfw3.h>
-#ifdef _WIN32
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
-#else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
-#endif
-#include "ResourceManager.h"
-#include "Camera.h"
-#endif
 
 Viewport3D::Viewport3D() : width(800), height(600), usingSDL(false)
 #ifdef USE_SDL
@@ -932,7 +918,11 @@ void Viewport3D::DrawCameraMarker(const class Camera* camera) {
 }
 
 #ifdef USE_SDL
+<<<<<<< HEAD
 // Simple 3x5 pixel font for ASCII 0-9, '-' (monochrome) drawn as small rectangles
+=======
+// Simple 3x5 pixel font for ASCII 0-9, '-', '.' (monochrome) drawn as small rectangles
+>>>>>>> 46a30c425a1a3ef5e22010c6878f00c26b92f987
 static const uint8_t tinyFont[][5] = {
     {0x1F,0x11,0x11,0x11,0x1F}, // 0
     {0x04,0x06,0x04,0x04,0x07}, // 1
@@ -1054,7 +1044,11 @@ static void drawSevenSegDigit(SDL_Renderer* r, int x, int y, int segLen, int seg
     if (bits & 0x20) drawSeg(f_x, f_y, f_w, f_h); // f
     if (bits & 0x40) drawSeg(g_x, g_y, g_w, g_h); // g
 }
+<<<<<<< HEAD
 #endif
+=======
+#endif // USE_SDL
+>>>>>>> 46a30c425a1a3ef5e22010c6878f00c26b92f987
 
 void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ) {
     if (!usingSDL) {
@@ -1459,9 +1453,14 @@ void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX,
 }
 
 bool Viewport3D::CaptureToBMP(const char* path) {
+<<<<<<< HEAD
     if (!usingSDL) return false;
 #ifdef USE_SDL
     if (!sdlRenderer) return false;
+=======
+#ifdef USE_SDL
+    if (!usingSDL || !sdlRenderer) return false;
+>>>>>>> 46a30c425a1a3ef5e22010c6878f00c26b92f987
     // Read pixels from current render target
     int w = width, h = height;
     int pitch = w * 3;
@@ -1505,6 +1504,7 @@ bool Viewport3D::CaptureToBMP(const char* path) {
     fclose(f);
     return true;
 #else
+    (void)path;
     return false;
 #endif
 }

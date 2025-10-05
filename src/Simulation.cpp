@@ -1,11 +1,17 @@
 
 
 #include "Simulation.h"
+#include "ecs/MovementSystem.h"
+#include "ecs/PlayerControlSystem.h"
+
+#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <cmath>
 
-Simulation::Simulation() : entityManager(nullptr), inputForward(false), inputBackward(false), inputUp(false), inputDown(false), inputStrafeLeft(false), inputStrafeRight(false), inputCameraYaw(0.0) {}
+Simulation::Simulation() : inputForward(false), inputBackward(false), inputUp(false), inputDown(false), inputStrafeLeft(false), inputStrafeRight(false), inputCameraYaw(0.0), inputLeft(false), inputRight(false) {
+    activeEm = &em;
+}
 
 Simulation::~Simulation() {}
 
@@ -13,59 +19,94 @@ void Simulation::Init(EntityManager* externalEm) {
     position = 0.0;
     std::cout << "Simulation initialized. position=" << position << std::endl;
 
-    entityManager = externalEm;
-    if (!entityManager) {
-        std::cerr << "Simulation: No EntityManager provided!" << std::endl;
-        return;
+void Simulation::Init(EntityManager* externalEm) {
+    position = 0.0;
+    std::cout << "Simulation initialized. position=" << position << std::endl;
+
+    activeEm = externalEm ? externalEm : &em;
+    EntityManager* useEm = activeEm;
+
+    if (!externalEm) {
+        useEm->Clear();
     }
 
+    systemManager.Clear();
+    systemManager.RegisterSystem<PlayerControlSystem>();
+    systemManager.RegisterSystem<MovementSystem>();
+
     // Create player entity in ECS
-    playerEntity = entityManager->CreateEntity();
+    playerEntity = useEm->CreateEntity();
     auto pos = std::make_shared<Position>();
-    pos->x = 0.0; pos->y = 0.0; pos->z = 0.0;
-    entityManager->AddComponent<Position>(playerEntity, pos);
+    pos->x = 0.0;
+    pos->y = 0.0;
+    useEm->AddComponent<Position>(playerEntity, pos);
 
     auto vel = std::make_shared<Velocity>();
-    vel->vx = 1.0; vel->vy = 0.0; vel->vz = 0.0;
-    entityManager->AddComponent<Velocity>(playerEntity, vel);
+    vel->vx = 0.0;
+    vel->vy = 0.0;
+    useEm->AddComponent<Velocity>(playerEntity, vel);
+
+    auto acc = std::make_shared<Acceleration>();
+    acc->ax = 0.0;
+    acc->ay = 0.0;
+    acc->az = 0.0;
+    useEm->AddComponent<Acceleration>(playerEntity, acc);
+
+    auto controller = std::make_shared<PlayerController>();
+    controller->moveLeft = false;
+    controller->moveRight = false;
+    controller->moveForward = false;
+    controller->moveBackward = false;
+    controller->moveUp = false;
+    controller->moveDown = false;
+    controller->strafeLeft = false;
+    controller->strafeRight = false;
+    controller->cameraYaw = 0.0;
+    useEm->AddComponent<PlayerController>(playerEntity, controller);
+
+    auto bounds = std::make_shared<MovementBounds>();
+    bounds->minX = -5.0;
+    bounds->maxX = 5.0;
+    bounds->clampX = true;
+    useEm->AddComponent<MovementBounds>(playerEntity, bounds);
+
+    inputLeft = false;
+    inputRight = false;
+    inputForward = false;
+    inputBackward = false;
+    inputUp = false;
+    inputDown = false;
+    inputStrafeLeft = false;
+    inputStrafeRight = false;
+    inputCameraYaw = 0.0;
 
     std::cout << "Simulation: created player entity id=" << playerEntity << std::endl;
 }
+}
 
 void Simulation::Update(double dt) {
-    if (!entityManager) return;
-    
-    // advance global simulation position
-    auto v = entityManager->GetComponent<Velocity>(playerEntity);
-    auto p = entityManager->GetComponent<Position>(playerEntity);
-    if (v && p) {
-        // Compute desired velocity in local space
-        double localVx = 0.0, localVy = 0.0, localVz = 0.0;
-        double speed = 5.0; // movement speed
-        if (inputForward) localVx += speed;
-        if (inputBackward) localVx -= speed;
-        if (inputUp) localVy += speed;
-        if (inputDown) localVy -= speed;
-        if (inputStrafeLeft) localVz -= speed;
-        if (inputStrafeRight) localVz += speed;
-        
-        // Rotate by camera yaw to get world velocity
-        double cosYaw = cos(inputCameraYaw);
-        double sinYaw = sin(inputCameraYaw);
-        double worldVx = localVx * cosYaw - localVz * sinYaw;
-        double worldVz = localVx * sinYaw + localVz * cosYaw;
-        double worldVy = localVy; // up/down not rotated
-        
-        // Set velocity
-        v->vx = worldVx;
-        v->vy = worldVy;
-        v->vz = worldVz;
-        
-        // Update position
-        p->x += v->vx * dt;
-        p->y += v->vy * dt;
-        p->z += v->vz * dt;
-        position = p->x; // mirror into simple position for compatibility
+    if (dt <= 0.0) {
+        return;
+    }
+
+    EntityManager* useEm = activeEm ? activeEm : &em;
+
+    if (auto* controller = useEm->GetComponent<PlayerController>(playerEntity)) {
+        controller->moveLeft = inputLeft;
+        controller->moveRight = inputRight;
+        controller->moveForward = inputForward;
+        controller->moveBackward = inputBackward;
+        controller->moveUp = inputUp;
+        controller->moveDown = inputDown;
+        controller->strafeLeft = inputStrafeLeft;
+        controller->strafeRight = inputStrafeRight;
+        controller->cameraYaw = inputCameraYaw;
+    }
+
+    systemManager.UpdateAll(*useEm, dt);
+
+    if (auto* p = useEm->GetComponent<Position>(playerEntity)) {
+        position = p->x;
     }
 }
 
@@ -74,20 +115,25 @@ double Simulation::GetPosition() const {
 }
 
 double Simulation::GetPlayerX() const {
+<<<<<<< HEAD
     if (!entityManager) return 0.0;
     auto p = entityManager->GetComponent<Position>(playerEntity);
+=======
+    const EntityManager* useEm = activeEm ? activeEm : &em;
+    auto p = useEm->GetComponent<Position>(playerEntity);
+>>>>>>> 46a30c425a1a3ef5e22010c6878f00c26b92f987
     return p ? p->x : 0.0;
 }
 
 double Simulation::GetPlayerY() const {
-    if (!entityManager) return 0.0;
-    auto p = entityManager->GetComponent<Position>(playerEntity);
+    const EntityManager* useEm = activeEm ? activeEm : &em;
+    auto p = useEm->GetComponent<Position>(playerEntity);
     return p ? p->y : 0.0;
 }
 
 double Simulation::GetPlayerZ() const {
-    if (!entityManager) return 0.0;
-    auto p = entityManager->GetComponent<Position>(playerEntity);
+    const EntityManager* useEm = activeEm ? activeEm : &em;
+    auto p = useEm->GetComponent<Position>(playerEntity);
     return p ? p->z : 0.0;
 }
 

@@ -1,8 +1,9 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
-#include "ecs/EntityManager.h"
 #include "ecs/Components.h"
+#include "ecs/EntityManager.h"
+#include "ecs/System.h"
 
 class Simulation {
 public:
@@ -22,7 +23,8 @@ public:
 
 private:
     // Basic simulation state implemented with ECS
-    EntityManager* entityManager; // Use external EntityManager
+    EntityManager em;
+    EntityManager* activeEm = nullptr;
     Entity playerEntity = 0;
     // fallback scalar for global sim position if needed
     double position = 0.0;
@@ -33,6 +35,9 @@ private:
     bool inputStrafeLeft;
     bool inputStrafeRight;
     double inputCameraYaw;
+    bool inputLeft;
+    bool inputRight;
+    SystemManager systemManager;
 };
 
 #endif // SIMULATION_H
