@@ -24,6 +24,7 @@ struct Sprite : public Component {
 struct Acceleration : public Component {
     double ax = 0.0;
     double ay = 0.0;
+    double az = 0.0;
 };
 
 struct Transform2D : public Component {
@@ -59,6 +60,13 @@ struct Name : public Component {
 struct PlayerController : public Component {
     bool moveLeft = false;
     bool moveRight = false;
+    bool moveForward = false;
+    bool moveBackward = false;
+    bool moveUp = false;
+    bool moveDown = false;
+    bool strafeLeft = false;
+    bool strafeRight = false;
+    double cameraYaw = 0.0;
 };
 
 struct MovementBounds : public Component {

@@ -10,8 +10,17 @@ void MovementSystem::Update(EntityManager& entityManager, double dt) {
     }
 
     entityManager.ForEach<Position, Velocity>([&](Entity entity, Position& position, Velocity& velocity) {
+        // Update velocity with acceleration
+        if (auto* acceleration = entityManager.GetComponent<Acceleration>(entity)) {
+            velocity.vx += acceleration->ax * dt;
+            velocity.vy += acceleration->ay * dt;
+            velocity.vz += acceleration->az * dt;
+        }
+
+        // Update position with velocity
         position.x += velocity.vx * dt;
         position.y += velocity.vy * dt;
+        position.z += velocity.vz * dt;
 
         if (auto* bounds = entityManager.GetComponent<MovementBounds>(entity)) {
             if (bounds->clampX) {
@@ -41,6 +50,8 @@ void MovementSystem::Update(EntityManager& entityManager, double dt) {
                     }
                 }
             }
+
+            // Add z bounds if needed, but for now skip
         }
     });
 }
