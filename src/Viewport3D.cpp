@@ -28,6 +28,17 @@
 #include "ResourceManager.h"
 #include "Camera.h"
 #endif
+#ifdef USE_GLFW
+#include <GLFW/glfw3.h>
+#ifdef _WIN32
+#include <GL/gl.h>
+#include <GL/glu.h>
+#else
+#include <GL/gl.h>
+#include <GL/glu.h>
+#endif
+#include "Camera.h"
+#endif
 
 Viewport3D::Viewport3D() : width(800), height(600), usingSDL(false)
 #ifdef USE_SDL
@@ -55,11 +66,6 @@ void Viewport3D::Init() {
         return;
     }
     std::cout << "GLFW initialized successfully" << std::endl;
-
-    // Initialize GLUT for bitmap fonts
-    int glutArgc = 0;
-    char* glutArgv[] = { nullptr };
-    glutInit(&glutArgc, glutArgv);
 
     // Set GLFW window hints for OpenGL
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
@@ -1044,11 +1050,7 @@ static void drawSevenSegDigit(SDL_Renderer* r, int x, int y, int segLen, int seg
     if (bits & 0x20) drawSeg(f_x, f_y, f_w, f_h); // f
     if (bits & 0x40) drawSeg(g_x, g_y, g_w, g_h); // g
 }
-<<<<<<< HEAD
-#endif
-=======
 #endif // USE_SDL
->>>>>>> 46a30c425a1a3ef5e22010c6878f00c26b92f987
 
 void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ) {
     if (!usingSDL) {
@@ -1085,33 +1087,156 @@ void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX,
             glVertex2f(10, 10+80);
             glEnd();
 
-            // Simple text rendering - much faster than bitmap font
-            auto drawSimpleText = [&](int x, int y, const char* text, float r, float g, float b) {
-                glColor3f(r, g, b);
-                glRasterPos2i(x, y);
-                for (const char* c = text; *c; ++c) {
-                    glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
-                }
+            // Simple 7-segment style display for GLFW (similar to SDL version)
+            auto drawRect = [](float x, float y, float w, float h, float r, float g, float b, float a = 1.0f) {
+                glColor4f(r, g, b, a);
+                glBegin(GL_QUADS);
+                glVertex2f(x, y);
+                glVertex2f(x + w, y);
+                glVertex2f(x + w, y + h);
+                glVertex2f(x, y + h);
+                glEnd();
             };
 
-            // Draw HUD info - simplified and faster
-            int yPos = 35;
-            char fpsStr[32];
-            snprintf(fpsStr, sizeof(fpsStr), "FPS: %.0f", fps);
-            drawSimpleText(20, yPos, fpsStr, 1.0f, 1.0f, 0.5f);
+            auto drawSevenSegDigitGL = [&](int x, int y, int segLen, int segThick, char c) {
+                static const uint8_t segMap[10] = {
+                    0b0111111, // 0
+                    0b0000110, // 1
+                    0b1011011, // 2
+                    0b1001111, // 3
+                    0b1100110, // 4
+                    0b1101101, // 5
+                    0b1111101, // 6
+                    0b0000111, // 7
+                    0b1111111, // 8
+                    0b1101111  // 9
+                };
+                auto drawSegGL = [&](float sx, float sy, float w, float h) {
+                    glBegin(GL_QUADS);
+                    glVertex2f(sx, sy);
+                    glVertex2f(sx + w, sy);
+                    glVertex2f(sx + w, sy + h);
+                    glVertex2f(sx, sy + h);
+                    glEnd();
+                };
+                int a = x + segThick, ay = y, aw = segLen, ah = segThick;
+                int f_x = x, f_y = y + segThick, f_w = segThick, f_h = segLen;
+                int b_x = x + segThick + segLen, b_y = y + segThick, b_w = segThick, b_h = segLen;
+                int g_x = x + segThick, g_y = y + segThick + segLen, g_w = segLen, g_h = segThick;
+                int e_x = x, e_y = y + 2 * segThick + segLen, e_w = segThick, e_h = segLen;
+                int c_x = x + segThick + segLen, c_y = y + 2 * segThick + segLen, c_w = segThick, c_h = segLen;
+                int d_x = x + segThick, d_y = y + 2 * (segThick + segLen), d_w = segLen, d_h = segThick;
+                if (c == '-') {
+                    drawSegGL(g_x, g_y, g_w, g_h);
+                    return;
+                }
+                if (c == '.') {
+                    drawRect(x + segThick + segLen + segThick / 2, y + 2 * (segThick + segLen) + segThick, segThick, segThick, 1, 1, 1);
+                    return;
+                }
+                if (c < '0' || c > '9') return;
+                uint8_t bits = segMap[c - '0'];
+                if (bits & 0x01) drawSegGL(a, ay, aw, ah);
+                if (bits & 0x02) drawSegGL(b_x, b_y, b_w, b_h);
+                if (bits & 0x04) drawSegGL(c_x, c_y, c_w, c_h);
+                if (bits & 0x08) drawSegGL(d_x, d_y, d_w, d_h);
+                if (bits & 0x10) drawSegGL(e_x, e_y, e_w, e_h);
+                if (bits & 0x20) drawSegGL(f_x, f_y, f_w, f_h);
+                if (bits & 0x40) drawSegGL(g_x, g_y, g_w, g_h);
+            };
 
-            char zoomStr[32];
-            if (camera) snprintf(zoomStr, sizeof(zoomStr), "ZOOM: %.1f", camera->zoom());
-            else snprintf(zoomStr, sizeof(zoomStr), "ZOOM: 1.0");
-            drawSimpleText(120, yPos, zoomStr, 1.0f, 1.0f, 0.5f);
+            // Layout
+            int segLen = 12;
+            int segThick = 4;
+            int spacing = segLen + segThick + 6;
+            int x = 18, y = 25;
 
-            yPos += 25;
-            char posStr[64];
-            snprintf(posStr, sizeof(posStr), "POS: X=%.1f Y=%.1f Z=%.1f", playerX, playerY, playerZ);
-            drawSimpleText(20, yPos, posStr, 1.0f, 1.0f, 1.0f);
+            // Label "FPS:"
+            glColor3f(0.7f, 0.7f, 0.7f);
+            drawRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
+            drawRect(x, y + segThick + 2, 4, segThick, 0.7f, 0.7f, 0.7f);
+            x += 14;
 
-            yPos += 20;
-            drawSimpleText(20, yPos, "WASD=MOVE E/C=VERTICAL MOUSE=LOOK ARROWS=MOVE CAMERA Q=QUIT", 0.7f, 0.7f, 0.7f);
+            // FPS value
+            char fbuf[16]; 
+            snprintf(fbuf, sizeof(fbuf), "%d", (int)std::floor(fps + 0.5));
+            glColor3f(1.0f, 0.9f, 0.5f);
+            for (char* p = fbuf; *p; ++p) {
+                drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+                x += spacing;
+            }
+
+            x += 12;
+            // Zoom label "Z:"
+            glColor3f(0.7f, 0.7f, 0.7f);
+            drawRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
+            drawRect(x + segLen - 2, y + segThick, 4, segThick, 0.7f, 0.7f, 0.7f);
+            drawRect(x, y + 2 * (segThick + segLen), 4, segThick, 0.7f, 0.7f, 0.7f);
+            x += 18;
+
+            // Zoom value
+            char zbuf[32];
+            if (camera) snprintf(zbuf, sizeof(zbuf), "%.1f", camera->zoom()); 
+            else snprintf(zbuf, sizeof(zbuf), "1.0");
+            glColor3f(1.0f, 0.9f, 0.5f);
+            for (char* p = zbuf; *p; ++p) {
+                if (*p >= '0' && *p <= '9') {
+                    drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+                    x += spacing;
+                } else if (*p == '.') {
+                    drawSevenSegDigitGL(x, y, segLen, segThick, '.');
+                    x += spacing / 2;
+                }
+            }
+
+            // Second row - Position
+            x = 18; y += 50;
+            glColor3f(0.7f, 0.7f, 0.7f);
+            // X label
+            drawRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
+            drawRect(x + 6, y + segThick + 2, 4, segThick, 0.7f, 0.7f, 0.7f);
+            x += 18;
+            
+            // X value
+            char xbuf[32]; 
+            snprintf(xbuf, sizeof(xbuf), "%.1f", playerX);
+            glColor3f(0.5f, 1.0f, 1.0f);
+            for (char* p = xbuf; *p; ++p) {
+                if (*p >= '0' && *p <= '9') {
+                    drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+                    x += spacing;
+                } else if (*p == '.') {
+                    drawSevenSegDigitGL(x, y, segLen, segThick, '.');
+                    x += spacing / 2;
+                } else if (*p == '-') {
+                    drawSevenSegDigitGL(x, y, segLen, segThick, '-');
+                    x += spacing;
+                }
+            }
+
+            x += 12;
+            // Y label
+            glColor3f(0.7f, 0.7f, 0.7f);
+            drawRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
+            drawRect(x + 6, y + segThick + 2, 4, segThick, 0.7f, 0.7f, 0.7f);
+            x += 18;
+
+            // Y value
+            char ybuf[32]; 
+            snprintf(ybuf, sizeof(ybuf), "%.1f", playerY);
+            glColor3f(0.5f, 1.0f, 1.0f);
+            for (char* p = ybuf; *p; ++p) {
+                if (*p >= '0' && *p <= '9') {
+                    drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+                    x += spacing;
+                } else if (*p == '.') {
+                    drawSevenSegDigitGL(x, y, segLen, segThick, '.');
+                    x += spacing / 2;
+                } else if (*p == '-') {
+                    drawSevenSegDigitGL(x, y, segLen, segThick, '-');
+                    x += spacing;
+                }
+            }
 
             // Restore
             glEnable(GL_DEPTH_TEST);
@@ -1453,14 +1578,8 @@ void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX,
 }
 
 bool Viewport3D::CaptureToBMP(const char* path) {
-<<<<<<< HEAD
-    if (!usingSDL) return false;
-#ifdef USE_SDL
-    if (!sdlRenderer) return false;
-=======
 #ifdef USE_SDL
     if (!usingSDL || !sdlRenderer) return false;
->>>>>>> 46a30c425a1a3ef5e22010c6878f00c26b92f987
     // Read pixels from current render target
     int w = width, h = height;
     int pitch = w * 3;
@@ -1507,4 +1626,13 @@ bool Viewport3D::CaptureToBMP(const char* path) {
     (void)path;
     return false;
 #endif
+}
+
+void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ, bool, const class ShipAssemblyResult*) {
+    // Call the existing DrawHUD
+    DrawHUD(camera, fps, playerX, playerY, playerZ);
+}
+
+void Viewport3D::RenderParticles(const class Camera*, const class VisualFeedbackSystem*) {
+    // Stub implementation
 }

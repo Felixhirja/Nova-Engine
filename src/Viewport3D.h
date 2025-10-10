@@ -55,6 +55,18 @@ public:
     void DrawCameraMarker(const class Camera* camera);
     // Draw HUD (zoom, fps, player x)
     void DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ);
+    // Extended HUD with additional parameters
+    void DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ, bool, const class ShipAssemblyResult*);
+
+    // Bloom and letterbox settings (stubs for now)
+    bool IsBloomEnabled() const { return false; }
+    void SetBloomEnabled(bool) {}
+    bool IsLetterboxEnabled() const { return false; }
+    void SetLetterboxEnabled(bool) {}
+
+    // Render particles
+    void RenderParticles(const class Camera*, const class VisualFeedbackSystem*);
+
     // Capture current renderer contents to a simple 24-bit BMP file (path)
     bool CaptureToBMP(const char* path);
 
