@@ -1,0 +1,91 @@
+# Spaceship Todo List
+
+## Completed
+- [x] High-level roadmap entries for spaceship classes and components (see `TODO_LIST.txt` Phase 1)
+
+## Pending
+### Design & Planning
+- [x] Finalize spaceship class taxonomy (fighter, freighter, explorer, industrial, capital) _(see `docs/spaceship_taxonomy.md`)_
+	- [x] Define signature traits, strengths, and weaknesses per class
+	- [x] Outline baseline stats (mass, crew size, power budget, hardpoints)
+	- [x] Map progression tiers and unlock prerequisites for each class
+	- [x] Document faction variants or sub-classes and unique components
+- [x] Define component slots and modular hardpoint system _(see `src/Spaceship.h`)_
+- [x] Produce concept briefs for each class including role, stats, and progression path _(captured in `ConceptBrief` definitions)_
+- [x] Align spaceship design with game design document lore and factions _(faction variants encoded per class)_
+
+### Core Systems & Mechanics
+- [x] Implement modular ship assembly system (hulls, thrusters, power plants, avionics)
+	- Completed baseline catalogs, subsystem rollups, and diagnostics. See `src/ShipAssembly.*`, updated schema doc, and `tests/test_ship_assembly.cpp` for coverage.
+	- [x] Author data schema for hull archetypes and component mounting rules _(see `src/ShipAssembly.h` + `src/ShipAssembly.cpp`)_
+	- [x] Build assembly API that instantiates ships from catalog + user loadout _(see `ShipAssembler::Assemble`)_
+	- [x] Serialize assembled ships for save/load and network replication _(see `ShipAssemblyResult::Serialize`)_
+	- [x] Create validation diagnostics for missing/invalid components _(see `ShipAssemblyDiagnostics`)_
+- [ ] Build component compatibility rules and validation
+	- [x] Define slot-size/category matrices and conflict resolution _(see `SlotSizeFits` and category checks)_
+	- [x] Implement runtime validator that flags invalid combinations in editor/shipyard _(assembler error reporting)_
+	- [ ] Provide user-facing error messaging and auto-suggestions
+- [x] Create ship performance model (mass, thrust, power draw, heat, crew requirements)
+	- Completed aggregation of component contributions plus diagnostics for heat and crew utilization. See `ShipPerformanceMetrics` and new tests for coverage.
+- [ ] Enhance performance model with advanced dynamics
+	- [ ] Model power distribution with overload and fail-safe behavior
+	- [ ] Simulate heat buildup/dissipation and crew workload modifiers
+- [ ] Integrate advanced physics handling for thrust, momentum, inertia, and atmospheric flight
+	- [ ] Extend physics integrator with multi-thruster vectoring and gimbal limits
+	- [ ] Add atmospheric drag/lift curves per hull profile
+	- [ ] Implement autopilot/assist layers for damping and flight modes
+- [ ] Add damage model covering hull integrity, subsystem failures, and repairs
+	- [ ] Track per-component health and cascading failure rules
+	- [x] Integrate with visual/audio feedback (sparks, alarms, HUD alerts)
+		- Implemented FeedbackEvent system with observer pattern. Created VisualFeedbackSystem (particles, sparks, explosions, screen shake) and AudioFeedbackSystem (3D spatial audio, looping alarms). Integrated with ShieldSystem (hit/depleted/recharge events), WeaponSystem (fire/ammo empty), and EnergyManagementSystem (power diversion). See `docs/feedback_system.md` for architecture. Audio backend is stub pending OpenAL/SDL_mixer integration. HUD alert overlay system pending.
+	- [ ] Support in-field repairs, dockyard overhauls, and salvage cannibalization
+
+### Gameplay Features
+- [x] Implement targeting and weapons systems per ship class
+	- Added weapon component blueprints with damage, range, fire rate, ammo, and turret mechanics. Integrated TargetingSystem and WeaponSystem for lock-on, firing, and projectile logic. Updated tests for weapon stats.
+- [x] Add shield/defense mechanics and energy management UI
+	- Implemented ShieldSystem with damage absorption, recharge mechanics, and delay timers. Added EnergyManagementSystem for power distribution across shields/weapons/thrusters with presets and diversion. Created UI design doc (`docs/energy_management_hud.md`) with keyboard controls. Backend systems complete and tested. UI rendering blocked by text rendering system.
+- [ ] Create cargo management and inventory linkage for freighters
+- [ ] Support passenger transport and crew management hooks
+- [ ] Introduce ship progression (upgrades, unlocks, research trees)
+
+### Controls & UX
+- [ ] Design cockpit/bridge UI layouts per ship size
+- [ ] Implement flight assist toggles (auto-level, inertia dampening)
+- [ ] Provide input remapping and sensitivity tuning specific to flight controls
+- [ ] Add tutorial missions and simulator scenarios for ship piloting
+- [ ] Surface real-time telemetry (speed, G-force, system status) on HUD
+
+### Visuals & Audio
+- [x] Create modular art pipeline for hulls, wings, engine exhausts, and interiors
+	- Established asset structure under `assets/ship_modules`, manifest schema, packaging script (`tools/build_ship_art.py`), and workflow doc `docs/ship_art_pipeline.md`.
+- [ ] Add text rendering system for HUD and UI elements
+- [ ] Implement damage decals, particle effects, and LODs
+	- [x] Particle effects system complete (sparks, explosions, shield impacts, muzzle flashes) - See `VisualFeedbackSystem`
+	- [ ] Damage decals on hull mesh (scorch marks, dents, hull breaches)
+	- [ ] LOD (Level of Detail) system for ship models at varying distances
+	- [ ] Integrate particle rendering with Viewport3D
+- [ ] Add audio suites for engines, weapons, alarms, and ambiance per class
+	- [x] Audio feedback system complete (3D spatial audio, 16 sound effects registered) - See `AudioFeedbackSystem`
+	- [ ] Create/source audio assets (16 WAV files)
+	- [ ] Integrate OpenAL or SDL_mixer backend
+	- [ ] Add ambient engine sounds and environmental audio
+- [ ] Support customization (paint, decals, emissive lighting) with preview tools
+
+### Multiplayer & Networking
+- [ ] Synchronize ship physics and subsystem state across networked sessions
+- [ ] Implement bandwidth-efficient replication of modular components
+- [ ] Add anti-cheat validation for ship stats and loadouts
+- [ ] Enable crewed ships with multiple players interacting with subsystems
+
+### Tooling & Mod Support
+- [ ] Provide editor tools for building custom ships and components
+- [ ] Document data-driven configuration format for ship definitions
+- [ ] Add hot-reload support for ship assets and balance tweaks
+- [ ] Offer example mods demonstrating new ship classes
+
+### Testing & QA
+- [ ] Create automated performance benchmarks for large-scale ship battles
+- [ ] Write unit/integration tests for ship assembly validation and physics behaviors
+- [ ] Develop stress tests for subsystem damage and repair loops
+- [ ] Build QA checklist covering solo, coop, and PvP ship scenarios

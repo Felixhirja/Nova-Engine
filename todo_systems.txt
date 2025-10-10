@@ -1,0 +1,26 @@
+# Systems Framework Todo List
+
+## Scheduling & Execution
+- [ ] Support multi-phase updates (pre-update, update, post-update) with explicit ordering constraints.
+- [ ] Allow systems to declare dependencies and automatically resolve execution order or report cycles.
+- [ ] Integrate a task graph or job system backend so independent systems can run in parallel.
+
+## Lifecycle & Configuration
+- [ ] Provide hooks for system initialization, shutdown, and hot-reload to manage resources cleanly.
+- [ ] Add configuration metadata (priority, tick rate, enabled flags) loaded from data files or editor settings.
+- [ ] Enable runtime enable/disable of systems for debugging and feature toggles.
+
+## Data Access & Safety
+- [ ] Implement read/write access declarations so the scheduler can prevent conflicting component mutations.
+- [ ] Support temporary views (e.g., query + filter) that avoid repeated component lookups inside `ForEach`.
+- [ ] Add assertions/logging when systems attempt to access components they didn't declare.
+
+## Monitoring & Tooling
+- [ ] Instrument each system with timing, entity count processed, and cache miss metrics when available.
+- [ ] Expose a runtime inspector to toggle systems, view stats, and reorder execution for experimentation.
+- [ ] Emit trace events (Chrome tracing, ETW) for system start/end to aid performance analysis.
+
+## Testing & Documentation
+- [ ] Create unit tests for SystemManager registration, order enforcement, and clearing behavior.
+- [ ] Provide integration tests with mock systems to simulate complex dependency graphs.
+- [ ] Document recommended patterns for authoring new systems, including error handling and logging conventions.

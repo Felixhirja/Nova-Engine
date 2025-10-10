@@ -125,7 +125,7 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 
 ### Engine Requirements
 - **Graphics API:** OpenGL 4.6+ with GLFW backend
-- **Physics Engine:** Custom implementation with Bullet Physics integration
+-
 - **Networking:** Custom UDP-based networking system
 - **Audio:** OpenAL or SDL_mixer integration
 - **File Formats:** Custom binary formats for performance

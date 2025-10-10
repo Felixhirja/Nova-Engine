@@ -18,8 +18,10 @@ public:
     double GetPlayerX() const;
     double GetPlayerY() const;
     double GetPlayerZ() const;
+    Entity GetPlayerEntity() const { return playerEntity; }
     // Set player input state
     void SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw);
+    void SetUseThrustMode(bool thrustMode);
 
 private:
     // Basic simulation state implemented with ECS
@@ -35,6 +37,8 @@ private:
     bool inputStrafeLeft;
     bool inputStrafeRight;
     double inputCameraYaw;
+    bool prevJumpHeld;
+    bool useThrustMode;
     bool inputLeft;
     bool inputRight;
     SystemManager systemManager;

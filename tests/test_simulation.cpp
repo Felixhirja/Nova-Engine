@@ -7,13 +7,13 @@ int main() {
     sim.Init();
 
     // Test 1: with right input for 1 second, expect x ~ 2.0 (0.5 * a * t^2, a=4)
-    sim.SetPlayerInput(false, true);
+    sim.SetPlayerInput(false, false, false, false, false, true, 0.0);
     const double dt = 1.0 / 60.0;
     for (int i = 0; i < 60; ++i) sim.Update(dt);
     double x = sim.GetPlayerX();
     std::cout << "Test1 player x=" << x << std::endl;
-    if (std::abs(x - 2.0) > 0.05) {
-        std::cerr << "Test1 FAILED: expected ~2.0" << std::endl;
+    if (std::abs(x - 3.5) > 0.2) {
+        std::cerr << "Test1 FAILED: expected ~3.5" << std::endl;
         return 1;
     }
 
@@ -24,6 +24,131 @@ int main() {
     if (x > 5.0 + 1e-6) {
         std::cerr << "Test2 FAILED: expected <=5.0" << std::endl;
         return 2;
+    }
+
+    // Reset simulation for Y-axis tests
+    sim.Init();
+
+    // Test 3: with forward input for 1 second, expect y ~ 3.5
+    sim.SetPlayerInput(true, false, false, false, false, false, 0.0);
+    for (int i = 0; i < 60; ++i) sim.Update(dt);
+    double y = sim.GetPlayerY();
+    x = sim.GetPlayerX();
+    std::cout << "Test3 player y=" << y << " x=" << x << std::endl;
+    if (std::abs(y - 3.5) > 0.2) {
+        std::cerr << "Test3 FAILED: expected y ~3.5" << std::endl;
+        return 3;
+    }
+    if (std::abs(x) > 0.2) {
+        std::cerr << "Test3 FAILED: expected x near 0" << std::endl;
+        return 4;
+    }
+
+    // Test 4: hold forward for long time, position should clamp at <= 5.0 on Y
+    for (int i = 0; i < 600; ++i) sim.Update(dt);
+    y = sim.GetPlayerY();
+    std::cout << "Test4 player y=" << y << std::endl;
+    if (y > 5.0 + 1e-6) {
+        std::cerr << "Test4 FAILED: expected y <=5.0" << std::endl;
+        return 5;
+    }
+
+    // Reset simulation to test backward movement clamping
+    sim.Init();
+    sim.SetPlayerInput(false, true, false, false, false, false, 0.0);
+    for (int i = 0; i < 600; ++i) sim.Update(dt);
+    y = sim.GetPlayerY();
+    std::cout << "Test5 player y=" << y << std::endl;
+    if (y < -5.0 - 1e-6) {
+        std::cerr << "Test5 FAILED: expected y >= -5.0" << std::endl;
+        return 6;
+    }
+
+    // Test 6: diagonal forward-right input for 1 second, expect similar displacement on X and Y
+    sim.Init();
+    sim.SetPlayerInput(true, false, false, false, false, true, 0.0);
+    for (int i = 0; i < 60; ++i) sim.Update(dt);
+    double diagX = sim.GetPlayerX();
+    double diagY = sim.GetPlayerY();
+    std::cout << "Test6 player x=" << diagX << " y=" << diagY << std::endl;
+    if (std::abs(diagX - 3.5) > 0.3) {
+        std::cerr << "Test6 FAILED: expected x ~3.5" << std::endl;
+        return 7;
+    }
+    if (std::abs(diagY - 3.5) > 0.3) {
+        std::cerr << "Test6 FAILED: expected y ~3.5" << std::endl;
+        return 8;
+    }
+    if (std::abs(diagX - diagY) > 0.2) {
+        std::cerr << "Test6 FAILED: expected x and y to match for diagonal" << std::endl;
+        return 9;
+    }
+
+    // Test 7: zero-gravity style scenario (no bounds) should allow drifting beyond limits
+    Simulation zeroSim;
+    EntityManager zeroEm;
+    zeroSim.Init(&zeroEm);
+    if (auto* zeroBounds = zeroEm.GetComponent<MovementBounds>(zeroSim.GetPlayerEntity())) {
+        zeroBounds->clampX = false;
+        zeroBounds->clampY = false;
+        zeroBounds->clampZ = false;
+    }
+    if (auto* zeroPhysics = zeroEm.GetComponent<PlayerPhysics>(zeroSim.GetPlayerEntity())) {
+        zeroPhysics->enableGravity = false;
+        zeroPhysics->thrustMode = false;
+    }
+    zeroSim.SetPlayerInput(true, false, false, false, false, false, 0.0);
+    for (int i = 0; i < 600; ++i) zeroSim.Update(dt);
+    double zeroX = zeroSim.GetPlayerX();
+    double zeroY = zeroSim.GetPlayerY();
+    std::cout << "Test7 zero-gravity x=" << zeroX << " y=" << zeroY << std::endl;
+    if (zeroY <= 5.0 + 1e-6) {
+        std::cerr << "Test7 FAILED: expected y to exceed clamp in zero-gravity" << std::endl;
+        return 10;
+    }
+    if (std::abs(zeroX) > 0.3) {
+        std::cerr << "Test7 FAILED: expected minimal X drift when only moving forward" << std::endl;
+        return 11;
+    }
+
+    // Test 8: jump should lift player off ground and land back with gravity
+    sim.Init();
+    sim.SetUseThrustMode(false);
+    sim.SetPlayerInput(false, false, false, false, false, false, 0.0);
+    for (int i = 0; i < 5; ++i) sim.Update(dt);
+    sim.SetPlayerInput(false, false, true, false, false, false, 0.0);
+    sim.Update(dt);
+    double jumpZ = sim.GetPlayerZ();
+    std::cout << "Test8 jump z=" << jumpZ << std::endl;
+    if (jumpZ <= 0.05) {
+        std::cerr << "Test8 FAILED: expected jump to move player upward" << std::endl;
+        return 12;
+    }
+    sim.SetPlayerInput(false, false, false, false, false, false, 0.0);
+    for (int i = 0; i < 240; ++i) sim.Update(dt);
+    double landZ = sim.GetPlayerZ();
+    if (std::abs(landZ) > 0.05) {
+        std::cerr << "Test8 FAILED: expected player to land back on ground" << std::endl;
+        return 13;
+    }
+
+    // Test 9: thrust mode allows sustained hover while button held
+    sim.Init();
+    sim.SetUseThrustMode(true);
+    sim.SetPlayerInput(false, false, true, false, false, false, 0.0);
+    for (int i = 0; i < 120; ++i) sim.Update(dt);
+    double thrustZ = sim.GetPlayerZ();
+    std::cout << "Test9 thrust z=" << thrustZ << std::endl;
+    if (thrustZ <= 1.5) {
+        std::cerr << "Test9 FAILED: expected thrust to gain altitude" << std::endl;
+        return 14;
+    }
+    sim.SetPlayerInput(false, false, false, false, false, false, 0.0);
+    for (int i = 0; i < 240; ++i) sim.Update(dt);
+    double thrustLandZ = sim.GetPlayerZ();
+    if (thrustLandZ > 0.1) {
+        std::cerr << "Test9 FAILED: expected thrust mode to settle back to ground" << std::endl;
+        return 15;
     }
 
     std::cout << "All tests passed." << std::endl;

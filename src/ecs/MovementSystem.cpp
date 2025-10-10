@@ -10,11 +10,27 @@ void MovementSystem::Update(EntityManager& entityManager, double dt) {
     }
 
     entityManager.ForEach<Position, Velocity>([&](Entity entity, Position& position, Velocity& velocity) {
+        auto* physics = entityManager.GetComponent<PlayerPhysics>(entity);
+        if (physics) {
+            physics->isGrounded = false;
+            if (physics->enableGravity) {
+                velocity.vz += physics->gravity * dt;
+                if (velocity.vz < physics->maxDescentSpeed) {
+                    velocity.vz = physics->maxDescentSpeed;
+                }
+            }
+        }
+
         // Update velocity with acceleration
         if (auto* acceleration = entityManager.GetComponent<Acceleration>(entity)) {
             velocity.vx += acceleration->ax * dt;
             velocity.vy += acceleration->ay * dt;
             velocity.vz += acceleration->az * dt;
+        }
+
+        if (physics) {
+            if (velocity.vz > physics->maxAscentSpeed) velocity.vz = physics->maxAscentSpeed;
+            if (velocity.vz < physics->maxDescentSpeed) velocity.vz = physics->maxDescentSpeed;
         }
 
         // Update position with velocity
@@ -51,7 +67,22 @@ void MovementSystem::Update(EntityManager& entityManager, double dt) {
                 }
             }
 
-            // Add z bounds if needed, but for now skip
+            if (bounds->clampZ) {
+                if (position.z > bounds->maxZ) {
+                    position.z = bounds->maxZ;
+                    if (velocity.vz > 0.0) {
+                        velocity.vz = 0.0;
+                    }
+                } else if (position.z < bounds->minZ) {
+                    position.z = bounds->minZ;
+                    if (velocity.vz < 0.0) {
+                        velocity.vz = 0.0;
+                    }
+                    if (physics) {
+                        physics->isGrounded = true;
+                    }
+                }
+            }
         }
     });
 }

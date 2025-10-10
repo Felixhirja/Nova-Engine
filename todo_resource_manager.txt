@@ -1,0 +1,27 @@
+# Resource Manager Todo List
+
+## Asset Lifecycle & Caching
+- [ ] Separate logical handles from file paths so streaming assets can be reloaded without invalidating IDs.
+- [ ] Add reference counting and automatic release of unused surfaces/textures.
+- [ ] Support asynchronous loading (worker thread + futures) to prevent main thread stalls.
+- [ ] Track asset memory footprint and expose debug counters to the HUD/console.
+
+## Format & Platform Support
+- [ ] Replace BMP-only loading with stb_image or SDL_image for PNG/JPEG/TGA support and alpha handling.
+- [ ] Allow asset packages/virtual file systems so resources can be shipped in archives.
+- [ ] Introduce platform abstraction so non-SDL builds can still load textures/meshes (e.g., raw pixel buffers).
+
+## Metadata & Sprites
+- [ ] Persist sprite metadata to external JSON/YAML so artists can tweak frame sizes/fps without recompiles.
+- [ ] Validate sprite registration against loaded assets (matching dimensions, frame counts).
+- [ ] Add animation set definitions (idle, walk, attack) that map to frame ranges.
+
+## Error Handling & Diagnostics
+- [ ] Centralize logging with error codes when loads fail; surface fallback visuals instead of returning null.
+- [ ] Implement hot-reload notifications so other systems can respond when assets change at runtime.
+- [ ] Write automated tests that simulate missing/corrupt files and ensure graceful recovery.
+
+## Tooling & Documentation
+- [ ] Document resource handle lifecycle, ownership model, and thread-safety guarantees.
+- [ ] Provide a CLI or editor utility to pre-cache assets and generate metadata bundles.
+- [ ] Integrate with future scripting/mod APIs to allow dynamic resource injection.

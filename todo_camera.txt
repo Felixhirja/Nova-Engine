@@ -1,0 +1,27 @@
+# Camera Todo List
+
+## Completed
+- [x] Implement target lock component for camera following
+- [x] Add Tab key toggle for target lock on/off
+- [x] Fix camera visual positioning to prevent blocking player view
+- [x] Implement world-space camera movement with arrow keys when target lock disabled
+- [x] Update HUD to show target lock status and control instructions
+
+## Pending
+- [x] Test Tab key toggle between free camera mode and target lock mode
+## Pending
+- [x] Verify arrow keys move camera in world space (north/south/east/west) when unlocked
+- [x] Confirm WASD keys only move player, not camera
+## Pending
+- [x] Test smooth camera following behavior when target lock enabled
+- [x] Verify camera visual offset prevents view obstruction
+- [x] Test camera performance during rapid movement and following
+- [x] Test edge cases: player at world boundaries, rapid Tab toggling, extreme zoom levels
+- [ ] Test camera behavior with mouse look while target locked
+- [x] Verify camera following works correctly when player moves in all directions
+- [ ] Test camera controls with different window sizes/resolutions
+- [ ] Add camera control documentation to README
+- [x] Consider adding camera presets or bookmarks for common positions
+- [ ] Test camera system integration with other game systems (physics, rendering)
+- [ ] Add camera shake effect for impacts/explosions
+- [ ] Implement camera collision detection to prevent going through walls

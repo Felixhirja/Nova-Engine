@@ -1,0 +1,31 @@
+# Viewport3D Todo List
+
+## Rendering Pipeline
+- [ ] Replace legacy OpenGL immediate-mode helpers with retained-mode buffers (VAO/VBO) for cubes, HUD, and debug meshes.
+- [ ] Abstract mesh building so animated sprites and 3D props share a single draw submission path.
+- [ ] Profile GPU state changes during `Render` and batch entities by material/texture to cut redundant binds.
+
+## Window & Context Management
+- [ ] Add graceful fallback from fullscreen to windowed mode without recreating the GLFW context.
+- [ ] Support runtime window resizing (lift `GLFW_RESIZABLE` restriction and handle `framebuffer_size` callbacks).
+- [ ] Centralize SDL/GLFW context creation to eliminate duplicate init/shutdown code paths.
+
+## Camera & Scene Visualization
+- [ ] Move camera debug mesh generation out of `Init` and cache per camera profile for faster hot-reloads.
+- [ ] Introduce frustum visualization and depth-grid overlays to help tune culling ranges.
+- [ ] Gate expensive debug drawing behind compile-time or runtime flags to avoid release perf hits.
+
+## UI & HUD
+- [ ] Replace GLUT bitmap font usage with a cross-platform text renderer (e.g., stb_easy_font or signed-distance fonts).
+- [ ] Surface HUD configuration (colors, positions, metrics) via data files so designers can iterate without recompiles.
+- [ ] Add proportional layout that adapts to aspect-ratio changes and ultrawide monitors.
+
+## Capture & Diagnostics
+- [ ] Modernize `CaptureToBMP` to stream to RAM and permit user-selected output paths.
+- [ ] Integrate an on-screen performance overlay (frame time, draw calls, VRAM usage) toggled from the console or UI.
+- [ ] Log GL errors with source locations and provide a developer console command to dump recent events.
+
+## Testing & Tooling
+- [ ] Add headless renderer smoke test that instantiates `Viewport3D` with an off-screen context.
+- [ ] Build automated screenshot comparisons for regression detection in HUD/camera visuals.
+- [ ] Document Viewport3D architecture and lifecycle in the README/design docs.

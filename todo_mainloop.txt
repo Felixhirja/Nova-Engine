@@ -1,0 +1,31 @@
+# Main Loop Todo List
+
+## Architecture & Flow Control
+- [ ] Split initialization/demo asset seeding into dedicated bootstrap module to keep `MainLoop::Init` focused.
+- [ ] Promote fixed-update/variable-render scheduling to a reusable service so other modes (editor, replay) can reuse it.
+- [ ] Introduce state machine or mode stack to manage pause menus, loading screens, and diagnostics overlays cleanly.
+
+## Timing & Performance
+- [ ] Replace manual high_resolution_clock math with a centralized `TimeStep` helper that tracks smoothed FPS and frame variance.
+- [ ] Clamp lag accumulation and add instrumentation for long frame detection with optional slow-frame logging.
+- [ ] Expose performance counters (update time, render time, input time) to the HUD and optional CSV exporter for profiling sessions.
+
+## Input & Event Handling
+- [ ] Remove direct polling from `MainLoop` and delegate to an input system that supports rebinding and buffered events.
+- [ ] Add controller/gamepad and mouse-button integration with configurable sensitivity curves.
+- [ ] Support hotkeys for toggling debug overlays, camera modes, and profiling output via centralized command bindings.
+
+## Simulation & ECS Integration
+- [ ] Provide dependency injection for systems (Simulation, Camera, ResourceManager) so MainLoop can be unit-tested with mocks.
+- [ ] Implement graceful shutdown/teardown for ECS entities spawned during init to avoid leaks between restarts.
+- [ ] Add hooks for scripted sequences or mission logic to register per-frame callbacks without editing main loop code.
+
+## Rendering & Viewport Coordination
+- [ ] Refactor camera follow updates into a dedicated component and keep MainLoop focused on orchestration.
+- [ ] Allow toggling between multiple viewports (split-screen, minimap) with configurable layouts.
+- [ ] Add vsync/frame pacing controls (adaptive sync, capped FPS) exposed via config file and runtime command.
+
+## Diagnostics & Tooling
+- [ ] Replace ad-hoc std::cout logging with a structured logger supporting levels and timestamps.
+- [ ] Integrate an in-game console for runtime commands (reset simulation, reload assets, toggle thrust mode).
+- [ ] Add automated smoke tests that instantiate MainLoop, run a few frames headless, and verify health signals.

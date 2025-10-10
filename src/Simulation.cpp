@@ -1,23 +1,20 @@
-
-
 #include "Simulation.h"
 #include "ecs/MovementSystem.h"
 #include "ecs/PlayerControlSystem.h"
+#include "TargetingSystem.h"
+#include "WeaponSystem.h"
+#include "ShieldSystem.h"
 
 #include <algorithm>
 #include <iostream>
 #include <memory>
 #include <cmath>
 
-Simulation::Simulation() : inputForward(false), inputBackward(false), inputUp(false), inputDown(false), inputStrafeLeft(false), inputStrafeRight(false), inputCameraYaw(0.0), inputLeft(false), inputRight(false) {
+Simulation::Simulation() : inputForward(false), inputBackward(false), inputUp(false), inputDown(false), inputStrafeLeft(false), inputStrafeRight(false), inputCameraYaw(0.0), prevJumpHeld(false), useThrustMode(false), inputLeft(false), inputRight(false) {
     activeEm = &em;
 }
 
 Simulation::~Simulation() {}
-
-void Simulation::Init(EntityManager* externalEm) {
-    position = 0.0;
-    std::cout << "Simulation initialized. position=" << position << std::endl;
 
 void Simulation::Init(EntityManager* externalEm) {
     position = 0.0;
@@ -33,6 +30,9 @@ void Simulation::Init(EntityManager* externalEm) {
     systemManager.Clear();
     systemManager.RegisterSystem<PlayerControlSystem>();
     systemManager.RegisterSystem<MovementSystem>();
+    systemManager.RegisterSystem<TargetingSystem>();
+    systemManager.RegisterSystem<WeaponSystem>();
+    systemManager.RegisterSystem<ShieldSystem>();
 
     // Create player entity in ECS
     playerEntity = useEm->CreateEntity();
@@ -68,9 +68,29 @@ void Simulation::Init(EntityManager* externalEm) {
     bounds->minX = -5.0;
     bounds->maxX = 5.0;
     bounds->clampX = true;
+    bounds->minY = -5.0;
+    bounds->maxY = 5.0;
+    bounds->clampY = true;
+    bounds->minZ = 0.0;
+    bounds->maxZ = 5.0;
+    bounds->clampZ = true;
     useEm->AddComponent<MovementBounds>(playerEntity, bounds);
 
-    inputLeft = false;
+    auto physics = std::make_shared<PlayerPhysics>();
+    physics->thrustMode = useThrustMode;
+    physics->enableGravity = true;
+    physics->isGrounded = true;
+    useEm->AddComponent<PlayerPhysics>(playerEntity, physics);
+
+    auto targetLock = std::make_shared<TargetLock>();
+    targetLock->targetEntityId = 0;  // No target initially
+    targetLock->isLocked = false;    // Start unlocked
+    targetLock->offsetX = 0.0;
+    targetLock->offsetY = 5.0;
+    targetLock->offsetZ = 10.0;
+    targetLock->followDistance = 15.0;
+    targetLock->followHeight = 5.0;
+    useEm->AddComponent<TargetLock>(playerEntity, targetLock);
     inputRight = false;
     inputForward = false;
     inputBackward = false;
@@ -79,9 +99,9 @@ void Simulation::Init(EntityManager* externalEm) {
     inputStrafeLeft = false;
     inputStrafeRight = false;
     inputCameraYaw = 0.0;
+    prevJumpHeld = false;
 
     std::cout << "Simulation: created player entity id=" << playerEntity << std::endl;
-}
 }
 
 void Simulation::Update(double dt) {
@@ -92,15 +112,22 @@ void Simulation::Update(double dt) {
     EntityManager* useEm = activeEm ? activeEm : &em;
 
     if (auto* controller = useEm->GetComponent<PlayerController>(playerEntity)) {
+        bool jumpJustPressed = inputUp && !prevJumpHeld;
         controller->moveLeft = inputLeft;
         controller->moveRight = inputRight;
         controller->moveForward = inputForward;
         controller->moveBackward = inputBackward;
-        controller->moveUp = inputUp;
+        controller->moveUp = useThrustMode ? inputUp : false;
         controller->moveDown = inputDown;
         controller->strafeLeft = inputStrafeLeft;
         controller->strafeRight = inputStrafeRight;
         controller->cameraYaw = inputCameraYaw;
+        controller->thrustMode = useThrustMode;
+        controller->jumpRequested = (!useThrustMode && jumpJustPressed);
+    }
+
+    if (auto* physics = useEm->GetComponent<PlayerPhysics>(playerEntity)) {
+        physics->thrustMode = useThrustMode;
     }
 
     systemManager.UpdateAll(*useEm, dt);
@@ -108,6 +135,8 @@ void Simulation::Update(double dt) {
     if (auto* p = useEm->GetComponent<Position>(playerEntity)) {
         position = p->x;
     }
+
+    prevJumpHeld = inputUp;
 }
 
 double Simulation::GetPosition() const {
@@ -115,13 +144,8 @@ double Simulation::GetPosition() const {
 }
 
 double Simulation::GetPlayerX() const {
-<<<<<<< HEAD
-    if (!entityManager) return 0.0;
-    auto p = entityManager->GetComponent<Position>(playerEntity);
-=======
     const EntityManager* useEm = activeEm ? activeEm : &em;
     auto p = useEm->GetComponent<Position>(playerEntity);
->>>>>>> 46a30c425a1a3ef5e22010c6878f00c26b92f987
     return p ? p->x : 0.0;
 }
 
@@ -145,6 +169,17 @@ void Simulation::SetPlayerInput(bool forward, bool backward, bool up, bool down,
     inputStrafeLeft = strafeLeft;
     inputStrafeRight = strafeRight;
     inputCameraYaw = cameraYaw;
+}
+
+void Simulation::SetUseThrustMode(bool thrustMode) {
+    useThrustMode = thrustMode;
+    EntityManager* useEm = activeEm ? activeEm : &em;
+    if (auto* physics = useEm->GetComponent<PlayerPhysics>(playerEntity)) {
+        physics->thrustMode = thrustMode;
+    }
+    if (auto* controller = useEm->GetComponent<PlayerController>(playerEntity)) {
+        controller->thrustMode = thrustMode;
+    }
 }
 
 

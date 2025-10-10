@@ -1,0 +1,79 @@
+# Player Todo List
+
+## Completed
+- [x] Initialize player position and velocity reset on startup
+- [x] Implement horizontal movement with acceleration and max speed clamping
+- [x] Clamp world bounds to keep player within ±5 units and zero velocity on collision
+
+## Pending
+- [x] Extend movement to support full 2D plane (add Y-axis velocity/acceleration handling)
+	- [x] Update player physics components with Y-axis velocity/acceleration fields
+	- [x] Adapt input system to feed vertical movement intents (keyboard/controller)
+	- [x] Expand Simulation and MovementSystem to integrate new axis with constraints
+	- [x] Add tests covering diagonal movement, clamped bounds, and zero-gravity scenarios
+		- [x] Clamped bounds coverage
+		- [x] Diagonal movement coverage
+		- [x] Zero-gravity scenario coverage
+- [ ] Introduce configurable acceleration, deceleration, and friction parameters
+- [x] Implement jump/gravity mechanics or thrust-based vertical control depending on setting
+	- [x] Introduce PlayerPhysics component with gravity and thrust tuning
+	- [x] Add jump impulse handling with ground detection
+	- [x] Support thrust mode toggle and damping via player input
+	- [x] Cover jump and thrust behaviors with simulation tests
+- [ ] Integrate collision response with environment geometry rather than hard-coded bounds
+- [ ] Add sprint/boost mechanics tied to stamina or heat systems
+- [ ] Support different movement profiles per surface (spacewalk, planetary ground, zero-G interiors)
+- [ ] Implement locomotion modifiers for environmental hazards (ice, low gravity, vacuum)
+
+### Input & Control
+- [ ] Add configurable key bindings and expose sensitivity/response tuning
+- [ ] Integrate controller/gamepad support with analog axis handling
+- [ ] Support input buffering for rapid direction changes and queueable actions
+- [ ] Implement input context layers (on-foot, EVA, vehicle) with automatic switching
+- [ ] Add accessibility options (toggle vs hold, remappable deadzones, auto-assist)
+- [ ] Surface control settings via in-game UI and persist to config files
+
+### Abilities & Interactions
+- [ ] Implement player action system (interact/use, firing, contextual actions)
+	- [ ] Define action state machine (idle, warm-up, executing, cooldown)
+	- [ ] Map inputs to high-level actions with priority/queue rules
+	- [ ] Implement interaction traces (raycast, overlap) for context detection
+	- [ ] Build modular action handlers (use object, fire weapon, activate ability)
+	- [ ] Add network-aware hooks for authoritative validation and replication
+	- [ ] Provide animation/audio triggers tied to action lifecycle
+- [ ] Connect player state to resource/health systems (health, energy, shields)
+- [ ] Add inventory/equipment hooks for player stats and loadouts
+- [ ] Design skill/progression tree for unlocking abilities and stat upgrades
+- [ ] Implement mission scripting hooks for player-triggered events
+- [ ] Add cooperative interaction mechanics (item trading, joint actions)
+
+### Feedback & Presentation
+- [ ] Drive player visual/animation states from movement (idle, walk, sprint, airborne)
+- [ ] Add audio cues for footsteps, impacts, actions, and damage feedback
+- [ ] Provide HUD elements for player status (health, stamina, current action)
+- [ ] Implement dynamic camera shake or FOV changes tied to sprinting and damage
+- [ ] Add procedural animation blending for weapon/tool usage
+- [ ] Support customizable player avatars/skins with preview UI
+
+### Systems Integration & QA
+- [ ] Expose player telemetry to debugging HUD/logging for diagnostics
+- [ ] Write unit/integration tests for movement and bounds handling
+- [ ] Document player controls and behaviors in README / design docs
+- [ ] Create automated soak tests for long-duration movement and input stress cases
+- [ ] Build debug tools for live tuning of player parameters during playtests
+- [ ] Establish QA checklist covering single-player, multiplayer, and edge-case scenarios
+
+### Progression & Narrative
+- [ ] Define player progression milestones and reward pacing
+- [ ] Connect player stats to economy and mission systems
+- [ ] Implement narrative state tracking tied to player choices
+
+### Multiplayer & Networking
+- [ ] Sync player movement and actions over network with interpolation
+- [ ] Handle authoritative server reconciliation for player state
+- [ ] Add anti-cheat and validation hooks for player-controlled inputs
+
+### Tooling & Mod Support
+- [ ] Expose player parameters to scripting/modding APIs
+- [ ] Provide editor tooling for configuring starting loadouts and spawn points
+- [ ] Document best practices for modders extending player behaviors

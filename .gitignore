@@ -25,3 +25,4 @@ TestResults.xml
 /tests/test_simulation
 /tests/test_camera
 star-engine
+build/

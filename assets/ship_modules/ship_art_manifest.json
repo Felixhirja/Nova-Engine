@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "modules": [
+    {
+      "id": "demo_fighter_hull_mk1",
+      "type": "hull",
+      "displayName": "Demo Fighter Hull Mk 1",
+      "description": "Baseline single-seat fighter fuselage with hardpoints for modular wings and engine exhaust assemblies.",
+      "lods": [
+        {
+          "level": 0,
+          "mesh": "hulls/exports/demo_fighter_hull_lod0.gltf",
+          "collision": null
+        }
+      ],
+      "materials": [
+        "shared/materials/demo_fighter_paint.mat.json"
+      ],
+      "sockets": [
+        {
+          "id": "wing_port",
+          "category": "wing",
+          "position": [-3.2, 0.45, -0.5],
+          "orientationEuler": [0.0, 0.0, 0.0]
+        },
+        {
+          "id": "wing_starboard",
+          "category": "wing",
+          "position": [3.2, 0.45, -0.5],
+          "orientationEuler": [0.0, 0.0, 0.0]
+        },
+        {
+          "id": "engine_primary",
+          "category": "exhaust",
+          "position": [0.0, -0.65, -5.1],
+          "orientationEuler": [0.0, 0.0, 0.0]
+        }
+      ],
+      "interiorAnchor": {
+        "socket": "cockpit_core",
+        "position": [0.0, 1.2, 2.8]
+      },
+      "metrics": {
+        "lengthMeters": 18.5,
+        "widthMeters": 12.7,
+        "heightMeters": 4.3,
+        "pivot": [0.0, 0.0, 0.0]
+      },
+      "tags": ["fighter", "tier1", "demo"],
+      "dependencies": [
+        "demo_fighter_wing_port",
+        "demo_fighter_wing_starboard",
+        "demo_fighter_afterburner",
+        "demo_fighter_cockpit"
+      ]
+    },
+    {
+      "id": "demo_fighter_wing_port",
+      "type": "wing",
+      "displayName": "Demo Fighter Port Wing",
+      "lods": [
+        {
+          "level": 0,
+          "mesh": "wings/exports/demo_fighter_wing_port_lod0.gltf"
+        }
+      ],
+      "materials": ["shared/materials/demo_fighter_paint.mat.json"],
+      "compatibleSockets": ["wing_port"],
+      "mirrorOf": "demo_fighter_wing_starboard",
+      "tags": ["fighter", "demo"],
+      "metrics": {
+        "spanMeters": 6.3,
+        "areaSquareMeters": 12.4
+      }
+    },
+    {
+      "id": "demo_fighter_wing_starboard",
+      "type": "wing",
+      "displayName": "Demo Fighter Starboard Wing",
+      "lods": [
+        {
+          "level": 0,
+          "mesh": "wings/exports/demo_fighter_wing_starboard_lod0.gltf"
+        }
+      ],
+      "materials": ["shared/materials/demo_fighter_paint.mat.json"],
+      "compatibleSockets": ["wing_starboard"],
+      "mirrorOf": "demo_fighter_wing_port",
+      "tags": ["fighter", "demo"],
+      "metrics": {
+        "spanMeters": 6.3,
+        "areaSquareMeters": 12.4
+      }
+    },
+    {
+      "id": "demo_fighter_afterburner",
+      "type": "exhaust",
+      "displayName": "Demo Fighter Afterburner",
+      "lods": [
+        {
+          "level": 0,
+          "mesh": "exhausts/exports/demo_fighter_afterburner_lod0.gltf"
+        }
+      ],
+      "materials": [
+        "shared/materials/demo_fighter_paint.mat.json"
+      ],
+      "compatibleSockets": ["engine_primary"],
+      "tags": ["fighter", "engine", "demo"],
+      "vfxHooks": {
+        "exhaust": {
+          "socket": "exhaust_core",
+          "lengthMeters": 2.4
+        }
+      }
+    },
+    {
+      "id": "demo_fighter_cockpit",
+      "type": "interior",
+      "displayName": "Demo Fighter Cockpit",
+      "lods": [
+        {
+          "level": 0,
+          "mesh": "interiors/exports/demo_fighter_cockpit_lod0.gltf"
+        }
+      ],
+      "materials": [],
+      "compatibleSockets": ["cockpit_core"],
+      "tags": ["fighter", "interior", "demo"],
+      "metrics": {
+        "volumeCubicMeters": 6.1
+      }
+    }
+  ]
+}

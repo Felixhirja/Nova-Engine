@@ -56,7 +56,16 @@ A 3D game engine built with C++17, OpenGL, and GLFW.
 ./star-engine
 ```
 
-Use WASD to move, mouse to look around. Press Q to quit.
+Use WASD to move and the mouse to look around. Press Q to quit.
+
+## Controls
+
+- `W` / `S`: Move forward / backward
+- `A` / `D`: Strafe left / right
+- `Space`: Jump (jump mode) or ascend thruster (thrust mode)
+- `C`: Descend when in thrust mode
+- `T`: Toggle between jump gravity mode and continuous thrust mode
+- `Q`: Quit the application
 
 ## Architecture
 

@@ -1,0 +1,13 @@
+{
+  "name": "Demo Fighter Paint",
+  "shader": "pbr-metallic-roughness",
+  "textures": {
+    "albedo": "demo_fighter_paint_basecolor.png",
+    "normal": "demo_fighter_paint_normal.png",
+    "metallicRoughness": "demo_fighter_paint_mr.png"
+  },
+  "parameters": {
+    "metallic": 0.4,
+    "roughness": 0.3
+  }
+}

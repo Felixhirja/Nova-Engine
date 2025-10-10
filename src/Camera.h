@@ -17,6 +17,9 @@ public:
     // Convert world coords to screen coords (for 3D, simplified orthographic approximation)
     void WorldToScreen(double wx, double wy, double wz, int screenW, int screenH, int &outX, int &outY) const;
 
+    // Apply camera transformation to OpenGL modelview matrix
+    void ApplyToOpenGL() const;
+
     double x() const { return x_; }
     double y() const { return y_; }
     double z() const { return z_; }
