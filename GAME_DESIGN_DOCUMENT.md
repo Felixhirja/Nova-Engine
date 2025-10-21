@@ -5,7 +5,7 @@
 **Title:** Star Frontier (working title)  
 **Genre:** Space Simulation, MMO, Action RPG  
 **Platform:** PC (Windows, Linux, Mac)  
-**Engine:** Star-Engine (Custom C++ 3D Engine)  
+**Engine:** Nova-Engine (Custom C++ 3D Engine)  
 **Target Audience:** 18-45 year old gamers interested in space exploration, ship building, and complex simulations  
 **Estimated Development Time:** 12-24 months  
 **Team Size:** 1-5 developers (initial phase)

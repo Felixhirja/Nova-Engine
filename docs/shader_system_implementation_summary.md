@@ -114,7 +114,7 @@ make
 
 **Run:**
 ```bash
-./star-engine.exe
+./nova-engine.exe
 ```
 
 ### Testing Checklist
@@ -267,7 +267,7 @@ skybox_->Render(viewMatrix, projMatrix);
 ### 3. Build and Test
 ```bash
 make clean && make
-./star-engine.exe
+./nova-engine.exe
 ```
 
 ### 4. Verify

@@ -1,7 +1,7 @@
 # Solar System Generation Design Document
 
 ## Overview
-This document outlines the design and implementation of the procedural solar system generation system for Star-Engine. The system will create realistic, varied solar systems with planets, moons, asteroids, and space stations using procedural generation techniques.
+This document outlines the design and implementation of the procedural solar system generation system for Nova-Engine. The system will create realistic, varied solar systems with planets, moons, asteroids, and space stations using procedural generation techniques.
 
 ## Architecture
 
@@ -488,4 +488,4 @@ data/
 
 ## Conclusion
 
-This solar system generation system provides a solid foundation for creating varied, realistic space environments. The modular design allows for incremental development while maintaining compatibility with the existing Star-Engine architecture. The procedural approach ensures infinite variety while maintaining scientific plausibility.
+This solar system generation system provides a solid foundation for creating varied, realistic space environments. The modular design allows for incremental development while maintaining compatibility with the existing Nova-Engine architecture. The procedural approach ensures infinite variety while maintaining scientific plausibility.

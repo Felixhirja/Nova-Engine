@@ -1,7 +1,7 @@
 # Advanced Graphics System Implementation
 
 ## Overview
-This document outlines the implementation of advanced graphics features for Star-Engine, building on the existing post-process pipeline.
+This document outlines the implementation of advanced graphics features for Nova-Engine, building on the existing post-process pipeline.
 
 ## Implementation Phases
 
@@ -112,7 +112,7 @@ basicShader->SetUniform("lightPos", lightPosition);
 ### Resource Organization
 
 ```
-Star-Engine/
+Nova-Engine/
 ├── shaders/                    # NEW: Shader source files
 │   ├── core/
 │   │   ├── basic.vert

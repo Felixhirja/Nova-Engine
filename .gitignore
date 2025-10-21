@@ -25,4 +25,5 @@ TestResults.xml
 /tests/test_simulation
 /tests/test_camera
 star-engine
+nova-engine
 build/

@@ -108,7 +108,7 @@ All visual and audio feedback systems have been successfully implemented, integr
 ## File Structure
 
 ```
-Star-Engine/
+Nova-Engine/
 ├── src/
 │   ├── FeedbackEvent.h                 (Event system core)
 │   ├── VisualFeedbackSystem.h/cpp      (Particles & screen effects)
@@ -142,7 +142,7 @@ Star-Engine/
 
 ✅ **Engine builds successfully:**
 ```
-star-engine.exe                 (Main executable with feedback systems)
+nova-engine.exe                 (Main executable with feedback systems)
 ```
 
 ## Usage Example

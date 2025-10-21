@@ -1,7 +1,7 @@
 # Post-Process Pipeline Implementation Summary
 
 ## Overview
-Successfully implemented a modular post-processing pipeline for the Star Engine with letterbox HUD overlay and bloom toggle functionality.
+Successfully implemented a modular post-processing pipeline for the Nova Engine with letterbox HUD overlay and bloom toggle functionality.
 
 ## Files Created/Modified
 
@@ -72,7 +72,7 @@ Successfully implemented a modular post-processing pipeline for the Star Engine 
 
 ## Testing
 - Basic API tests created in `tests/test_postprocess.cpp`
-- Runtime testing: Run `star-engine.exe` and press B/L to toggle effects
+- Runtime testing: Run `nova-engine.exe` and press B/L to toggle effects
 - Visual verification: Bloom shows glow on bright objects, letterbox adds cinematic bars
 
 ## Future Enhancements

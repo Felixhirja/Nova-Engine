@@ -1,4 +1,4 @@
-# Star-Engine
+# Nova-Engine
 
 A 3D game engine built with C++17, OpenGL, and GLFW. The project focuses on
 experimentation with physically inspired flight controls, modular spacecraft
@@ -16,7 +16,7 @@ desktop platforms and ships with a portable MinGW toolchain for Windows users.
 
 ## Prerequisites
 
-Star-Engine relies on an OpenGL 3.x capable GPU and the following libraries:
+Nova-Engine relies on an OpenGL 3.x capable GPU and the following libraries:
 
 - GLFW 3.x (windowing, input)
 - OpenGL / GLU
@@ -32,8 +32,8 @@ Star-Engine relies on an OpenGL 3.x capable GPU and the following libraries:
 ### Clone the repository
 
 ```bash
-git clone https://github.com/<your-account>/Star-Engine.git
-cd Star-Engine
+git clone https://github.com/<your-account>/Nova-Engine.git
+cd Nova-Engine
 ```
 
 ### Install system dependencies
@@ -73,7 +73,7 @@ Launch the executable directly or use the helper script on Windows:
 
 ```bash
 # Linux / macOS
-./star-engine
+./nova-engine
 
 # Windows
 run_engine.bat

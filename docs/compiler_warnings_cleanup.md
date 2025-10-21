@@ -1,5 +1,5 @@
 # Session Continuation Summary
-**Star Engine - Compiler Warnings Cleanup**
+**Nova Engine - Compiler Warnings Cleanup**
 *October 10, 2025*
 
 ## 🎯 Objective Complete

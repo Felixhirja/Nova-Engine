@@ -31,7 +31,7 @@ The **main menu system infrastructure** is fully implemented and compiled succes
 ```
 ✅ Compiles with: make -j4
 ✅ All menu files compile successfully
-✅ Links into star-engine executable
+✅ Links into nova-engine executable
 ⚠️ Only unused parameter warnings (harmless)
 ```
 

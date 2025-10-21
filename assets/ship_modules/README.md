@@ -1,6 +1,6 @@
 # Ship Module Asset Library
 
-This directory stores modular art assets for the Star-Engine spaceship system. Assets are organized by module type so hulls, wings, engine exhausts, and interiors can be mixed and matched when building ships.
+This directory stores modular art assets for the Nova-Engine spaceship system. Assets are organized by module type so hulls, wings, engine exhausts, and interiors can be mixed and matched when building ships.
 
 ```text
 ship_modules/

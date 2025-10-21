@@ -1,8 +1,8 @@
-# Star-Engine Advanced Graphics System
+# Nova-Engine Advanced Graphics System
 
 ## 🎉 What I Built For You
 
-I've implemented **Phase 1 of the Advanced Graphics System** for your Star-Engine project. This includes a modern shader system and a beautiful procedural space skybox - completely ready to integrate!
+I've implemented **Phase 1 of the Advanced Graphics System** for your Nova-Engine project. This includes a modern shader system and a beautiful procedural space skybox - completely ready to integrate!
 
 ## 📦 What You're Getting
 
@@ -39,7 +39,7 @@ Everything you need to use the system:
 ## 📂 Files Created
 
 ```
-Star-Engine/
+Nova-Engine/
 ├── src/graphics/                           [NEW]
 │   ├── ShaderProgram.h                     130 lines
 │   ├── ShaderProgram.cpp                   450 lines
@@ -112,7 +112,7 @@ if (skybox_) skybox_->Cleanup();
 
 ```bash
 make clean && make
-./star-engine.exe
+./nova-engine.exe
 ```
 
 You should see a beautiful starfield background with twinkling stars!
@@ -233,7 +233,7 @@ Check these files in order:
 
 ## 🌟 The Result
 
-After integration, your Star-Engine will have:
+After integration, your Nova-Engine will have:
 
 ✨ **Beautiful Space Backgrounds** - Realistic starfield with twinkling stars
 🎮 **Modern Rendering** - Programmable shader pipeline
@@ -245,7 +245,7 @@ After integration, your Star-Engine will have:
 
 ## Summary
 
-You now have a complete, professional-quality shader system and procedural skybox for your Star-Engine. All files are created, documented, and ready to integrate. Follow the **ADVANCED_GRAPHICS_CHECKLIST.md** for step-by-step integration instructions.
+You now have a complete, professional-quality shader system and procedural skybox for your Nova-Engine. All files are created, documented, and ready to integrate. Follow the **ADVANCED_GRAPHICS_CHECKLIST.md** for step-by-step integration instructions.
 
 **Estimated Integration Time:** 30-60 minutes
 
@@ -255,7 +255,7 @@ You now have a complete, professional-quality shader system and procedural skybo
 
 ---
 
-*Built with ❤️ for Star-Engine*
+*Built with ❤️ for Nova-Engine*
 *October 10, 2025*
 
 **Status: ✅ PHASE 1 COMPLETE - Ready for Integration**

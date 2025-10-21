@@ -1,7 +1,7 @@
 # Particle Rendering Integration
 
 ## Overview
-Successfully integrated the VisualFeedbackSystem particle effects with the Viewport3D rendering pipeline, enabling real-time particle visualization in the Star-Engine game.
+Successfully integrated the VisualFeedbackSystem particle effects with the Viewport3D rendering pipeline, enabling real-time particle visualization in the Nova-Engine game.
 
 ## Implementation Date
 2025-01-XX (completed)
@@ -117,7 +117,7 @@ Particles are spawned via the FeedbackEvent system:
 
 ## Testing Status
 - ✅ **Compilation**: All files compile without errors
-- ✅ **Linking**: star-engine.exe builds successfully
+- ✅ **Linking**: nova-engine.exe builds successfully
 - ✅ **Unit Tests**: test_feedback_systems.exe passes (particle physics validated)
 - ⚠️ **Visual Testing**: Requires manual gameplay testing to trigger feedback events
 

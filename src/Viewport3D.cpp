@@ -88,7 +88,7 @@ void Viewport3D::Init() {
     height = mode->height;
 
     // Create GLFW window in fullscreen mode
-    glfwWindow = glfwCreateWindow(width, height, "Star Engine", primaryMonitor, nullptr);
+    glfwWindow = glfwCreateWindow(width, height, "Nova Engine", primaryMonitor, nullptr);
     if (!glfwWindow) {
         std::cerr << "Viewport3D: GLFW window creation failed" << std::endl;
         glfwTerminate();
@@ -182,7 +182,7 @@ void Viewport3D::Init() {
         if (sdlInitRc == 0) {
             // Try OpenGL first for better compatibility
             writeLog("Viewport3D: Trying OpenGL path");
-            sdlWindow = compat_CreateWindow("Star Engine", width, height, (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE));
+            sdlWindow = compat_CreateWindow("Nova Engine", width, height, (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE));
             if (sdlWindow) {
                 writeLog("Viewport3D: SDL_CreateWindow (GL) succeeded");
                 SDL_RaiseWindow(sdlWindow);
@@ -242,7 +242,7 @@ void Viewport3D::Init() {
 
             // If OpenGL fails, try SDL renderer
             writeLog("Viewport3D: Trying SDL renderer path");
-            sdlWindow = compat_CreateWindow("Star Engine", width, height, (SDL_WindowFlags)(SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE));
+            sdlWindow = compat_CreateWindow("Nova Engine", width, height, (SDL_WindowFlags)(SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE));
             if (sdlWindow) {
                 writeLog("Viewport3D: SDL_CreateWindow (renderer) succeeded");
                 SDL_RaiseWindow(sdlWindow);

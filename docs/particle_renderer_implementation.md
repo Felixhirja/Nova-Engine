@@ -1,5 +1,5 @@
 # Phase 4.1-4.3: Particle Renderer Implementation
-**Star Engine - Modern VAO/VBO Particle System**
+**Nova Engine - Modern VAO/VBO Particle System**
 *October 10, 2025*
 
 ## 🎯 Objectives Complete
@@ -251,7 +251,7 @@ make
 
 ### Runtime Test
 ```powershell
-.\star-engine.exe
+.\nova-engine.exe
 # Output includes:
 # "ParticleRenderer initialized successfully"
 # FPS: 64-65 (maintained performance)

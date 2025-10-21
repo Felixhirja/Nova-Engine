@@ -4,7 +4,7 @@
 #include <functional>
 
 /**
- * MainMenu - The main menu screen for Star Engine
+ * MainMenu - The main menu screen for Nova Engine
  * 
  * Provides:
  * - New Game

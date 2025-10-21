@@ -11,7 +11,7 @@ struct Mix_Chunk;
 #endif
 
 /**
- * @brief Core audio system for Star Engine
+ * @brief Core audio system for Nova Engine
  * 
  * Provides comprehensive audio playback using SDL_mixer:
  * - Sound effects (2D and 3D positioned)

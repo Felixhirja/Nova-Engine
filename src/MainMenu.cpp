@@ -61,7 +61,7 @@ void MainMenu::BuildMenu() {
 
     // Credits
     MenuSystem::MenuItem creditsItem("Credits", [this]() { OnCredits(); });
-    creditsItem.description = "Meet the crew responsible for Star Engine.";
+    creditsItem.description = "Meet the crew responsible for Nova Engine.";
     creditsItem.shortcutHint = "R";
     menu_.AddItem(creditsItem);
 
