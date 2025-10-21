@@ -27,7 +27,9 @@ endif
 ifneq ($(GLFW_LIBS),)
         CXXFLAGS += $(GLFW_CFLAGS) -DUSE_GLFW
         LDLIBS += $(GLFW_LIBS)
-	LDLIBS += -lopengl32 -lglu32 -lfreeglut
+ifeq ($(OS),Windows_NT)
+        LDLIBS += -lopengl32 -lglu32 -lfreeglut
+endif
 $(info GLFW detected: building with GLFW support)
 else
 $(info GLFW not found; building ASCII fallback)
