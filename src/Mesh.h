@@ -7,7 +7,13 @@
 #include <windows.h>
 #endif
 
+#ifdef USE_GLFW
 #include <glad/glad.h>
+#else
+using GLenum = unsigned int;
+using GLfloat = float;
+using GLuint = unsigned int;
+#endif
 
 struct MeshVertex {
     GLfloat px;

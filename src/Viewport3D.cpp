@@ -40,14 +40,21 @@
 #include "Camera.h"
 #endif
 
-Viewport3D::Viewport3D() : width(800), height(600), usingSDL(false)
+Viewport3D::Viewport3D()
+    : width(800)
+    , height(600)
+    , usingSDL(false)
+    , useGL(false)
 #ifdef USE_SDL
-, sdlWindow(nullptr), sdlRenderer(nullptr), sdlGLContext(nullptr), useGL(false)
+    , sdlWindow(nullptr)
+    , sdlRenderer(nullptr)
+    , sdlGLContext(nullptr)
 #endif
 #ifdef USE_GLFW
-, glfwWindow(nullptr), useGL(false)
+    , glfwWindow(nullptr)
 #endif
-{}
+{
+}
 
 Viewport3D::~Viewport3D() {}
 
@@ -439,34 +446,27 @@ void Viewport3D::DrawPlayer(double x, double y, double z) {
             glColor3f(1.0f, 1.0f, 0.0f);
             glPushMatrix();
             glTranslatef((GLfloat)x, (GLfloat)y, (GLfloat)z);
-            // Draw cube
             glBegin(GL_QUADS);
-            // Front
             glVertex3f(-0.5f, -0.5f, 0.5f);
             glVertex3f(0.5f, -0.5f, 0.5f);
             glVertex3f(0.5f, 0.5f, 0.5f);
             glVertex3f(-0.5f, 0.5f, 0.5f);
-            // Back
             glVertex3f(-0.5f, -0.5f, -0.5f);
             glVertex3f(-0.5f, 0.5f, -0.5f);
             glVertex3f(0.5f, 0.5f, -0.5f);
             glVertex3f(0.5f, -0.5f, -0.5f);
-            // Left
             glVertex3f(-0.5f, -0.5f, 0.5f);
             glVertex3f(-0.5f, 0.5f, 0.5f);
             glVertex3f(-0.5f, 0.5f, -0.5f);
             glVertex3f(-0.5f, -0.5f, -0.5f);
-            // Right
             glVertex3f(0.5f, -0.5f, 0.5f);
             glVertex3f(0.5f, -0.5f, -0.5f);
             glVertex3f(0.5f, 0.5f, -0.5f);
             glVertex3f(0.5f, 0.5f, 0.5f);
-            // Top
             glVertex3f(-0.5f, 0.5f, 0.5f);
             glVertex3f(0.5f, 0.5f, 0.5f);
             glVertex3f(0.5f, 0.5f, -0.5f);
             glVertex3f(-0.5f, 0.5f, -0.5f);
-            // Bottom
             glVertex3f(-0.5f, -0.5f, 0.5f);
             glVertex3f(-0.5f, -0.5f, -0.5f);
             glVertex3f(0.5f, -0.5f, -0.5f);
@@ -474,61 +474,55 @@ void Viewport3D::DrawPlayer(double x, double y, double z) {
             glEnd();
             glPopMatrix();
         } else {
-            // Fallback to 2D
             int px = static_cast<int>(((x + 5.0) / 10.0) * width);
             int py = height / 2;
-    SDL_Rect rect{px - 5, py - 5, 10, 10};
-    SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 0, 255);
-    compat_RenderFillRect(sdlRenderer, &rect);
+            SDL_Rect rect{px - 5, py - 5, 10, 10};
+            SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 0, 255);
+            compat_RenderFillRect(sdlRenderer, &rect);
         }
+#else
+        (void)x; (void)y; (void)z;
 #endif
-    } else if (useGL && glfwWindow) {
+    }
 #ifdef USE_GLFW
+    else if (useGL && glfwWindow) {
         glfwMakeContextCurrent(glfwWindow);
         glColor3f(1.0f, 1.0f, 0.0f);
         glPushMatrix();
         glTranslatef((GLfloat)x, (GLfloat)y, (GLfloat)z);
-        // Draw cube
         glBegin(GL_QUADS);
-        // Front
         glVertex3f(-0.5f, -0.5f, 0.5f);
         glVertex3f(0.5f, -0.5f, 0.5f);
         glVertex3f(0.5f, 0.5f, 0.5f);
         glVertex3f(-0.5f, 0.5f, 0.5f);
-        // Back
         glVertex3f(-0.5f, -0.5f, -0.5f);
         glVertex3f(-0.5f, 0.5f, -0.5f);
         glVertex3f(0.5f, 0.5f, -0.5f);
         glVertex3f(0.5f, -0.5f, -0.5f);
-        // Left
         glVertex3f(-0.5f, -0.5f, 0.5f);
         glVertex3f(-0.5f, 0.5f, 0.5f);
         glVertex3f(-0.5f, 0.5f, -0.5f);
         glVertex3f(-0.5f, -0.5f, -0.5f);
-        // Right
         glVertex3f(0.5f, -0.5f, 0.5f);
         glVertex3f(0.5f, -0.5f, -0.5f);
         glVertex3f(0.5f, 0.5f, -0.5f);
         glVertex3f(0.5f, 0.5f, 0.5f);
-        // Top
         glVertex3f(-0.5f, 0.5f, 0.5f);
         glVertex3f(0.5f, 0.5f, 0.5f);
         glVertex3f(0.5f, 0.5f, -0.5f);
         glVertex3f(-0.5f, 0.5f, -0.5f);
-        // Bottom
         glVertex3f(-0.5f, -0.5f, 0.5f);
         glVertex3f(-0.5f, -0.5f, -0.5f);
         glVertex3f(0.5f, -0.5f, -0.5f);
         glVertex3f(0.5f, -0.5f, 0.5f);
         glEnd();
         glPopMatrix();
+    }
 #endif
-    } else {
+    else {
         std::cout << "Drawing ASCII fallback for player at " << x << std::endl;
         const int widthChars = 40;
-        double clamped = x;
-        if (clamped < -5.0) clamped = -5.0;
-        if (clamped > 5.0) clamped = 5.0;
+        double clamped = std::min(5.0, std::max(-5.0, x));
         int pos = static_cast<int>((clamped + 5.0) / 10.0 * (widthChars - 1));
         std::string line(widthChars, '-');
         line[pos] = 'P';
@@ -585,8 +579,8 @@ void Viewport3D::DrawEntity(const Transform &t, int textureHandle, class Resourc
     SDL_SetRenderDrawColor(sdlRenderer, 255, 128, 0, 255);
     compat_RenderFillRect(sdlRenderer, &dst);
 #endif
-    } else if (useGL && glfwWindow) {
 #ifdef USE_GLFW
+    } else if (useGL && glfwWindow) {
         // For GLFW, draw 3D cube like DrawPlayer
         glfwMakeContextCurrent(glfwWindow);
         glColor3f(1.0f, 0.5f, 0.0f); // Orange for entities

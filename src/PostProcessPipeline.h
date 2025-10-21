@@ -4,9 +4,17 @@
 #include <windows.h>
 #endif
 
+#ifdef USE_GLFW
 #include <glad/glad.h>
+#else
+#include <cstdint>
+using GLuint = unsigned int;
+using GLenum = unsigned int;
+using GLsizei = int;
+using GLboolean = unsigned char;
+#endif
 
-#ifndef _WIN32
+#if defined(USE_GLFW) && !defined(_WIN32)
 // For Linux/Unix
 #include <GL/glx.h>
 #endif

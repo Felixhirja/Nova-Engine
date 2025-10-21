@@ -1,3 +1,5 @@
+#ifdef USE_GLFW
+
 #include "TextRenderer.h"
 #include <cstdarg>
 #include <cstring>
@@ -204,3 +206,38 @@ void TextRenderer::RenderTextWithShadow(const std::string& text,
     // Render main text
     RenderText(text, x, y, color, size);
 }
+
+#else // !USE_GLFW
+
+#include "TextRenderer.h"
+#include <cstdarg>
+
+void* TextRenderer::GetGLUTFont(FontSize) {
+    return nullptr;
+}
+
+int TextRenderer::GetFontHeight(FontSize) {
+    return 0;
+}
+
+void TextRenderer::RenderChar(char, void*) {}
+
+void TextRenderer::RenderText(const std::string&, int, int, const TextColor&, FontSize) {}
+
+void TextRenderer::RenderTextAligned(const std::string&, int, int, TextAlign, const TextColor&, FontSize) {}
+
+void TextRenderer::RenderText3D(const std::string&, double, double, double, const TextColor&, FontSize) {}
+
+int TextRenderer::MeasureText(const std::string&, FontSize) {
+    return 0;
+}
+
+void TextRenderer::RenderTextF(int, int, const TextColor&, FontSize, const char*, ...) {}
+
+int TextRenderer::RenderTextBlock(const std::string&, int, int, int, const TextColor&, FontSize, int) {
+    return 0;
+}
+
+void TextRenderer::RenderTextWithShadow(const std::string&, int, int, const TextColor&, const TextColor&, FontSize) {}
+
+#endif // USE_GLFW

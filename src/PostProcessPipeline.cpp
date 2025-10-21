@@ -1,3 +1,4 @@
+#ifdef USE_GLFW
 #include "PostProcessPipeline.h"
 #include <iostream>
 #include <cmath>
@@ -316,6 +317,72 @@ void PostProcessPipeline::ApplyBrightPass() {
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
 }
+
+#else // !USE_GLFW
+
+#include "PostProcessPipeline.h"
+
+PostProcessPipeline::PostProcessPipeline()
+    : initialized_(false)
+    , width_(0)
+    , height_(0)
+    , sceneFBO_(0)
+    , sceneTexture_(0)
+    , sceneDepthRBO_(0)
+    , brightFBO_(0)
+    , brightTexture_(0)
+    , bloomEnabled_(false)
+    , letterboxEnabled_(false)
+    , letterboxHeight_(0.1f)
+    , bloomIntensity_(0.0f)
+    , bloomThreshold_(0.0f) {
+    blurFBO_[0] = blurFBO_[1] = 0;
+    blurTexture_[0] = blurTexture_[1] = 0;
+}
+
+PostProcessPipeline::~PostProcessPipeline() = default;
+
+bool PostProcessPipeline::Init(int width, int height) {
+    width_ = width;
+    height_ = height;
+    initialized_ = false;
+    return false;
+}
+
+void PostProcessPipeline::Resize(int width, int height) {
+    width_ = width;
+    height_ = height;
+}
+
+void PostProcessPipeline::BeginScene() {}
+
+void PostProcessPipeline::EndScene() {}
+
+void PostProcessPipeline::Shutdown() {
+    initialized_ = false;
+    sceneFBO_ = sceneTexture_ = sceneDepthRBO_ = 0;
+    brightFBO_ = brightTexture_ = 0;
+    blurFBO_[0] = blurFBO_[1] = 0;
+    blurTexture_[0] = blurTexture_[1] = 0;
+}
+
+bool PostProcessPipeline::CreateFramebuffer(GLuint*, GLuint*, GLuint*, int, int, bool) {
+    return false;
+}
+
+void PostProcessPipeline::DeleteFramebuffer(GLuint*, GLuint*, GLuint*) {}
+
+void PostProcessPipeline::RenderQuad() {}
+
+void PostProcessPipeline::ApplyBrightPass() {}
+
+void PostProcessPipeline::ApplyBlur(int) {}
+
+void PostProcessPipeline::CompositeToScreen() {}
+
+void PostProcessPipeline::DrawLetterbox() {}
+
+#endif // USE_GLFW
 
 void PostProcessPipeline::ApplyBlur(int passes) {
     // Simple box blur using ping-pong rendering

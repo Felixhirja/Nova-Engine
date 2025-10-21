@@ -154,7 +154,9 @@ void MainLoop::Init() {
 #endif
     
     // Set SDL window for input handling (if available)
-    Input::SetGLFWWindow(viewport->GetGLFWWindow());
+#ifdef USE_SDL
+    Input::SetSDLWindow(viewport->GetSDLWindow());
+#endif
 
     std::cout << "About to create camera" << std::endl;
     // Camera

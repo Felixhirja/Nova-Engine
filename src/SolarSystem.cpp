@@ -4,6 +4,10 @@
 #include <cmath>
 #include <limits>
 
+#ifndef USE_GLFW
+static constexpr GLenum GL_LINES = 0u;
+#endif
+
 #include "CelestialBody.h"
 #include "Transform.h"
 #include "ecs/Components.h"
