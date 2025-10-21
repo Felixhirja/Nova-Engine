@@ -46,7 +46,16 @@ PHASE 1: FOUNDATION (Next 1-2 months)
   □ Advanced performance model (heat buildup, power overload)
   □ Physics integration (coordinate with Advanced Physics Engine)
   □ Damage model implementation (per-component health, cascading failures)
-  
+  □ Weapon firing pipeline completion
+    - Flesh out `WeaponSystem::FireWeapon` to spawn projectile entities tied to hardpoints
+    - Attach muzzle flash, recoil, and heat events to Feedback systems when firing
+    - Query transform/weapon mount data for accurate spawn positions + 3D audio emitters
+    - Persist projectile ownership for damage attribution and AI threat evaluation
+  □ Target acquisition safeguards
+    - Finish `TargetingSystem` validation (entity existence, transform availability, range/LOS)
+    - Add graceful failure paths that surface issues through the feedback HUD
+    - Write regression tests that cover invalid/edge targeting cases
+
   MEDIUM PRIORITY:
   □ Cargo management system (for freighters)
   □ Crew management system (station assignments, skills)

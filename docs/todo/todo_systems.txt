@@ -20,6 +20,12 @@
 - [ ] Expose a runtime inspector to toggle systems, view stats, and reorder execution for experimentation.
 - [ ] Emit trace events (Chrome tracing, ETW) for system start/end to aid performance analysis.
 
+## Weapon & Targeting Systems
+- [ ] Replace placeholder projectile logging in `WeaponSystem::FireWeapon` with entity creation that registers physics, damage, and lifetime components.
+- [ ] Route firing feedback through the new TextRenderer HUD plus audio/visual feedback hooks so ammo warnings and cooldown states are visible to players.
+- [ ] Implement the TODO checks in `TargetingSystem::AcquireTarget` to validate entity existence, transform availability, faction filtering, and engagement range.
+- [ ] Author focused regression tests covering invalid targets, obstructed line of sight, and cooldown edge cases for the targeting/weapon loop.
+
 ## Testing & Documentation
 - [ ] Create unit tests for SystemManager registration, order enforcement, and clearing behavior.
 - [ ] Provide integration tests with mock systems to simulate complex dependency graphs.
