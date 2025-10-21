@@ -196,6 +196,41 @@ int main() {
         return 19;
     }
 
+    // Test 11: movement bounds can be customized via configuration API
+    sim.Init();
+    MovementBounds customBounds = sim.GetMovementBounds();
+    customBounds.maxX = 10.0;
+    customBounds.maxY = 10.0;
+    customBounds.minY = -10.0;
+    sim.ConfigureMovementBounds(customBounds);
+    sim.SetPlayerInput(false, false, false, false, false, true, 0.0);
+    for (int i = 0; i < 600; ++i) sim.Update(dt);
+    double wideX = sim.GetPlayerX();
+    std::cout << "Test11 widened bounds x=" << wideX << std::endl;
+    if (wideX < 9.5) {
+        std::cerr << "Test11 FAILED: expected movement to reach wider bound" << std::endl;
+        return 20;
+    }
+    if (wideX > 10.0 + 1e-6) {
+        std::cerr << "Test11 FAILED: expected clamp at new max X" << std::endl;
+        return 21;
+    }
+
+    sim.SetPlayerInput(true, false, false, false, false, false, 0.0);
+    for (int i = 0; i < 600; ++i) sim.Update(dt);
+    double wideY = sim.GetPlayerY();
+    std::cout << "Test11 widened bounds y=" << wideY << std::endl;
+    if (wideY > 10.0 + 1e-6 || wideY < -10.0 - 1e-6) {
+        std::cerr << "Test11 FAILED: expected clamp within customized Y bounds" << std::endl;
+        return 22;
+    }
+
+    sim.Init();
+    if (std::abs(sim.GetMovementBounds().maxX - customBounds.maxX) > 1e-6) {
+        std::cerr << "Test11 FAILED: custom bounds did not persist after Init" << std::endl;
+        return 23;
+    }
+
     std::cout << "All tests passed." << std::endl;
     return 0;
 }
