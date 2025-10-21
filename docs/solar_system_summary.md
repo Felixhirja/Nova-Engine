@@ -29,6 +29,11 @@ A comprehensive set of documentation has been created to guide the implementatio
    - Debugging tips
    - Integration guidelines
 
+4. **Seed Catalog** (`docs/solar_system_seed_catalog.md`)
+   - Curated reproducible seeds for designers and engineers
+   - Testing scenarios grouped by gameplay focus
+   - Baseline data for performance and UX benchmarking
+
 ### Code Framework ✅
 
 1. **CelestialBody.h** - Complete component system

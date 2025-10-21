@@ -13,7 +13,8 @@ src/
 
 docs/
   ├── solar_system_generation.md - Complete design document
-  └── solar_system_tasks.md       - Detailed task breakdown with estimates
+  ├── solar_system_tasks.md       - Detailed task breakdown with estimates
+  └── solar_system_seed_catalog.md - Curated seeds for reproducible setups
 ```
 
 ## 🎯 Quick Start
