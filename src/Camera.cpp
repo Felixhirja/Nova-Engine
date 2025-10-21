@@ -3,7 +3,6 @@
 #include <windows.h>
 #endif
 #include <glad/glad.h>
-#include <GL/glu.h>
 #include <cmath>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

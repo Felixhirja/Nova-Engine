@@ -82,6 +82,9 @@ void Simulation::Init(EntityManager* externalEm) {
     physics->isGrounded = true;
     useEm->AddComponent<PlayerPhysics>(playerEntity, physics);
 
+    auto movementParams = std::make_shared<MovementParameters>(movementConfig);
+    useEm->AddComponent<MovementParameters>(playerEntity, movementParams);
+
     auto targetLock = std::make_shared<TargetLock>();
     targetLock->targetEntityId = 0;  // No target initially
     targetLock->isLocked = false;    // Start unlocked
@@ -179,6 +182,21 @@ void Simulation::SetUseThrustMode(bool thrustMode) {
     }
     if (auto* controller = useEm->GetComponent<PlayerController>(playerEntity)) {
         controller->thrustMode = thrustMode;
+    }
+}
+
+void Simulation::ConfigureMovementParameters(const MovementParameters& params) {
+    movementConfig = params;
+    EntityManager* useEm = activeEm ? activeEm : &em;
+    if (!useEm->IsAlive(playerEntity)) {
+        return;
+    }
+
+    if (auto* existing = useEm->GetComponent<MovementParameters>(playerEntity)) {
+        *existing = movementConfig;
+    } else {
+        auto movementParams = std::make_shared<MovementParameters>(movementConfig);
+        useEm->AddComponent<MovementParameters>(playerEntity, movementParams);
     }
 }
 

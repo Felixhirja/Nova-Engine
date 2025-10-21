@@ -151,6 +151,51 @@ int main() {
         return 15;
     }
 
+    // Test 10: configurable movement parameters should adjust acceleration and persist across Init()
+    sim.Init();
+    MovementParameters customParams;
+    customParams.strafeAcceleration = 2.0;
+    customParams.strafeDeceleration = 1.0;
+    customParams.strafeMaxSpeed = 2.0;
+    customParams.forwardAcceleration = 1.5;
+    customParams.backwardAcceleration = 1.5;
+    customParams.forwardDeceleration = 1.5;
+    customParams.backwardDeceleration = 1.5;
+    customParams.forwardMaxSpeed = 2.5;
+    customParams.backwardMaxSpeed = 2.5;
+    customParams.friction = 0.0;
+
+    sim.ConfigureMovementParameters(customParams);
+    const MovementParameters& appliedParams = sim.GetMovementParameters();
+    if (std::abs(appliedParams.strafeAcceleration - customParams.strafeAcceleration) > 1e-6) {
+        std::cerr << "Test10 FAILED: simulation did not store custom movement parameters" << std::endl;
+        return 16;
+    }
+
+    sim.SetPlayerInput(false, false, false, false, false, true, 0.0);
+    for (int i = 0; i < 60; ++i) sim.Update(dt);
+    double tunedX = sim.GetPlayerX();
+    std::cout << "Test10 tuned x=" << tunedX << std::endl;
+    if (tunedX > 2.0 || tunedX < 0.5) {
+        std::cerr << "Test10 FAILED: expected tuned movement to be slower than default" << std::endl;
+        return 17;
+    }
+
+    // Reinitialize to ensure parameters persist across Init()
+    sim.Init();
+    if (std::abs(sim.GetMovementParameters().strafeAcceleration - customParams.strafeAcceleration) > 1e-6) {
+        std::cerr << "Test10 FAILED: custom parameters did not persist after Init" << std::endl;
+        return 18;
+    }
+    sim.SetPlayerInput(false, false, false, false, false, true, 0.0);
+    for (int i = 0; i < 60; ++i) sim.Update(dt);
+    double tunedXAfterInit = sim.GetPlayerX();
+    std::cout << "Test10 tuned reinit x=" << tunedXAfterInit << std::endl;
+    if (std::abs(tunedXAfterInit - tunedX) > 0.3) {
+        std::cerr << "Test10 FAILED: expected consistent behavior after Init" << std::endl;
+        return 19;
+    }
+
     std::cout << "All tests passed." << std::endl;
     return 0;
 }

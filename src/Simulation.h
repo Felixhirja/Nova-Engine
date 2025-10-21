@@ -22,6 +22,8 @@ public:
     // Set player input state
     void SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw);
     void SetUseThrustMode(bool thrustMode);
+    void ConfigureMovementParameters(const MovementParameters& params);
+    const MovementParameters& GetMovementParameters() const { return movementConfig; }
 
 private:
     // Basic simulation state implemented with ECS
@@ -42,6 +44,7 @@ private:
     bool inputLeft;
     bool inputRight;
     SystemManager systemManager;
+    MovementParameters movementConfig;
 };
 
 #endif // SIMULATION_H
