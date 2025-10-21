@@ -4,6 +4,12 @@
 #include "Transform.h"
 #include <string>
 #include <iostream>
+#include <memory>
+
+class ParticleRenderer;
+struct ParticleRendererDeleter {
+    void operator()(ParticleRenderer* ptr) const;
+};
 #ifdef USE_SDL
 #if defined(USE_SDL3)
 #include <SDL3/SDL.h>
@@ -95,4 +101,5 @@ private:
 #ifdef USE_GLFW
     GLFWwindow* glfwWindow;
 #endif
+    std::unique_ptr<ParticleRenderer, ParticleRendererDeleter> particleRenderer_;
 };

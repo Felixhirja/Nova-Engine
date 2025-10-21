@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cmath>
 #include <fstream>
+#include <memory>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -39,6 +40,18 @@
 #endif
 #include "Camera.h"
 #endif
+#include "VisualFeedbackSystem.h"
+#if defined(USE_GLFW) || defined(USE_SDL)
+#include "graphics/ParticleRenderer.h"
+#endif
+
+void ParticleRendererDeleter::operator()(ParticleRenderer* ptr) const {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    delete ptr;
+#else
+    (void)ptr;
+#endif
+}
 
 Viewport3D::Viewport3D()
     : width(800)
@@ -632,6 +645,12 @@ void Viewport3D::Resize(int w, int h) {
 }
 
 void Viewport3D::Shutdown() {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (particleRenderer_) {
+        particleRenderer_->Cleanup();
+        particleRenderer_.reset();
+    }
+#endif
     if (usingSDL) {
 #ifdef USE_SDL
         if (sdlRenderer) SDL_DestroyRenderer(sdlRenderer);
@@ -1627,6 +1646,29 @@ void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX,
     DrawHUD(camera, fps, playerX, playerY, playerZ);
 }
 
-void Viewport3D::RenderParticles(const class Camera*, const class VisualFeedbackSystem*) {
-    // Stub implementation
+void Viewport3D::RenderParticles(const class Camera* camera, const class VisualFeedbackSystem* visualFeedback) {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (!visualFeedback) {
+        return;
+    }
+
+    if (!useGL) {
+        // No active OpenGL context; nothing to render.
+        return;
+    }
+
+    if (!particleRenderer_) {
+        particleRenderer_ = std::make_unique<ParticleRenderer>();
+        if (!particleRenderer_->Init()) {
+            std::cerr << "Viewport3D: Failed to initialize ParticleRenderer" << std::endl;
+            particleRenderer_.reset();
+            return;
+        }
+    }
+
+    particleRenderer_->Render(visualFeedback->GetParticles(), camera);
+#else
+    (void)camera;
+    (void)visualFeedback;
+#endif
 }
