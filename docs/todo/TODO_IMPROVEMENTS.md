@@ -1,4 +1,4 @@
-# Star Engine - TODO & Improvements
+# Nova Engine - TODO & Improvements
 
 _Relocated to `docs/todo/` to keep historical notes together._
 
@@ -139,7 +139,7 @@ _Relocated to `docs/todo/` to keep historical notes together._
   - Troubleshooting common issues (like GLFW crashes)
 
 - [ ] **Headless Mode Documentation**
-  - Environment variables: `STAR_ENGINE_HEADLESS`, `STAR_ENGINE_MAX_FRAMES`
+  - Environment variables: `NOVA_ENGINE_HEADLESS`, `NOVA_ENGINE_MAX_FRAMES`
   - Use cases for headless mode
   - Examples of automated testing
 
@@ -214,14 +214,14 @@ _Relocated to `docs/todo/` to keep historical notes together._
 
 ```powershell
 # Enable headless mode (no graphics)
-$env:STAR_ENGINE_HEADLESS="1"
+$env:NOVA_ENGINE_HEADLESS="1"
 
 # Set frame limit for headless mode (default: 300)
-$env:STAR_ENGINE_MAX_FRAMES="60"
+$env:NOVA_ENGINE_MAX_FRAMES="60"
 
 # Clear headless mode
-Remove-Item Env:\STAR_ENGINE_HEADLESS
-Remove-Item Env:\STAR_ENGINE_MAX_FRAMES
+Remove-Item Env:\NOVA_ENGINE_HEADLESS
+Remove-Item Env:\NOVA_ENGINE_MAX_FRAMES
 ```
 
 ---

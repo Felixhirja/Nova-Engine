@@ -1,5 +1,5 @@
 # OpenGL 4.6 Capabilities Report
-**Star Engine - NVIDIA GeForce RTX 5060**
+**Nova Engine - NVIDIA GeForce RTX 5060**
 *Generated: October 10, 2025*
 
 ## Hardware & Driver Information

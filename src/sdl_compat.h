@@ -1,4 +1,4 @@
-// Minimal SDL2->SDL3 compatibility helpers used by Star-Engine
+// Minimal SDL2->SDL3 compatibility helpers used by Nova-Engine
 #pragma once
 #ifdef USE_SDL
 #define SDL_WINDOW_SHOWN ((SDL_WindowFlags)0x00000004)

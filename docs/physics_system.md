@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Star Engine physics system provides a comprehensive ECS-based physics simulation with support for rigid bodies, collisions, forces, and constraints. It's designed to be modular, performant, and easy to integrate into gameplay code.
+The Nova Engine physics system provides a comprehensive ECS-based physics simulation with support for rigid bodies, collisions, forces, and constraints. It's designed to be modular, performant, and easy to integrate into gameplay code.
 
 ## Core Components
 

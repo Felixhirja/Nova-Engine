@@ -6,7 +6,7 @@
 
 ## Overview
 
-Implemented a comprehensive physics system for the Star Engine, extending the ECS architecture with collision detection, force application, and rigid body dynamics. The system supports both 2D and 3D physics with AABB and sphere colliders, impulse-based collision response, gravity sources, and kinematic bodies.
+Implemented a comprehensive physics system for the Nova Engine, extending the ECS architecture with collision detection, force application, and rigid body dynamics. The system supports both 2D and 3D physics with AABB and sphere colliders, impulse-based collision response, gravity sources, and kinematic bodies.
 
 ## Components Added
 
@@ -191,7 +191,7 @@ The physics system is designed to integrate with:
 
 ## Conclusion
 
-The physics system provides a solid foundation for gameplay mechanics in Star Engine. All core features are implemented and tested, with clear extension points for future enhancements. The milestone "Extend ECS with physics-friendly components (colliders, forces)" is now complete.
+The physics system provides a solid foundation for gameplay mechanics in Nova Engine. All core features are implemented and tested, with clear extension points for future enhancements. The milestone "Extend ECS with physics-friendly components (colliders, forces)" is now complete.
 
 **Next Steps:**
 - Integrate PhysicsSystem into MainLoop

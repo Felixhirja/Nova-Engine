@@ -1,6 +1,6 @@
 # Post-Process Pipeline
 
-The Star Engine now includes a modular post-processing pipeline that enables visual effects like bloom and letterbox overlays without modifying the main rendering code.
+The Nova Engine now includes a modular post-processing pipeline that enables visual effects like bloom and letterbox overlays without modifying the main rendering code.
 
 ## Features
 

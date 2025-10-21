@@ -1,5 +1,5 @@
 # Phase 4.4-4.5: UI Batcher Implementation
-**Star Engine - Batched UI Rendering**
+**Nova Engine - Batched UI Rendering**
 *October 10, 2025*
 
 ## 🎯 Objectives (Partial Complete)

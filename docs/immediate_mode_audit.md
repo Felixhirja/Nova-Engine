@@ -1,5 +1,5 @@
 # Immediate Mode OpenGL Audit Report
-**Star Engine - Legacy Rendering Analysis**
+**Nova Engine - Legacy Rendering Analysis**
 *Generated: October 10, 2025*
 
 ## Executive Summary

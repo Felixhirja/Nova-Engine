@@ -75,7 +75,7 @@ Phase 1 (Shader System + Procedural Skybox) has been **fully implemented and int
 - Attempted SDL fallback (code exits before fallback)
 
 **Possible Causes**:
-1. **DLL Version Mismatch**: Star-Engine may be linking against a different GLFW version than expected
+1. **DLL Version Mismatch**: Nova-Engine may be linking against a different GLFW version than expected
 2. **Library Conflict**: GLUT, SDL, or another library may be conflicting with GLFW
 3. **Static Initialization Order**: Global/static variable initialization issue
 4. **Environment Issue**: Graphics driver, Windows update, or system configuration change
@@ -121,7 +121,7 @@ Viewport3D: GLFW not yet initialized, proceeding with glfwInit()...
 3. Test with SDL renderer instead
 
 ### Option 3: Minimal Repro
-1. Gradually add Star-Engine dependencies to `test_glfw_minimal.cpp`
+1. Gradually add Nova-Engine dependencies to `test_glfw_minimal.cpp`
 2. Find which component causes the crash
 3. Fix or remove that component
 
@@ -181,6 +181,6 @@ Viewport3D: GLFW not yet initialized, proceeding with glfwInit()...
 
 The skybox integration is **architecturally complete and ready to use**. All code has been written, tested for compilation, and integrated into the rendering pipeline. The system will render a beautiful procedural starfield with 5000-15000 animated stars once the `glfwInit()` crash is resolved.
 
-**The crash is NOT related to the skybox code** - it occurs before any skybox code runs. This appears to be a pre-existing issue or environmental problem with GLFW initialization in the Star-Engine context.
+**The crash is NOT related to the skybox code** - it occurs before any skybox code runs. This appears to be a pre-existing issue or environmental problem with GLFW initialization in the Nova-Engine context.
 
 Once `glfwInit()` is fixed, the skybox should work immediately without any code changes (just re-enable the initialization in Viewport3D::Init()).

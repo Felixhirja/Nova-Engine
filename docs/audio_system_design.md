@@ -2,7 +2,7 @@
 
 ## Overview
 
-Star Engine's audio system provides comprehensive audio playback capabilities including:
+Nova Engine's audio system provides comprehensive audio playback capabilities including:
 - **Sound effects (SFX)** - One-shot and looping sounds for gameplay events
 - **Background music** - Streaming music with crossfading and playlists
 - **Spatial audio** - 3D positioned sounds with distance attenuation

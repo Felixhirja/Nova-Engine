@@ -1,7 +1,7 @@
 # Solar System Generation - Task Breakdown
 
 ## Overview
-This document tracks the implementation progress of the procedural solar system generation feature for Star-Engine. Follow the phases sequentially for best results.
+This document tracks the implementation progress of the procedural solar system generation feature for Nova-Engine. Follow the phases sequentially for best results.
 
 ---
 

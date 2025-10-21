@@ -1,7 +1,7 @@
 # Retained-Mode Rendering Implementation
 
 ## Overview
-Successfully converted immediate-mode OpenGL drawing to retained-mode mesh abstraction in Star-Engine, eliminating per-frame geometry rebuilding and improving rendering performance.
+Successfully converted immediate-mode OpenGL drawing to retained-mode mesh abstraction in Nova-Engine, eliminating per-frame geometry rebuilding and improving rendering performance.
 
 ## Implementation Date
 2025-01-10
@@ -219,7 +219,7 @@ void Viewport3D::ReleaseMeshes() {
 ## Testing Status
 
 - ✅ **Compilation**: All files compile without errors
-- ✅ **Linking**: star-engine.exe builds successfully
+- ✅ **Linking**: nova-engine.exe builds successfully
 - ✅ **Visual testing**: HUD renders correctly with cached meshes
 - ⚠️ **Performance testing**: Needs benchmarking (see next steps)
 

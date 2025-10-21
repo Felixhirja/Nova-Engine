@@ -49,7 +49,7 @@
 - ✅ Supports thousands of instances per call (asteroid belts, debris fields, hangar scaffolding).
 - ✅ CPU-side culling hook to drop instances outside camera frustum.
 
-### Integration Steps for Star-Engine
+### Integration Steps for Nova-Engine
 
 1. **Pull in graphics subsystem files** (above) into repository.
 2. **Update build system** (`Makefile`, Visual Studio project) to compile new source files and include directories.

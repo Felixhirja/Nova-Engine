@@ -44,7 +44,7 @@ GLAD_OBJ := $(patsubst %.c,%.o,$(GLAD_SRC))
 endif
 
 OBJ := $(filter-out src/test_sdl.o src/main_test.o, $(patsubst %.cpp,%.o,$(SRC)))
-TARGET := star-engine
+TARGET := nova-engine
 
 all: $(TARGET)
 

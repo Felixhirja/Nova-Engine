@@ -52,7 +52,7 @@ class MenuSystem {
 ```
 
 ### 2. MainMenu Implementation (`src/MainMenu.h/cpp`)
-The **Star Engine main menu** with game-specific functionality.
+The **Nova Engine main menu** with game-specific functionality.
 
 **Menu Items**:
 1. 🎮 **New Game** - Start a new adventure

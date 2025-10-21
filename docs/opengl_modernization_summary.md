@@ -1,10 +1,10 @@
 # OpenGL Modernization Progress Report
-**Star Engine - Session Summary**
+**Nova Engine - Session Summary**
 *October 10, 2025*
 
 ## 🎯 Mission Accomplished
 
-Successfully modernized Star Engine from **legacy OpenGL 2.1** to **OpenGL 4.6** in a single session!
+Successfully modernized Nova Engine from **legacy OpenGL 2.1** to **OpenGL 4.6** in a single session!
 
 ## ✅ Completed Phases (1-3)
 
@@ -263,4 +263,4 @@ Max Uniform Block Size: 65,536 bytes (64 KB)
 ---
 
 *Session completed October 10, 2025*  
-*Star Engine is now ready for modern graphics development! 🌟*
+*Nova Engine is now ready for modern graphics development! 🌟*

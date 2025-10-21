@@ -1,6 +1,6 @@
 # Spaceship Class Taxonomy
 
-This document defines the baseline taxonomy for player-flyable and AI-controlled spacecraft within Star Engine. It captures the signature traits, baseline statistics, progression tiers, and faction-specific variants for each major class.
+This document defines the baseline taxonomy for player-flyable and AI-controlled spacecraft within Nova Engine. It captures the signature traits, baseline statistics, progression tiers, and faction-specific variants for each major class.
 
 ## Shared Terminology
 

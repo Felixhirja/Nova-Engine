@@ -1,7 +1,7 @@
 # Shader System Quick Reference
 
 ## Overview
-The shader system provides a modern programmable rendering pipeline for Star-Engine, enabling advanced visual effects while maintaining compatibility with older hardware.
+The shader system provides a modern programmable rendering pipeline for Nova-Engine, enabling advanced visual effects while maintaining compatibility with older hardware.
 
 ## Quick Start
 

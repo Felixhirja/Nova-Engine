@@ -325,5 +325,5 @@ Good luck building your procedural universe! 🌌✨🚀
 ---
 
 *Created: [Current Date]*  
-*Framework Version: Star-Engine v0.1*  
+*Framework Version: Nova-Engine v0.1*  
 *Feature: Solar System Generation*

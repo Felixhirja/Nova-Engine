@@ -1,4 +1,4 @@
-# Star-Engine Modding System Design
+# Nova-Engine Modding System Design
 
 **Document Version:** 1.0  
 **Date:** October 10, 2025  
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-This document outlines a comprehensive modding system for Star-Engine that will enable community-created content including custom ships, solar systems, missions, and gameplay modifications. The system is designed to be:
+This document outlines a comprehensive modding system for Nova-Engine that will enable community-created content including custom ships, solar systems, missions, and gameplay modifications. The system is designed to be:
 
 - **Safe**: Sandboxed scripting with controlled API access
 - **Performant**: Hot-reloading without full engine restarts
@@ -33,7 +33,7 @@ This document outlines a comprehensive modding system for Star-Engine that will 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Star-Engine Core                          │
+│                    Nova-Engine Core                          │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
 │  ┌────────────────┐  ┌──────────────┐  ┌─────────────────┐│
@@ -98,7 +98,7 @@ Scripts   Assets
 #include <string>
 #include <vector>
 
-namespace StarEngine {
+namespace NovaEngine {
 namespace Modding {
 
 // Plugin ABI version for compatibility checking
@@ -161,7 +161,7 @@ typedef void (*DestroyPluginFunc)(IPlugin*);
     }
 
 } // namespace Modding
-} // namespace StarEngine
+} // namespace NovaEngine
 ```
 
 ### 1.2 Plugin Manager
@@ -173,7 +173,7 @@ typedef void (*DestroyPluginFunc)(IPlugin*);
 #include <unordered_map>
 #include <memory>
 
-namespace StarEngine {
+namespace NovaEngine {
 namespace Modding {
 
 class PluginManager {
@@ -220,7 +220,7 @@ private:
 };
 
 } // namespace Modding
-} // namespace StarEngine
+} // namespace NovaEngine
 ```
 
 **Key Features:**
@@ -237,7 +237,7 @@ private:
 #include "modding/IPlugin.h"
 #include <iostream>
 
-using namespace StarEngine::Modding;
+using namespace NovaEngine::Modding;
 
 class ExamplePlugin : public IPlugin {
 public:
@@ -262,7 +262,7 @@ public:
         return {
             "Example Plugin",
             "1.0.0",
-            "Star-Engine Team",
+            "Nova-Engine Team",
             "Demonstrates plugin system",
             PluginType::Gameplay,
             {},  // No dependencies
@@ -307,7 +307,7 @@ extern "C" {
 #include <unordered_map>
 #include <functional>
 
-namespace StarEngine {
+namespace NovaEngine {
 namespace Modding {
 
 class ScriptManager {
@@ -352,7 +352,7 @@ private:
 };
 
 } // namespace Modding
-} // namespace StarEngine
+} // namespace NovaEngine
 ```
 
 ### 2.3 Lua API Bindings
@@ -489,7 +489,7 @@ void SetupSandbox() {
 #include <atomic>
 #include <unordered_map>
 
-namespace StarEngine {
+namespace NovaEngine {
 namespace Modding {
 
 enum class AssetType {
@@ -547,7 +547,7 @@ private:
 };
 
 } // namespace Modding
-} // namespace StarEngine
+} // namespace NovaEngine
 ```
 
 ### 3.2 Hot-Reload Implementation
@@ -665,7 +665,7 @@ void WatchThreadFunc() {
 #include <unordered_map>
 #include "ecs/EntityManagerV2.h"
 
-namespace StarEngine {
+namespace NovaEngine {
 namespace Modding {
 
 struct ComponentTemplate {
@@ -710,7 +710,7 @@ private:
 };
 
 } // namespace Modding
-} // namespace StarEngine
+} // namespace NovaEngine
 ```
 
 ### 4.2 JSON Entity Templates
@@ -846,7 +846,7 @@ private:
 #include "ecs/EntityManagerV2.h"
 #include <vector>
 
-namespace StarEngine {
+namespace NovaEngine {
 namespace Modding {
 
 enum class EditorMode {
@@ -931,7 +931,7 @@ private:
 };
 
 } // namespace Modding
-} // namespace StarEngine
+} // namespace NovaEngine
 ```
 
 ### 5.2 Level File Format
@@ -1184,7 +1184,7 @@ git clone https://github.com/ocornut/imgui.git
 ### 7.2 Directory Structure
 
 ```
-Star-Engine/
+Nova-Engine/
 ├── src/
 │   ├── modding/
 │   │   ├── IPlugin.h
@@ -1572,7 +1572,7 @@ docs/tutorials/06_advanced_scripting.md
 
 **GitHub Repository Structure:**
 ```
-star-engine-mods/
+nova-engine-mods/
 ├── README.md
 ├── ships/
 │   ├── battlecruiser_pack/
@@ -1722,4 +1722,4 @@ This modding system design provides:
 
 **Document End**
 
-*For questions or suggestions, contact the Star-Engine development team.*
+*For questions or suggestions, contact the Nova-Engine development team.*

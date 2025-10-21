@@ -1,5 +1,5 @@
 # Phase 4 Progress Summary
-**Star Engine - Modern Rendering Architecture Migration**
+**Nova Engine - Modern Rendering Architecture Migration**
 *Updated: October 10, 2025*
 
 ## ✅ Completed: Phase 4.1-4.3 (Particle System) + Phase 4.4 (UIBatcher Class)

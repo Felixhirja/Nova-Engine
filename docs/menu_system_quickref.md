@@ -14,7 +14,7 @@
 - `src/MenuSystem.cpp` (186 lines) - Navigation & animation logic
 
 ### Main Menu
-- `src/MainMenu.h` (67 lines) - Star Engine main menu
+- `src/MainMenu.h` (67 lines) - Nova Engine main menu
 - `src/MainMenu.cpp` (98 lines) - Callbacks & input handling
 
 ### Rendering

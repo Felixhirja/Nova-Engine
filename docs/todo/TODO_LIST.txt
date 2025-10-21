@@ -1,4 +1,4 @@
-Star-Engine Development Roadmap - Next Steps
+Nova-Engine Development Roadmap - Next Steps
 ==========================================
 
 *** STAR CITIZEN-STYLE SPACESHIP GAME PROJECT ***
@@ -155,9 +155,9 @@ IMMEDIATE FIXES REQUIRED (High Priority):
   ✅ Makefile SDL detection removed
 
 ✅ Headless Mode Implementation [COMPLETED 2025-10-10]
-  ✅ Environment variable: STAR_ENGINE_HEADLESS="1"
+  ✅ Environment variable: NOVA_ENGINE_HEADLESS="1"
   ✅ Bypasses GLFW/OpenGL initialization
-  ✅ Frame limiter: STAR_ENGINE_MAX_FRAMES (default: 300)
+  ✅ Frame limiter: NOVA_ENGINE_MAX_FRAMES (default: 300)
   ✅ All game logic runs correctly without graphics
   ✅ Input system handles null window gracefully
   ✅ Viewport3D::Render() skips rendering in headless mode
@@ -873,7 +873,7 @@ See docs/todo/TODO_IMPROVEMENTS.md for detailed 2025-10-10 fixes and improvement
 See docs/ folder for comprehensive system documentation
 See todo_*.txt files for system-specific task breakdowns
 
-This roadmap provides a comprehensive plan for evolving Star-Engine from a basic 3D engine into a full-featured game development platform. Priorities should be adjusted based on user feedback, performance requirements, and development resources available.
+This roadmap provides a comprehensive plan for evolving Nova-Engine from a basic 3D engine into a full-featured game development platform. Priorities should be adjusted based on user feedback, performance requirements, and development resources available.
 
 COMPLETION TRACKING (2025-10-10):
 ---------------------------------
@@ -893,4 +893,4 @@ Next priorities:
 4. Add DLL checker/copier script
 5. Fix compiler warnings
 
-This roadmap provides a comprehensive plan for evolving Star-Engine from a basic 3D engine into a full-featured game development platform. Priorities should be adjusted based on user feedback, performance requirements, and development resources available.
+This roadmap provides a comprehensive plan for evolving Nova-Engine from a basic 3D engine into a full-featured game development platform. Priorities should be adjusted based on user feedback, performance requirements, and development resources available.

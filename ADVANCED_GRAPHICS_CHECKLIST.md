@@ -115,7 +115,7 @@ make
 # Should see:
 # Compiling src/graphics/ShaderProgram.cpp
 # Compiling src/graphics/Skybox.cpp
-# Linking star-engine
+# Linking nova-engine
 ```
 
 ### Step 4: Test
@@ -324,14 +324,14 @@ Phase 1 is **complete** when:
 make clean && make
 
 # Run engine
-./star-engine.exe
+./nova-engine.exe
 
 # Test for 5 minutes (memory leak check)
-./star-engine.exe
+./nova-engine.exe
 # (Let it run, watch memory usage in Task Manager)
 
 # Check for errors
-./star-engine.exe 2>&1 | grep -i error
+./nova-engine.exe 2>&1 | grep -i error
 ```
 
 ---

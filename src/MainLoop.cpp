@@ -302,7 +302,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     const std::chrono::duration<double> fixedDt(1.0 / updateHz);
     const double maxFPS = 144.0;  // INCREASED to 144 to allow higher FPS
     const std::chrono::duration<double> minFrameTime(1.0 / maxFPS);
-    std::cout << "Star Engine Fixed-Timestep Main Loop (update @ " << updateHz << " Hz)" << std::endl;
+    std::cout << "Nova Engine Fixed-Timestep Main Loop (update @ " << updateHz << " Hz)" << std::endl;
 
     auto demoStart = clock::now();
     auto previous = demoStart;
@@ -315,11 +315,11 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     const double turnSpeed = 2.0; // radians per second
 
     // Check for headless mode with frame limit
-    const char* headlessEnv = std::getenv("STAR_ENGINE_HEADLESS");
+    const char* headlessEnv = std::getenv("NOVA_ENGINE_HEADLESS");
     bool headlessMode = (headlessEnv != nullptr && std::string(headlessEnv) == "1");
     int maxFrames = -1; // -1 means unlimited
     if (headlessMode) {
-        const char* maxFramesEnv = std::getenv("STAR_ENGINE_MAX_FRAMES");
+        const char* maxFramesEnv = std::getenv("NOVA_ENGINE_MAX_FRAMES");
         if (maxFramesEnv != nullptr) {
             maxFrames = std::atoi(maxFramesEnv);
             std::cout << "Headless mode: will run for " << maxFrames << " frames then exit" << std::endl;
@@ -732,7 +732,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                     // If STAR_CAPTURE env var is set, dump the renderer contents to BMP for inspection
                     const char* cap = std::getenv("STAR_CAPTURE");
                     if (cap && std::string(cap) == "1") {
-                        viewport->CaptureToBMP("/workspaces/Star-Engine/renderer_capture.bmp");
+                        viewport->CaptureToBMP("/workspaces/Nova-Engine/renderer_capture.bmp");
                     }
                     // present the final frame (marker and HUD included)
                     viewport->Present();
@@ -792,7 +792,7 @@ void MainLoop::ApplyCameraPreset(size_t index) {
 }
 
 void MainLoop::Shutdown() {
-    if (running) { std::cout << "Star Engine Shutting down..." << std::endl; running = false; }
+    if (running) { std::cout << "Nova Engine Shutting down..." << std::endl; running = false; }
     if (viewport) { viewport->Shutdown(); }
     // unique_ptr will free sceneManager
 }
