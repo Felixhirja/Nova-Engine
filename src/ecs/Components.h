@@ -52,6 +52,11 @@ struct AnimationState : public Component {
     double frameTimer = 0.0;
     double frameDuration = 0.1;
     bool looping = true;
+    int startFrame = 0;
+    int endFrame = 0;
+    bool playing = true;
+    bool pingPong = false;
+    int playbackDirection = 1;
 };
 
 struct Name : public Component {
