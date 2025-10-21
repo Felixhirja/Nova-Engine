@@ -1,4 +1,5 @@
 #include "Simulation.h"
+#include "ecs/AnimationSystem.h"
 #include "ecs/MovementSystem.h"
 #include "ecs/PlayerControlSystem.h"
 #include "TargetingSystem.h"
@@ -286,6 +287,7 @@ void Simulation::Init(EntityManager* externalEm) {
     systemManager.Clear();
     systemManager.RegisterSystem<PlayerControlSystem>();
     systemManager.RegisterSystem<MovementSystem>();
+    systemManager.RegisterSystem<AnimationSystem>();
     systemManager.RegisterSystem<TargetingSystem>();
     systemManager.RegisterSystem<WeaponSystem>();
     systemManager.RegisterSystem<ShieldSystem>();
