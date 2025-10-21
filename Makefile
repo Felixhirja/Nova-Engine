@@ -9,6 +9,10 @@ SHELL = /usr/bin/bash
 # GLAD include path (must come BEFORE system includes)
 GLAD_INCLUDE := -Ilib/glad/include
 
+# Always expose the GLAD headers, even when GLFW is unavailable.
+CXXFLAGS += $(GLAD_INCLUDE)
+CFLAGS += $(GLAD_INCLUDE)
+
 GLFW_CFLAGS := $(shell pkg-config --cflags glfw3 2>/dev/null)
 GLFW_LIBS  := $(shell pkg-config --libs glfw3 2>/dev/null)
 
@@ -21,9 +25,8 @@ endif
 endif
 
 ifneq ($(GLFW_LIBS),)
-	CXXFLAGS += $(GLAD_INCLUDE) $(GLFW_CFLAGS) -DUSE_GLFW
-	CFLAGS += $(GLAD_INCLUDE)
-	LDLIBS += $(GLFW_LIBS)
+        CXXFLAGS += $(GLFW_CFLAGS) -DUSE_GLFW
+        LDLIBS += $(GLFW_LIBS)
 	LDLIBS += -lopengl32 -lglu32 -lfreeglut
 $(info GLFW detected: building with GLFW support)
 else
