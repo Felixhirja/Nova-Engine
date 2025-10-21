@@ -24,7 +24,7 @@ Nova-Engine relies on an OpenGL 3.x capable GPU and the following libraries:
 - MinGW-w64 toolchain (on Windows)
 
 > **Tip:** Pre-built DLLs for Windows are tracked in the repository under the
-> root directory. They are primarily meant for local testing and continuous
+> `lib/` directory. They are primarily meant for local testing and continuous
 > integration artifacts.
 
 ## Getting started
@@ -113,6 +113,7 @@ documentation. Supporting assets are grouped into dedicated folders:
 - `assets/`: Game-ready assets that are loaded at runtime
 - `docs/`: Design notes, guides, and background documentation. Historical to-do
   notes live in `docs/todo/`
+- `lib/`: Bundled Windows runtime DLLs for convenience when running locally
 - `tests/`: Automated and manual test sources and binaries
 
 ## Testing
