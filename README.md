@@ -20,7 +20,7 @@ Nova-Engine relies on an OpenGL 3.x capable GPU and the following libraries:
 
 - GLFW 3.x (windowing, input)
 - OpenGL / GLU
-- GLAD (core OpenGL function loader, bundled in `src/glad/`)
+- GLAD (core OpenGL function loader, bundled in `lib/glad/`)
 - MinGW-w64 toolchain (on Windows)
 
 > **Tip:** Pre-built DLLs for Windows are tracked in the repository under the
