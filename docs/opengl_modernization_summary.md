@@ -38,7 +38,7 @@ Modern GPUs (2024-2025 hardware) have poor support for ancient OpenGL 2.1. Reque
 **What Was Done**:
 1. **Makefile Updates**:
    - Added `gcc` compiler for C code
-   - Added `-Isrc/glad/include` (before system includes)
+   - Added `-Ilib/glad/include` (before system includes)
    - Compiled `glad.c` separately
    - Linked `glad.o` into executable
 
