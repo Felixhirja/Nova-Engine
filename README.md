@@ -77,6 +77,17 @@ Use WASD to move and the mouse to look around. Press Q to quit.
 - `src/ResourceManager.cpp`: Asset loading
 - `src/ecs/`: Entity-component system
 
+## Repository layout
+
+The repository root now concentrates on build scripts, source code, and high-level
+documentation. Supporting assets are grouped into dedicated folders:
+
+- `artifacts/`: Archived screenshots, capture dumps, logs, and other diagnostics.
+- `assets/`: Game-ready assets that are loaded at runtime.
+- `docs/`: Design notes, guides, and background documentation. Historical to-do
+  notes live in `docs/todo/`.
+- `tests/`: Automated and manual test sources and binaries.
+
 ## Migration from SDL
 
 This engine was previously using SDL2 for windowing and input. It has been migrated to GLFW for better 3D graphics performance and cross-platform compatibility. The build system automatically detects GLFW and compiles with OpenGL support.
