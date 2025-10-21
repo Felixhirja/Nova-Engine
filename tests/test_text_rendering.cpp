@@ -3,11 +3,21 @@
 #include <cassert>
 #include <cmath>
 
-#ifdef _WIN32
-#include <GL/glut.h>
-#else
-#include <GL/glut.h>
+#if defined(__has_include)
+#  if __has_include(<GL/glut.h>)
+#    include <GL/glut.h>
+#    define STAR_ENGINE_HAS_GLUT 1
+#  endif
+#elif defined(USE_GLFW)
+#  include <GL/glut.h>
+#  define STAR_ENGINE_HAS_GLUT 1
 #endif
+
+#ifndef STAR_ENGINE_HAS_GLUT
+#  define STAR_ENGINE_HAS_GLUT 0
+#endif
+
+#if STAR_ENGINE_HAS_GLUT && defined(USE_GLFW)
 
 /**
  * Test suite for TextRenderer
@@ -272,3 +282,14 @@ int main() {
     
     return 0;
 }
+
+#else // !STAR_ENGINE_HAS_GLUT || !USE_GLFW
+
+int main() {
+    std::cout << "=== TextRenderer Test Suite (Skipped) ===" << std::endl;
+    std::cout << "OpenGL/GLUT dependencies are unavailable in this build environment." << std::endl;
+    std::cout << "Install freeglut (or ensure USE_GLFW is enabled) to run the full text rendering tests." << std::endl;
+    return 0;
+}
+
+#endif // STAR_ENGINE_HAS_GLUT && defined(USE_GLFW)
