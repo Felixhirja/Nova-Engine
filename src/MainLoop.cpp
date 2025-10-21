@@ -680,6 +680,13 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                     }
                 }
 
+                // Ensure sprite metadata buffer is uploaded once when updated
+#ifdef USE_GLFW
+                if (resourceManager) {
+                    resourceManager->SyncSpriteMetadataGPU();
+                }
+#endif
+
                 // Render from ECS: iterate all entities that have a Sprite component
                 auto sprites = entityManager->GetAllWith<Sprite>();
                 for (auto &kv : sprites) {

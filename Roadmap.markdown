@@ -28,7 +28,7 @@ Milestone 1 – Rendering & Visuals
 - [x] Replace immediate-mode drawing with retained-mode mesh abstraction
   - ParticleRenderer fully live; UIBatcher handling menu background with HUD batching queued next.
 - [x] Basic lighting pass (ambient + single directional light) — powered by `shaders/core/basic.vert/frag`.
-- [ ] Upload sprite/texture metadata to GPU once and reuse per frame
+- [x] Upload sprite/texture metadata to GPU once and reuse per frame
 - [x] Prototype post-process pipeline (letterbox HUD overlay, simple bloom toggle)
 - [x] Author shared material system with instancing support for repeated geometry (see `docs/material_system_summary.md`)
 - [ ] Add GPU validation & debug markers to aid graphics driver debugging sessions
