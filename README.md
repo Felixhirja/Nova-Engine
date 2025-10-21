@@ -76,7 +76,7 @@ Launch the executable directly or use the helper script on Windows:
 ./nova-engine
 
 # Windows
-run_engine.bat
+scripts\\run_engine.bat
 ```
 
 Use WASD to move and the mouse to look around. Press Q to quit.
@@ -113,6 +113,7 @@ documentation. Supporting assets are grouped into dedicated folders:
 - `assets/`: Game-ready assets that are loaded at runtime
 - `docs/`: Design notes, guides, and background documentation. Historical to-do
   notes live in `docs/todo/`
+- `scripts/`: Helper scripts for running builds, tests, and asset pipelines
 - `lib/`: Bundled Windows runtime DLLs for convenience when running locally
 - `tests/`: Automated and manual test sources and binaries
 

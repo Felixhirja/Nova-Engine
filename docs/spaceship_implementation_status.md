@@ -57,7 +57,7 @@ Your spaceship system has **substantial infrastructure** already built!
 ### 6. Art Pipeline ✅ COMPLETE
 - [x] Modular asset structure (`assets/ship_modules`)
 - [x] Manifest schema defined
-- [x] Build pipeline script (`tools/build_ship_art.py`)
+- [x] Build pipeline script (`scripts/build_ship_art.py`)
 - **Documentation:** `docs/ship_art_pipeline.md`
 - **Status:** **100% Complete** (Asset creation pending)
 

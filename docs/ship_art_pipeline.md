@@ -42,7 +42,7 @@ All new modules must be registered in `assets/ship_modules/ship_art_manifest.jso
 5. **Run the pipeline** to validate the manifest and assemble the runtime bundle:
 
    ```powershell
-   python tools\build_ship_art.py
+   python scripts\build_ship_art.py
    ```
 
    Use `--dry-run` when you want validation without copying files.
@@ -96,9 +96,9 @@ The build script validates paths, checks for duplicate LOD levels, and rewrites 
 
 | Action | Command |
 | --- | --- |
-| Validate manifest only | `python tools\build_ship_art.py --dry-run` |
-| Build bundle with defaults | `python tools\build_ship_art.py` |
-| Custom output directory | `python tools\build_ship_art.py --output-dir build\ship_art_debug` |
+| Validate manifest only | `python scripts\build_ship_art.py --dry-run` |
+| Build bundle with defaults | `python scripts\build_ship_art.py` |
+| Custom output directory | `python scripts\build_ship_art.py --output-dir build\ship_art_debug` |
 
 The script prints the number of packaged modules and writes the compiled manifest location on success. Any validation errors are emitted to stderr with actionable messages.
 
