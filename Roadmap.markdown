@@ -11,6 +11,7 @@ Recent highlights
 - ✅ Modern shader stack landed (`ShaderProgram`, Blinn–Phong lighting, procedural skybox) with integration notes captured in `docs/shader_system_implementation_summary.md` and `SKYBOX_INTEGRATION_STATUS.md`.
 - ✅ Particle renderer migrated to VAO/VBO, with the first UIBatcher rollout removing menu background immediate-mode calls (`docs/phase4_progress.md`, `docs/uibatcher_implementation.md`).
 - ✅ Physics ECS extensions shipped, delivering impulse-based collision response and component coverage for gameplay systems (`docs/physics_implementation_summary.md`).
+- ✅ Shared material system with instanced rendering reference dropped into source package—see `docs/material_system_summary.md` for contents and integration hooks.
 
 Milestone 0 – Core Stability (in progress)
 -----------------------------------------
@@ -29,7 +30,7 @@ Milestone 1 – Rendering & Visuals
 - [x] Basic lighting pass (ambient + single directional light) — powered by `shaders/core/basic.vert/frag`.
 - [ ] Upload sprite/texture metadata to GPU once and reuse per frame
 - [x] Prototype post-process pipeline (letterbox HUD overlay, simple bloom toggle)
-- [ ] Author shared material system with instancing support for repeated geometry
+- [x] Author shared material system with instancing support for repeated geometry (see `docs/material_system_summary.md`)
 - [ ] Add GPU validation & debug markers to aid graphics driver debugging sessions
 - [ ] Batch material parameter uploads to minimize state changes across draw calls
 - [ ] Add renderdoc capture scripts + golden-frame comparisons to catch regressions
