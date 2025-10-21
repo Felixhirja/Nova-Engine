@@ -17,6 +17,8 @@ struct Vector3 {
     Vector3 operator-(const Vector3& other) const;
     Vector3 operator*(double scalar) const;
     double Dot(const Vector3& other) const;
+    Vector3 Cross(const Vector3& other) const;
+    double Distance(const Vector3& other) const;
 };
 
 // ============================================================================

@@ -30,3 +30,17 @@ Vector3 Vector3::operator*(double scalar) const {
 double Vector3::Dot(const Vector3& other) const {
     return x * other.x + y * other.y + z * other.z;
 }
+
+Vector3 Vector3::Cross(const Vector3& other) const {
+    return Vector3(
+        y * other.z - z * other.y,
+        z * other.x - x * other.z,
+        x * other.y - y * other.x);
+}
+
+double Vector3::Distance(const Vector3& other) const {
+    double dx = x - other.x;
+    double dy = y - other.y;
+    double dz = z - other.z;
+    return std::sqrt(dx * dx + dy * dy + dz * dz);
+}

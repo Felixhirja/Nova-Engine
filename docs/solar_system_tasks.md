@@ -10,8 +10,8 @@ This document tracks the implementation progress of the procedural solar system 
 ### Task 1.1: Vector3 and Basic Math
 - [x] Create Vector3 structure in CelestialBody.h
 - [x] Implement basic vector operations (add, subtract, multiply, dot product)
-- [ ] Add cross product and distance calculations
-- [ ] Unit tests for vector math
+- [x] Add cross product and distance calculations
+- [x] Unit tests for vector math
 
 **Estimated Time:** 2-4 hours  
 **Priority:** HIGH
