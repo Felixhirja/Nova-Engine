@@ -1,5 +1,7 @@
 # Star Engine - TODO & Improvements
 
+_Relocated to `docs/todo/` to keep historical notes together._
+
 ## Critical Issues Fixed (2025-10-10)
 
 ### ✅ Completed
