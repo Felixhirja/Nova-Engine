@@ -1,7 +1,16 @@
 Star-Engine Roadmap
 ====================
 
+_Last updated: October 10, 2025_
+
 This roadmap breaks down the next waves of engine work into digestible milestones.  Each milestone is scoped so it can be tackled in 1–4 week sprints while keeping an eye on the long-term vision captured in `TODO_LIST.txt`.
+
+Recent highlights
+-----------------
+
+- ✅ Modern shader stack landed (`ShaderProgram`, Blinn–Phong lighting, procedural skybox) with integration notes captured in `docs/shader_system_implementation_summary.md` and `SKYBOX_INTEGRATION_STATUS.md`.
+- ✅ Particle renderer migrated to VAO/VBO, with the first UIBatcher rollout removing menu background immediate-mode calls (`docs/phase4_progress.md`, `docs/uibatcher_implementation.md`).
+- ✅ Physics ECS extensions shipped, delivering impulse-based collision response and component coverage for gameplay systems (`docs/physics_implementation_summary.md`).
 
 Milestone 0 – Core Stability (in progress)
 -----------------------------------------
@@ -16,24 +25,25 @@ Milestone 1 – Rendering & Visuals
 ---------------------------------
 
 - [x] Replace immediate-mode drawing with retained-mode mesh abstraction
-- [ ] Basic lighting pass (ambient + single directional light)
+  - ParticleRenderer fully live; UIBatcher handling menu background with HUD batching queued next.
+- [x] Basic lighting pass (ambient + single directional light) — powered by `shaders/core/basic.vert/frag`.
 - [ ] Upload sprite/texture metadata to GPU once and reuse per frame
 - [x] Prototype post-process pipeline (letterbox HUD overlay, simple bloom toggle)
 - [ ] Author shared material system with instancing support for repeated geometry
 - [ ] Add GPU validation & debug markers to aid graphics driver debugging sessions
 - [ ] Batch material parameter uploads to minimize state changes across draw calls
 - [ ] Add renderdoc capture scripts + golden-frame comparisons to catch regressions
-- [ ] Implement skybox and environment probe system for space scene reflections
+- [ ] Implement skybox and environment probe system for space scene reflections (skybox renderer implemented; runtime validation blocked on GLFW crash; probes TBD)
 
 Milestone 2 – Simulation & Gameplay Systems
 -------------------------------------------
 
 - [x] Extend ECS with physics-friendly components (colliders, forces)
 - [ ] Author movement bounds/volumes from data files instead of hard-coded values
-- [ ] Implement collision response prototype (swept AABB)
+- [x] Implement collision response prototype (swept AABB) — impulse-based solver shipped with `PhysicsSystem`.
 - [ ] Record deterministic replays for regression testing
 - [ ] Layer gameplay events over ECS (damage, status effects, scripted triggers)
-- [ ] Build deterministic random seed manager for reproducible combat scenarios
+- [ ] Build deterministic random seed manager for reproducible combat scenarios (solar-system seeding utilities exist; combat hooks still needed)
 - [ ] Stand up AI behavior trees with reusable maneuver and targeting nodes
 - [ ] Bake navigation grids/volumes per scene and expose steering helpers to ECS
 - [ ] Create mission scripting layer with branching objectives and fail-states
