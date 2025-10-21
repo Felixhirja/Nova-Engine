@@ -5,6 +5,8 @@
 #include "ecs/EntityManager.h"
 #include "ecs/System.h"
 
+#include <string>
+
 class Simulation {
 public:
     Simulation();
@@ -24,6 +26,12 @@ public:
     void SetUseThrustMode(bool thrustMode);
     void ConfigureMovementParameters(const MovementParameters& params);
     const MovementParameters& GetMovementParameters() const { return movementConfig; }
+    void ConfigureMovementBounds(const MovementBounds& bounds);
+    const MovementBounds& GetMovementBounds() const { return movementBoundsConfig; }
+    void SetMovementBoundsConfigPath(const std::string& path);
+    void SetMovementBoundsProfile(const std::string& profile);
+    const std::string& GetMovementBoundsConfigPath() const { return movementBoundsConfigPath; }
+    const std::string& GetMovementBoundsProfile() const { return movementBoundsProfile; }
 
 private:
     // Basic simulation state implemented with ECS
@@ -45,6 +53,10 @@ private:
     bool inputRight;
     SystemManager systemManager;
     MovementParameters movementConfig;
+    MovementBounds movementBoundsConfig;
+    std::string movementBoundsConfigPath;
+    std::string movementBoundsProfile;
+    bool useMovementBoundsFile;
 };
 
 #endif // SIMULATION_H

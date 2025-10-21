@@ -6,11 +6,267 @@
 #include "ShieldSystem.h"
 
 #include <algorithm>
+#include <cctype>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <cmath>
+#include <sstream>
+#include <unordered_map>
+#include <vector>
 
-Simulation::Simulation() : inputForward(false), inputBackward(false), inputUp(false), inputDown(false), inputStrafeLeft(false), inputStrafeRight(false), inputCameraYaw(0.0), prevJumpHeld(false), useThrustMode(false), inputLeft(false), inputRight(false) {
+namespace {
+
+MovementBounds CreateDefaultMovementBounds() {
+    MovementBounds bounds;
+    bounds.minX = -5.0;
+    bounds.maxX = 5.0;
+    bounds.clampX = true;
+    bounds.minY = -5.0;
+    bounds.maxY = 5.0;
+    bounds.clampY = true;
+    bounds.minZ = 0.0;
+    bounds.maxZ = 5.0;
+    bounds.clampZ = true;
+    return bounds;
+}
+
+std::string Trim(const std::string& value) {
+    size_t start = 0;
+    size_t end = value.size();
+    while (start < end && std::isspace(static_cast<unsigned char>(value[start]))) {
+        ++start;
+    }
+    while (end > start && std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+        --end;
+    }
+    return value.substr(start, end - start);
+}
+
+bool ParseBool(const std::string& rawValue, bool& outValue) {
+    std::string value = Trim(rawValue);
+    if (value.empty()) {
+        return false;
+    }
+
+    if (!value.empty() && (value[0] == '#' || value[0] == ';')) {
+        return false;
+    }
+
+    auto commentPos = value.find_first_of("#;");
+    if (commentPos != std::string::npos) {
+        value = Trim(value.substr(0, commentPos));
+    }
+
+    std::string lowered;
+    lowered.reserve(value.size());
+    for (char c : value) {
+        lowered.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    }
+
+    if (lowered == "true" || lowered == "1" || lowered == "yes" || lowered == "on") {
+        outValue = true;
+        return true;
+    }
+    if (lowered == "false" || lowered == "0" || lowered == "no" || lowered == "off") {
+        outValue = false;
+        return true;
+    }
+    return false;
+}
+
+bool ParseDouble(const std::string& rawValue, double& outValue) {
+    std::string value = Trim(rawValue);
+    if (value.empty()) {
+        return false;
+    }
+
+    if (!value.empty() && (value[0] == '#' || value[0] == ';')) {
+        return false;
+    }
+
+    auto commentPos = value.find_first_of("#;");
+    if (commentPos != std::string::npos) {
+        value = Trim(value.substr(0, commentPos));
+    }
+
+    try {
+        size_t idx = 0;
+        outValue = std::stod(value, &idx);
+        return idx == value.size();
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+bool ParseMovementBoundsStream(std::istream& input, std::unordered_map<std::string, MovementBounds>& outProfiles) {
+    std::string line;
+    std::string currentProfile;
+    MovementBounds currentBounds;
+    bool inProfile = false;
+
+    auto commitProfile = [&]() {
+        if (!currentProfile.empty()) {
+            outProfiles[currentProfile] = currentBounds;
+        }
+    };
+
+    while (std::getline(input, line)) {
+        std::string trimmed = Trim(line);
+        if (trimmed.empty() || trimmed[0] == '#' || trimmed[0] == ';') {
+            continue;
+        }
+
+        if (trimmed.front() == '[' && trimmed.back() == ']') {
+            if (inProfile) {
+                commitProfile();
+            }
+            currentProfile = Trim(trimmed.substr(1, trimmed.size() - 2));
+            currentBounds = MovementBounds();
+            inProfile = true;
+            continue;
+        }
+
+        auto equalsPos = trimmed.find('=');
+        if (equalsPos == std::string::npos || !inProfile) {
+            continue;
+        }
+
+        std::string key = Trim(trimmed.substr(0, equalsPos));
+        std::string value = Trim(trimmed.substr(equalsPos + 1));
+
+        if (key.empty()) {
+            continue;
+        }
+
+        double numericValue = 0.0;
+        bool boolValue = false;
+        if (key == "minX") {
+            if (ParseDouble(value, numericValue)) {
+                currentBounds.minX = numericValue;
+            }
+        } else if (key == "maxX") {
+            if (ParseDouble(value, numericValue)) {
+                currentBounds.maxX = numericValue;
+            }
+        } else if (key == "minY") {
+            if (ParseDouble(value, numericValue)) {
+                currentBounds.minY = numericValue;
+            }
+        } else if (key == "maxY") {
+            if (ParseDouble(value, numericValue)) {
+                currentBounds.maxY = numericValue;
+            }
+        } else if (key == "minZ") {
+            if (ParseDouble(value, numericValue)) {
+                currentBounds.minZ = numericValue;
+            }
+        } else if (key == "maxZ") {
+            if (ParseDouble(value, numericValue)) {
+                currentBounds.maxZ = numericValue;
+            }
+        } else if (key == "clampX") {
+            if (ParseBool(value, boolValue)) {
+                currentBounds.clampX = boolValue;
+            }
+        } else if (key == "clampY") {
+            if (ParseBool(value, boolValue)) {
+                currentBounds.clampY = boolValue;
+            }
+        } else if (key == "clampZ") {
+            if (ParseBool(value, boolValue)) {
+                currentBounds.clampZ = boolValue;
+            }
+        }
+    }
+
+    if (inProfile) {
+        commitProfile();
+    }
+
+    return !outProfiles.empty();
+}
+
+bool IsRelativePath(const std::string& path) {
+    if (path.empty()) {
+        return false;
+    }
+    if (path[0] == '/' || path[0] == '\\') {
+        return false;
+    }
+    if (path.size() > 1 && path[1] == ':') {
+        return false;
+    }
+    return true;
+}
+
+std::unordered_map<std::string, MovementBounds> LoadMovementBoundsProfiles(const std::string& path) {
+    std::unordered_map<std::string, MovementBounds> profiles;
+    if (path.empty()) {
+        return profiles;
+    }
+
+    std::vector<std::string> candidates;
+    candidates.push_back(path);
+    if (IsRelativePath(path)) {
+        candidates.push_back("../" + path);
+        candidates.push_back("../../" + path);
+    }
+
+    for (const auto& candidate : candidates) {
+        std::ifstream file(candidate);
+        if (!file.is_open()) {
+            continue;
+        }
+
+        std::unordered_map<std::string, MovementBounds> parsedProfiles;
+        if (ParseMovementBoundsStream(file, parsedProfiles)) {
+            return parsedProfiles;
+        }
+    }
+
+    return profiles;
+}
+
+MovementBounds ResolveMovementBounds(const MovementBounds& fallback, const std::string& path, const std::string& profile) {
+    auto profiles = LoadMovementBoundsProfiles(path);
+    if (profiles.empty()) {
+        return fallback;
+    }
+
+    if (!profile.empty()) {
+        auto it = profiles.find(profile);
+        if (it != profiles.end()) {
+            return it->second;
+        }
+    }
+
+    auto defaultIt = profiles.find("default");
+    if (defaultIt != profiles.end()) {
+        return defaultIt->second;
+    }
+
+    return profiles.begin()->second;
+}
+
+}  // namespace
+
+Simulation::Simulation()
+    : inputForward(false),
+      inputBackward(false),
+      inputUp(false),
+      inputDown(false),
+      inputStrafeLeft(false),
+      inputStrafeRight(false),
+      inputCameraYaw(0.0),
+      prevJumpHeld(false),
+      useThrustMode(false),
+      inputLeft(false),
+      inputRight(false),
+      movementBoundsConfig(CreateDefaultMovementBounds()),
+      movementBoundsConfigPath("assets/config/movement_bounds.ini"),
+      movementBoundsProfile("default"),
+      useMovementBoundsFile(true) {
     activeEm = &em;
 }
 
@@ -64,16 +320,13 @@ void Simulation::Init(EntityManager* externalEm) {
     controller->cameraYaw = 0.0;
     useEm->AddComponent<PlayerController>(playerEntity, controller);
 
-    auto bounds = std::make_shared<MovementBounds>();
-    bounds->minX = -5.0;
-    bounds->maxX = 5.0;
-    bounds->clampX = true;
-    bounds->minY = -5.0;
-    bounds->maxY = 5.0;
-    bounds->clampY = true;
-    bounds->minZ = 0.0;
-    bounds->maxZ = 5.0;
-    bounds->clampZ = true;
+    MovementBounds resolvedBounds = movementBoundsConfig;
+    if (useMovementBoundsFile) {
+        resolvedBounds = ResolveMovementBounds(movementBoundsConfig, movementBoundsConfigPath, movementBoundsProfile);
+    }
+    movementBoundsConfig = resolvedBounds;
+
+    auto bounds = std::make_shared<MovementBounds>(movementBoundsConfig);
     useEm->AddComponent<MovementBounds>(playerEntity, bounds);
 
     auto physics = std::make_shared<PlayerPhysics>();
@@ -198,6 +451,32 @@ void Simulation::ConfigureMovementParameters(const MovementParameters& params) {
         auto movementParams = std::make_shared<MovementParameters>(movementConfig);
         useEm->AddComponent<MovementParameters>(playerEntity, movementParams);
     }
+}
+
+void Simulation::ConfigureMovementBounds(const MovementBounds& bounds) {
+    movementBoundsConfig = bounds;
+    useMovementBoundsFile = false;
+
+    EntityManager* useEm = activeEm ? activeEm : &em;
+    if (!useEm->IsAlive(playerEntity)) {
+        return;
+    }
+
+    if (auto* existing = useEm->GetComponent<MovementBounds>(playerEntity)) {
+        *existing = movementBoundsConfig;
+    } else {
+        auto movementBounds = std::make_shared<MovementBounds>(movementBoundsConfig);
+        useEm->AddComponent<MovementBounds>(playerEntity, movementBounds);
+    }
+}
+
+void Simulation::SetMovementBoundsConfigPath(const std::string& path) {
+    movementBoundsConfigPath = path;
+    useMovementBoundsFile = !movementBoundsConfigPath.empty();
+}
+
+void Simulation::SetMovementBoundsProfile(const std::string& profile) {
+    movementBoundsProfile = profile;
 }
 
 
