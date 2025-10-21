@@ -924,6 +924,7 @@ void Viewport3D::DrawCameraVisual(const class Camera* camera) {
 }
 
 void Viewport3D::DrawCameraMarker(const class Camera* camera) {
+    (void)camera;
     if (!usingSDL) return;
 #ifdef USE_SDL
     if (!sdlRenderer || !camera) return;
@@ -937,11 +938,7 @@ void Viewport3D::DrawCameraMarker(const class Camera* camera) {
 }
 
 #ifdef USE_SDL
-<<<<<<< HEAD
-// Simple 3x5 pixel font for ASCII 0-9, '-' (monochrome) drawn as small rectangles
-=======
 // Simple 3x5 pixel font for ASCII 0-9, '-', '.' (monochrome) drawn as small rectangles
->>>>>>> 46a30c425a1a3ef5e22010c6878f00c26b92f987
 static const uint8_t tinyFont[][5] = {
     {0x1F,0x11,0x11,0x11,0x1F}, // 0
     {0x04,0x06,0x04,0x04,0x07}, // 1
@@ -976,16 +973,16 @@ static void drawTinyCharSDL(SDL_Renderer* r, int x, int y, char c) {
         const uint8_t* glyph = tinyFont[c - '0'];
         drawGlyph(glyph);
     } else if (c == '-') {
-    SDL_Rect px{ x, y + 2*(scale+1), 5*(scale+1), scale };
-    compat_RenderFillRect(r, &px);
+        SDL_Rect px{ x, y + 2 * (scale + 1), 5 * (scale + 1), scale };
+        compat_RenderFillRect(r, &px);
     } else if (c == '.') {
-    SDL_Rect px{ x + 4*(scale+1), y + 4*(scale+1), scale, scale };
-    compat_RenderFillRect(r, &px);
+        SDL_Rect px{ x + 4 * (scale + 1), y + 4 * (scale + 1), scale, scale };
+        compat_RenderFillRect(r, &px);
     } else if (c == '=') {
-    SDL_Rect top{ x, y + 1*(scale+1), 5*(scale+1), scale };
-    SDL_Rect bot{ x, y + 3*(scale+1), 5*(scale+1), scale };
-    compat_RenderFillRect(r, &top);
-    compat_RenderFillRect(r, &bot);
+        SDL_Rect top{ x, y + 1 * (scale + 1), 5 * (scale + 1), scale };
+        SDL_Rect bot{ x, y + 3 * (scale + 1), 5 * (scale + 1), scale };
+        compat_RenderFillRect(r, &top);
+        compat_RenderFillRect(r, &bot);
     } else if (c == 'Z') {
         const uint8_t glyphZ[5] = {0x1F, 0x02, 0x04, 0x08, 0x1F};
         drawGlyph(glyphZ);
@@ -1003,10 +1000,10 @@ static void drawTinyCharSDL(SDL_Renderer* r, int x, int y, char c) {
         drawGlyph(glyphX);
     } else if (c == ':') {
         // draw two dots for colon
-    SDL_Rect d1{ x + 2*(scale+1), y + 1*(scale+1), scale/2, scale/2 };
-    SDL_Rect d2{ x + 2*(scale+1), y + 3*(scale+1), scale/2, scale/2 };
-    compat_RenderFillRect(r, &d1);
-    compat_RenderFillRect(r, &d2);
+        SDL_Rect d1{ x + 2 * (scale + 1), y + 1 * (scale + 1), scale / 2, scale / 2 };
+        SDL_Rect d2{ x + 2 * (scale + 1), y + 3 * (scale + 1), scale / 2, scale / 2 };
+        compat_RenderFillRect(r, &d1);
+        compat_RenderFillRect(r, &d2);
     } else if (c == ' ' || c == ':') {
         // leave blank for space/colon (handled below if needed)
     } else {
@@ -1066,6 +1063,11 @@ static void drawSevenSegDigit(SDL_Renderer* r, int x, int y, int segLen, int seg
 #endif // USE_SDL
 
 void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ) {
+    (void)camera;
+    (void)fps;
+    (void)playerX;
+    (void)playerY;
+    (void)playerZ;
     if (!usingSDL) {
 #ifdef USE_GLFW
         if (useGL && glfwWindow) {
@@ -1658,7 +1660,7 @@ void Viewport3D::RenderParticles(const class Camera* camera, const class VisualF
     }
 
     if (!particleRenderer_) {
-        particleRenderer_ = std::make_unique<ParticleRenderer>();
+        particleRenderer_.reset(new ParticleRenderer());
         if (!particleRenderer_->Init()) {
             std::cerr << "Viewport3D: Failed to initialize ParticleRenderer" << std::endl;
             particleRenderer_.reset();
