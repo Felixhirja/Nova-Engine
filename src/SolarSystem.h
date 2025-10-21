@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <vector>
 #include "CelestialBody.h"
 #include "Mesh.h"
@@ -40,7 +41,7 @@ public:
      * @brief Set the central star
      * @param starEntity Entity ID of the star
      */
-    void SetStarEntity(Entity starEntity) { starEntity_ = starEntity; orbitalVisualizationDirty_ = true; }
+    void SetStarEntity(Entity starEntity);
     
     /**
      * @brief Add a planet to the system
@@ -85,6 +86,16 @@ public:
      * @return Vector of station entity IDs
      */
     const std::vector<Entity>& GetSpaceStations() const { return spaceStations_; }
+
+    /**
+     * @brief Get orbit visualization vertex shader path
+     */
+    const std::string& GetOrbitVertexShaderPath() const { return orbitVertexShaderPath_; }
+
+    /**
+     * @brief Get orbit visualization fragment shader path
+     */
+    const std::string& GetOrbitFragmentShaderPath() const { return orbitFragmentShaderPath_; }
     
     /**
      * @brief Find the nearest celestial body to a position
@@ -211,6 +222,8 @@ private:
     void BuildOrbitPathMesh(Entity entity, const OrbitalComponent& orbit,
         const Vector3& parentPosition, MeshBuilder& builder);
 
+    void AssignDefaultShaders(Entity entity);
+
 private:
     EntityManager* entityManager_;
     std::string systemName_;
@@ -235,4 +248,7 @@ private:
     // Update optimization
     int updateCounter_;             // For staggered updates
     static const int UPDATE_FREQUENCY = 1; // Update every N frames
+
+    std::string orbitVertexShaderPath_;
+    std::string orbitFragmentShaderPath_;
 };

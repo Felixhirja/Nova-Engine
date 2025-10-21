@@ -13,6 +13,12 @@ constexpr double kDegToRad = M_PI / 180.0;
 constexpr double kTwoPi = 2.0 * M_PI;
 constexpr double kAuToKm = 149597870.7;
 
+constexpr const char* kBodyVertexShaderPath = "shaders/solar_system/body.vert";
+constexpr const char* kPlanetFragmentShaderPath = "shaders/solar_system/body.frag";
+constexpr const char* kStarFragmentShaderPath = "shaders/solar_system/star.frag";
+constexpr const char* kOrbitVertexShaderPath = "shaders/solar_system/orbit.vert";
+constexpr const char* kOrbitFragmentShaderPath = "shaders/solar_system/orbit.frag";
+
 Vector3 ApplyOrbitalRotation(double xOrb, double yOrb, const OrbitalComponent& orbit) {
     double cosOmega = std::cos(orbit.longitudeOfAscendingNode * kDegToRad);
     double sinOmega = std::sin(orbit.longitudeOfAscendingNode * kDegToRad);
@@ -48,7 +54,9 @@ SolarSystem::SolarSystem()
     , orbitalVisualizationEnabled_(false)
     , orbitalVisualizationMesh_()
     , orbitalVisualizationDirty_(false)
-    , updateCounter_(0) {
+    , updateCounter_(0)
+    , orbitVertexShaderPath_(kOrbitVertexShaderPath)
+    , orbitFragmentShaderPath_(kOrbitFragmentShaderPath) {
 }
 
 SolarSystem::~SolarSystem() {
@@ -68,6 +76,14 @@ void SolarSystem::Init(EntityManager* entityManager, const std::string& systemNa
     orbitalVisualizationDirty_ = false;
     updateCounter_ = 0;
     starEntity_ = 0;
+    orbitVertexShaderPath_ = kOrbitVertexShaderPath;
+    orbitFragmentShaderPath_ = kOrbitFragmentShaderPath;
+}
+
+void SolarSystem::SetStarEntity(Entity starEntity) {
+    starEntity_ = starEntity;
+    orbitalVisualizationDirty_ = true;
+    AssignDefaultShaders(starEntity_);
 }
 
 void SolarSystem::Update(double dt, double timeAcceleration) {
@@ -122,6 +138,7 @@ void SolarSystem::AddPlanet(Entity planetEntity) {
         planets_.push_back(planetEntity);
         planetMoons_.emplace_back(planetEntity, std::vector<Entity>());
         orbitalVisualizationDirty_ = true;
+        AssignDefaultShaders(planetEntity);
     }
 }
 
@@ -134,12 +151,14 @@ void SolarSystem::AddMoon(Entity planetEntity, Entity moonEntity) {
     if (it == planetMoons_.end()) {
         planetMoons_.emplace_back(planetEntity, std::vector<Entity>{moonEntity});
         orbitalVisualizationDirty_ = true;
+        AssignDefaultShaders(moonEntity);
         return;
     }
     auto& moonList = it->second;
     if (std::find(moonList.begin(), moonList.end(), moonEntity) == moonList.end()) {
         moonList.push_back(moonEntity);
         orbitalVisualizationDirty_ = true;
+        AssignDefaultShaders(moonEntity);
     }
 }
 
@@ -159,6 +178,7 @@ void SolarSystem::AddAsteroidBelt(Entity beltEntity) {
     if (std::find(asteroidBelts_.begin(), asteroidBelts_.end(), beltEntity) == asteroidBelts_.end()) {
         asteroidBelts_.push_back(beltEntity);
         orbitalVisualizationDirty_ = true;
+        AssignDefaultShaders(beltEntity);
     }
 }
 
@@ -169,6 +189,7 @@ void SolarSystem::AddSpaceStation(Entity stationEntity) {
     if (std::find(spaceStations_.begin(), spaceStations_.end(), stationEntity) == spaceStations_.end()) {
         spaceStations_.push_back(stationEntity);
         orbitalVisualizationDirty_ = true;
+        AssignDefaultShaders(stationEntity);
     }
 }
 
@@ -597,4 +618,41 @@ void SolarSystem::BuildOrbitPathMesh(Entity entity, const OrbitalComponent& orbi
         builder.AddLine(i, i + 1);
     }
     builder.AddLine(endIndex - 1, baseIndex);
+}
+
+void SolarSystem::AssignDefaultShaders(Entity entity) {
+    if (!entityManager_ || !entityManager_->IsAlive(entity)) {
+        return;
+    }
+
+    auto* visual = entityManager_->GetComponent<VisualCelestialComponent>(entity);
+    if (!visual) {
+        return;
+    }
+
+    auto assignSurfaceShaders = [&](const char* vertexPath, const char* fragmentPath) {
+        if (visual->surfaceVertexShader.empty()) {
+            visual->surfaceVertexShader = vertexPath;
+        }
+        if (visual->surfaceFragmentShader.empty()) {
+            visual->surfaceFragmentShader = fragmentPath;
+        }
+    };
+
+    if (auto* body = entityManager_->GetComponent<CelestialBodyComponent>(entity)) {
+        if (body->type == CelestialBodyComponent::BodyType::Star) {
+            assignSurfaceShaders(kBodyVertexShaderPath, kStarFragmentShaderPath);
+        } else {
+            assignSurfaceShaders(kBodyVertexShaderPath, kPlanetFragmentShaderPath);
+        }
+    } else {
+        assignSurfaceShaders(kBodyVertexShaderPath, kPlanetFragmentShaderPath);
+    }
+
+    if (visual->orbitVertexShader.empty()) {
+        visual->orbitVertexShader = orbitVertexShaderPath_;
+    }
+    if (visual->orbitFragmentShader.empty()) {
+        visual->orbitFragmentShader = orbitFragmentShaderPath_;
+    }
 }
