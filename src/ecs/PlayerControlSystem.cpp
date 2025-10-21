@@ -6,8 +6,9 @@
 #include <cmath>
 
 namespace {
-constexpr double kPlayerAcceleration = 4.0;
-constexpr double kPlayerMaxSpeed = 5.0;
+constexpr double kDefaultAcceleration = 4.0;
+constexpr double kDefaultMaxSpeed = 5.0;
+constexpr double kDefaultFriction = 0.0;
 }
 
 void PlayerControlSystem::Update(EntityManager& entityManager, double dt) {
@@ -16,12 +17,44 @@ void PlayerControlSystem::Update(EntityManager& entityManager, double dt) {
     }
 
     entityManager.ForEach<PlayerController, Velocity>([&](Entity entity, PlayerController& controller, Velocity& velocity) {
+        const MovementParameters* movement = entityManager.GetComponent<MovementParameters>(entity);
+        auto sanitize = [](double value, double fallback) {
+            if (!std::isfinite(value)) {
+                return fallback;
+            }
+            return value;
+        };
+
+        double strafeAcceleration = kDefaultAcceleration;
+        double forwardAcceleration = kDefaultAcceleration;
+        double backwardAcceleration = kDefaultAcceleration;
+        double strafeDeceleration = kDefaultAcceleration;
+        double forwardDeceleration = kDefaultAcceleration;
+        double backwardDeceleration = kDefaultAcceleration;
+        double strafeMaxSpeed = kDefaultMaxSpeed;
+        double forwardMaxSpeed = kDefaultMaxSpeed;
+        double backwardMaxSpeed = kDefaultMaxSpeed;
+        double friction = kDefaultFriction;
+
+        if (movement) {
+            strafeAcceleration = std::max(0.0, sanitize(movement->strafeAcceleration, kDefaultAcceleration));
+            forwardAcceleration = std::max(0.0, sanitize(movement->forwardAcceleration, kDefaultAcceleration));
+            backwardAcceleration = std::max(0.0, sanitize(movement->backwardAcceleration, kDefaultAcceleration));
+            strafeDeceleration = std::max(0.0, sanitize(movement->strafeDeceleration, kDefaultAcceleration));
+            forwardDeceleration = std::max(0.0, sanitize(movement->forwardDeceleration, kDefaultAcceleration));
+            backwardDeceleration = std::max(0.0, sanitize(movement->backwardDeceleration, kDefaultAcceleration));
+            strafeMaxSpeed = std::max(0.0, sanitize(movement->strafeMaxSpeed, kDefaultMaxSpeed));
+            forwardMaxSpeed = std::max(0.0, sanitize(movement->forwardMaxSpeed, kDefaultMaxSpeed));
+            backwardMaxSpeed = std::max(0.0, sanitize(movement->backwardMaxSpeed, kDefaultMaxSpeed));
+            friction = std::max(0.0, sanitize(movement->friction, kDefaultFriction));
+        }
+
         double accelX = 0.0;
         double accelY = 0.0;
-        if (controller.strafeLeft) accelX -= kPlayerAcceleration;
-        if (controller.strafeRight) accelX += kPlayerAcceleration;
-        if (controller.moveForward) accelY += kPlayerAcceleration;
-        if (controller.moveBackward) accelY -= kPlayerAcceleration;
+        if (controller.strafeLeft) accelX -= strafeAcceleration;
+        if (controller.strafeRight) accelX += strafeAcceleration;
+        if (controller.moveForward) accelY += forwardAcceleration;
+        if (controller.moveBackward) accelY -= backwardAcceleration;
 
         auto* physics = entityManager.GetComponent<PlayerPhysics>(entity);
         double accelZ = 0.0;
@@ -37,8 +70,9 @@ void PlayerControlSystem::Update(EntityManager& entityManager, double dt) {
                 }
             }
         } else {
-            if (controller.moveUp) accelZ += kPlayerAcceleration;
-            if (controller.moveDown) accelZ -= kPlayerAcceleration;
+            double verticalAcceleration = strafeAcceleration;
+            if (controller.moveUp) accelZ += verticalAcceleration;
+            if (controller.moveDown) accelZ -= verticalAcceleration;
         }
 
         controller.jumpRequested = false;
@@ -64,14 +98,30 @@ void PlayerControlSystem::Update(EntityManager& entityManager, double dt) {
         }
 
         // Damping when no horizontal input
-        const double damping = kPlayerAcceleration;
+        auto applyDirectionalDamping = [&](double& vel, double positiveRate, double negativeRate) {
+            if (vel > 0.0) {
+                vel = std::max(0.0, vel - positiveRate * dt);
+            } else if (vel < 0.0) {
+                vel = std::min(0.0, vel + negativeRate * dt);
+            }
+        };
         if (!controller.strafeLeft && !controller.strafeRight) {
-            if (velocity.vx > 0.0) velocity.vx = std::max(0.0, velocity.vx - damping * dt);
-            else if (velocity.vx < 0.0) velocity.vx = std::min(0.0, velocity.vx + damping * dt);
+            applyDirectionalDamping(velocity.vx, strafeDeceleration, strafeDeceleration);
         }
         if (!controller.moveForward && !controller.moveBackward) {
-            if (velocity.vy > 0.0) velocity.vy = std::max(0.0, velocity.vy - damping * dt);
-            else if (velocity.vy < 0.0) velocity.vy = std::min(0.0, velocity.vy + damping * dt);
+            applyDirectionalDamping(velocity.vy, forwardDeceleration, backwardDeceleration);
+        }
+
+        if (friction > 0.0) {
+            auto applyFriction = [&](double& vel) {
+                if (vel > 0.0) {
+                    vel = std::max(0.0, vel - friction * dt);
+                } else if (vel < 0.0) {
+                    vel = std::min(0.0, vel + friction * dt);
+                }
+            };
+            applyFriction(velocity.vx);
+            applyFriction(velocity.vy);
         }
 
         if (physics) {
@@ -88,18 +138,20 @@ void PlayerControlSystem::Update(EntityManager& entityManager, double dt) {
                 if (velocity.vz < physics->maxDescentSpeed) velocity.vz = physics->maxDescentSpeed;
             }
         } else {
+            double verticalDeceleration = strafeDeceleration;
+            double verticalMaxSpeed = strafeMaxSpeed;
             if (!controller.moveUp && !controller.moveDown) {
-                if (velocity.vz > 0.0) velocity.vz = std::max(0.0, velocity.vz - damping * dt);
-                else if (velocity.vz < 0.0) velocity.vz = std::min(0.0, velocity.vz + damping * dt);
+                if (velocity.vz > 0.0) velocity.vz = std::max(0.0, velocity.vz - verticalDeceleration * dt);
+                else if (velocity.vz < 0.0) velocity.vz = std::min(0.0, velocity.vz + verticalDeceleration * dt);
             }
-            if (velocity.vz > kPlayerMaxSpeed) velocity.vz = kPlayerMaxSpeed;
-            else if (velocity.vz < -kPlayerMaxSpeed) velocity.vz = -kPlayerMaxSpeed;
+            if (velocity.vz > verticalMaxSpeed) velocity.vz = verticalMaxSpeed;
+            else if (velocity.vz < -verticalMaxSpeed) velocity.vz = -verticalMaxSpeed;
         }
 
         // Clamp horizontal speeds
-        if (velocity.vx > kPlayerMaxSpeed) velocity.vx = kPlayerMaxSpeed;
-        else if (velocity.vx < -kPlayerMaxSpeed) velocity.vx = -kPlayerMaxSpeed;
-        if (velocity.vy > kPlayerMaxSpeed) velocity.vy = kPlayerMaxSpeed;
-        else if (velocity.vy < -kPlayerMaxSpeed) velocity.vy = -kPlayerMaxSpeed;
+        if (velocity.vx > strafeMaxSpeed) velocity.vx = strafeMaxSpeed;
+        else if (velocity.vx < -strafeMaxSpeed) velocity.vx = -strafeMaxSpeed;
+        if (velocity.vy > forwardMaxSpeed) velocity.vy = forwardMaxSpeed;
+        else if (velocity.vy < -backwardMaxSpeed) velocity.vy = -backwardMaxSpeed;
     });
 }

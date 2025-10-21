@@ -73,6 +73,19 @@ struct PlayerController : public Component {
     double facingYaw = 0.0;  // Player's facing direction for camera following
 };
 
+struct MovementParameters : public Component {
+    double strafeAcceleration = 4.0;
+    double forwardAcceleration = 4.0;
+    double backwardAcceleration = 4.0;
+    double strafeDeceleration = 4.0;
+    double forwardDeceleration = 4.0;
+    double backwardDeceleration = 4.0;
+    double strafeMaxSpeed = 5.0;
+    double forwardMaxSpeed = 5.0;
+    double backwardMaxSpeed = 5.0;
+    double friction = 0.0;
+};
+
 struct MovementBounds : public Component {
     double minX = -std::numeric_limits<double>::infinity();
     double maxX = std::numeric_limits<double>::infinity();
