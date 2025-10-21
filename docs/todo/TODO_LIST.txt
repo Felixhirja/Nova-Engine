@@ -162,7 +162,7 @@ IMMEDIATE FIXES REQUIRED (High Priority):
   ✅ Input system handles null window gracefully
   ✅ Viewport3D::Render() skips rendering in headless mode
   ✅ Clean shutdown after frame limit reached
-  ✅ Documented in TODO_IMPROVEMENTS.md
+  ✅ Documented in docs/todo/TODO_IMPROVEMENTS.md
 
 ✅ Camera Direction Fix [COMPLETED 2025-10-10]
   ✅ Changed initial yaw from 0.0 to π/2 (1.5708 radians)
@@ -564,7 +564,7 @@ LONG-TERM VISION (6+ months):
 CODE QUALITY & MAINTENANCE:
 ---------------------------
 ✅ Create comprehensive TODO document [COMPLETED 2025-10-10]
-  ✅ TODO_IMPROVEMENTS.md with categorized tasks
+  ✅ docs/todo/TODO_IMPROVEMENTS.md with categorized tasks
   ✅ Prioritized by High/Medium/Low
   ✅ Documented all fixes and improvements from today
   ✅ Added environment variable usage guide
@@ -869,7 +869,7 @@ ADVANCED FEATURES & SYSTEMS:
 
 REFERENCE DOCUMENTS:
 -------------------
-See TODO_IMPROVEMENTS.md for detailed 2025-10-10 fixes and improvements
+See docs/todo/TODO_IMPROVEMENTS.md for detailed 2025-10-10 fixes and improvements
 See docs/ folder for comprehensive system documentation
 See todo_*.txt files for system-specific task breakdowns
 
