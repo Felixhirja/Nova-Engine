@@ -25,10 +25,13 @@ endif
 endif
 
 ifneq ($(GLFW_LIBS),)
-        CXXFLAGS += $(GLFW_CFLAGS) -DUSE_GLFW
-        LDLIBS += $(GLFW_LIBS)
+	CXXFLAGS += $(GLFW_CFLAGS) -DUSE_GLFW
+	LDLIBS += $(GLFW_LIBS)
+ifneq ($(OS),Windows_NT)
+	LDLIBS += -lGLU
+endif
 ifeq ($(OS),Windows_NT)
-        LDLIBS += -lopengl32 -lglu32 -lfreeglut
+	LDLIBS += -lopengl32 -lglu32 -lfreeglut
 endif
 $(info GLFW detected: building with GLFW support)
 else
