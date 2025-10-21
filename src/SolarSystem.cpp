@@ -46,6 +46,8 @@ SolarSystem::SolarSystem()
     , planetMoons_()
     , simulationTime_(0.0)
     , orbitalVisualizationEnabled_(false)
+    , orbitalVisualizationMesh_()
+    , orbitalVisualizationDirty_(false)
     , updateCounter_(0) {
 }
 
@@ -62,6 +64,8 @@ void SolarSystem::Init(EntityManager* entityManager, const std::string& systemNa
     planetMoons_.clear();
     simulationTime_ = 0.0;
     orbitalVisualizationEnabled_ = false;
+    orbitalVisualizationMesh_.Clear();
+    orbitalVisualizationDirty_ = false;
     updateCounter_ = 0;
     starEntity_ = 0;
 }
@@ -104,6 +108,10 @@ void SolarSystem::Update(double dt, double timeAcceleration) {
         }
         UpdateBodyHierarchy(station, parentPosition);
     }
+
+    if (orbitalVisualizationEnabled_ && orbitalVisualizationDirty_) {
+        BuildOrbitalVisualizationMesh();
+    }
 }
 
 void SolarSystem::AddPlanet(Entity planetEntity) {
@@ -113,6 +121,7 @@ void SolarSystem::AddPlanet(Entity planetEntity) {
     if (std::find(planets_.begin(), planets_.end(), planetEntity) == planets_.end()) {
         planets_.push_back(planetEntity);
         planetMoons_.emplace_back(planetEntity, std::vector<Entity>());
+        orbitalVisualizationDirty_ = true;
     }
 }
 
@@ -124,11 +133,13 @@ void SolarSystem::AddMoon(Entity planetEntity, Entity moonEntity) {
         [planetEntity](const auto& entry) { return entry.first == planetEntity; });
     if (it == planetMoons_.end()) {
         planetMoons_.emplace_back(planetEntity, std::vector<Entity>{moonEntity});
+        orbitalVisualizationDirty_ = true;
         return;
     }
     auto& moonList = it->second;
     if (std::find(moonList.begin(), moonList.end(), moonEntity) == moonList.end()) {
         moonList.push_back(moonEntity);
+        orbitalVisualizationDirty_ = true;
     }
 }
 
@@ -147,6 +158,7 @@ void SolarSystem::AddAsteroidBelt(Entity beltEntity) {
     }
     if (std::find(asteroidBelts_.begin(), asteroidBelts_.end(), beltEntity) == asteroidBelts_.end()) {
         asteroidBelts_.push_back(beltEntity);
+        orbitalVisualizationDirty_ = true;
     }
 }
 
@@ -156,6 +168,7 @@ void SolarSystem::AddSpaceStation(Entity stationEntity) {
     }
     if (std::find(spaceStations_.begin(), spaceStations_.end(), stationEntity) == spaceStations_.end()) {
         spaceStations_.push_back(stationEntity);
+        orbitalVisualizationDirty_ = true;
     }
 }
 
@@ -253,7 +266,23 @@ void SolarSystem::Clear() {
     systemName_.clear();
     starEntity_ = 0;
     simulationTime_ = 0.0;
+    orbitalVisualizationEnabled_ = false;
+    orbitalVisualizationMesh_.Clear();
+    orbitalVisualizationDirty_ = false;
     updateCounter_ = 0;
+}
+
+void SolarSystem::SetOrbitalVisualizationEnabled(bool enabled) {
+    if (orbitalVisualizationEnabled_ == enabled) {
+        return;
+    }
+    orbitalVisualizationEnabled_ = enabled;
+    if (enabled) {
+        orbitalVisualizationDirty_ = true;
+    } else {
+        orbitalVisualizationMesh_.Clear();
+        orbitalVisualizationDirty_ = false;
+    }
 }
 
 OrbitalPosition SolarSystem::CalculateOrbitalPosition(const OrbitalComponent& orbit, const Vector3& parentPosition) const {
@@ -425,4 +454,147 @@ Vector3 SolarSystem::GetEntityPosition(Entity entity) const {
         return orbit->cachedPosition;
     }
     return Vector3();
+}
+
+void SolarSystem::BuildOrbitalVisualizationMesh() {
+    orbitalVisualizationMesh_.Clear();
+    orbitalVisualizationDirty_ = false;
+
+    if (!entityManager_ || !orbitalVisualizationEnabled_) {
+        return;
+    }
+
+    MeshBuilder builder(GL_LINES);
+
+    Vector3 starPosition = GetEntityPosition(starEntity_);
+    std::vector<Entity> visited;
+    visited.reserve(planets_.size() + asteroidBelts_.size() + spaceStations_.size());
+
+    for (Entity planet : planets_) {
+        BuildOrbitMeshRecursive(planet, starPosition, builder, visited);
+    }
+
+    for (Entity belt : asteroidBelts_) {
+        BuildOrbitMeshRecursive(belt, starPosition, builder, visited);
+    }
+
+    for (Entity station : spaceStations_) {
+        Vector3 parentPosition = starPosition;
+        if (auto* orbit = entityManager_->GetComponent<OrbitalComponent>(station)) {
+            Entity parent = static_cast<Entity>(orbit->parentEntity);
+            if (parent != 0) {
+                parentPosition = GetEntityPosition(parent);
+            }
+        }
+        BuildOrbitMeshRecursive(station, parentPosition, builder, visited);
+    }
+
+    orbitalVisualizationMesh_ = builder.Build(true);
+    orbitalVisualizationMesh_.SetAttributes(MeshAttribute_Position | MeshAttribute_Color);
+}
+
+void SolarSystem::BuildOrbitMeshRecursive(Entity entity, const Vector3& parentPosition,
+    MeshBuilder& builder, std::vector<Entity>& visitedEntities) {
+    if (!entityManager_ || !entityManager_->IsAlive(entity)) {
+        return;
+    }
+    if (std::find(visitedEntities.begin(), visitedEntities.end(), entity) != visitedEntities.end()) {
+        return;
+    }
+    visitedEntities.push_back(entity);
+
+    Vector3 currentParent = parentPosition;
+    if (auto* orbit = entityManager_->GetComponent<OrbitalComponent>(entity)) {
+        BuildOrbitPathMesh(entity, *orbit, parentPosition, builder);
+        currentParent = orbit->cachedPosition;
+    } else {
+        currentParent = GetEntityPosition(entity);
+    }
+
+    auto moonIt = std::find_if(planetMoons_.begin(), planetMoons_.end(),
+        [entity](const auto& entry) { return entry.first == entity; });
+    if (moonIt != planetMoons_.end()) {
+        for (Entity moon : moonIt->second) {
+            BuildOrbitMeshRecursive(moon, currentParent, builder, visitedEntities);
+        }
+    }
+
+    if (auto* satellites = entityManager_->GetComponent<SatelliteSystemComponent>(entity)) {
+        for (unsigned int childId : satellites->satelliteEntities) {
+            BuildOrbitMeshRecursive(static_cast<Entity>(childId), currentParent, builder, visitedEntities);
+        }
+    }
+}
+
+void SolarSystem::BuildOrbitPathMesh(Entity entity, const OrbitalComponent& orbit,
+    const Vector3& parentPosition, MeshBuilder& builder) {
+    if (orbit.orbitalPeriod <= 0.0) {
+        return;
+    }
+
+    float colorR = 0.6f;
+    float colorG = 0.7f;
+    float colorB = 1.0f;
+    const float colorA = 0.65f;
+
+    if (auto* body = entityManager_->GetComponent<CelestialBodyComponent>(entity)) {
+        switch (body->type) {
+            case CelestialBodyComponent::BodyType::RockyPlanet:
+                colorR = 0.82f; colorG = 0.58f; colorB = 0.36f;
+                break;
+            case CelestialBodyComponent::BodyType::GasGiant:
+                colorR = 0.45f; colorG = 0.70f; colorB = 0.98f;
+                break;
+            case CelestialBodyComponent::BodyType::IceGiant:
+                colorR = 0.55f; colorG = 0.78f; colorB = 1.0f;
+                break;
+            case CelestialBodyComponent::BodyType::Moon:
+                colorR = 0.78f; colorG = 0.78f; colorB = 0.78f;
+                break;
+            case CelestialBodyComponent::BodyType::Asteroid:
+                colorR = 0.62f; colorG = 0.62f; colorB = 0.62f;
+                break;
+            case CelestialBodyComponent::BodyType::SpaceStation:
+                colorR = 1.0f; colorG = 0.95f; colorB = 0.40f;
+                break;
+            case CelestialBodyComponent::BodyType::AsteroidBelt:
+                colorR = 0.90f; colorG = 0.82f; colorB = 0.55f;
+                break;
+            default:
+                break;
+        }
+    }
+
+    const int segmentCount = 128;
+    GLuint baseIndex = static_cast<GLuint>(builder.Vertices().size());
+    int validVertices = 0;
+
+    for (int i = 0; i < segmentCount; ++i) {
+        double fraction = static_cast<double>(i) / static_cast<double>(segmentCount);
+        OrbitalComponent sample = orbit;
+        double meanAnomalyDeg = fraction * 360.0;
+        sample.currentMeanAnomaly = meanAnomalyDeg;
+        sample.meanAnomalyAtEpoch = meanAnomalyDeg;
+        OrbitalPosition position = CalculateOrbitalPosition(sample, parentPosition);
+        if (!position.isValid) {
+            continue;
+        }
+
+        builder.AddVertex(static_cast<GLfloat>(position.position.x),
+                          static_cast<GLfloat>(position.position.y),
+                          static_cast<GLfloat>(position.position.z),
+                          colorR, colorG, colorB, colorA);
+        ++validVertices;
+    }
+
+    GLuint endIndex = static_cast<GLuint>(builder.Vertices().size());
+    if (validVertices < 2) {
+        builder.Vertices().resize(baseIndex);
+        return;
+    }
+
+    for (GLuint i = baseIndex; i + 1 < endIndex; ++i) {
+        builder.AddLine(i, i + 1);
+    }
+    builder.AddLine(endIndex - 1, baseIndex);
 }
