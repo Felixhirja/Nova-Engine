@@ -8,6 +8,10 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+#if defined(USE_GLFW) || defined(USE_SDL)
+#include <glad/glad.h>
+#include <GL/glu.h>
+#endif
 #ifdef USE_SDL
 #if defined(USE_SDL3)
 #include <SDL3/SDL.h>
@@ -19,25 +23,11 @@
 #include <SDL.h>
 #include "sdl_compat.h"
 #endif
-#ifdef _WIN32
-#include <GL/gl.h>
-#include <GL/glu.h>
-#else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif
 #include "ResourceManager.h"
 #include "Camera.h"
 #endif
 #ifdef USE_GLFW
 #include <GLFW/glfw3.h>
-#ifdef _WIN32
-#include <GL/gl.h>
-#include <GL/glu.h>
-#else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif
 #include "Camera.h"
 #endif
 #include "VisualFeedbackSystem.h"
@@ -111,6 +101,13 @@ void Viewport3D::Init() {
 
     // Make the OpenGL context current
     glfwMakeContextCurrent(glfwWindow);
+    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
+        std::cerr << "Viewport3D: Failed to initialize GLAD" << std::endl;
+        glfwDestroyWindow(glfwWindow);
+        glfwWindow = nullptr;
+        glfwTerminate();
+        return;
+    }
     // Disable VSync to allow higher FPS
     glfwSwapInterval(0);
     useGL = true;
@@ -233,6 +230,15 @@ void Viewport3D::Init() {
                         if (sdlWindow) { SDL_DestroyWindow(sdlWindow); sdlWindow = nullptr; }
                     } else {
                         writeLog("Viewport3D: SDL_GL_MakeCurrent succeeded");
+                        if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(SDL_GL_GetProcAddress))) {
+                            std::string msg = "Viewport3D: Failed to initialize GLAD";
+                            std::cerr << msg << std::endl;
+                            writeLog(msg);
+                            compat_GL_DeleteContext(sdlGLContext);
+                            sdlGLContext = nullptr;
+                            useGL = false;
+                            if (sdlWindow) { SDL_DestroyWindow(sdlWindow); sdlWindow = nullptr; }
+                        } else {
                         // Setup basic GL state
                         glViewport(0, 0, width, height);
                         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -240,6 +246,7 @@ void Viewport3D::Init() {
                         SDL_SetRelativeMouseMode(SDL_TRUE);
                         std::cout << "Viewport3D: Using OpenGL for rendering." << std::endl;
                         return;
+                        }
                     }
                 } else {
                     // Failed to create GL context; destroy window and fall back
