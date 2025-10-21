@@ -1,6 +1,9 @@
 #include "Skybox.h"
-#include <iostream>
+
 #include <cmath>
+#include <iostream>
+
+#include <glad/glad.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -22,42 +25,27 @@
 #define GL_STATIC_DRAW 0x88E4
 #endif
 
-// VBO function pointers
-typedef void (APIENTRY *PFNGLGENBUFFERSPROC)(GLsizei n, GLuint *buffers);
-typedef void (APIENTRY *PFNGLDELETEBUFFERSPROC)(GLsizei n, const GLuint *buffers);
-typedef void (APIENTRY *PFNGLBINDBUFFERPROC)(GLenum target, GLuint buffer);
-typedef void (APIENTRY *PFNGLBUFFERDATAPROC)(GLenum target, ptrdiff_t size, const void *data, GLenum usage);
-typedef void (APIENTRY *PFNGLACTIVETEXTUREPROC)(GLenum texture);
-
-static PFNGLGENBUFFERSPROC glGenBuffers = nullptr;
-static PFNGLDELETEBUFFERSPROC glDeleteBuffers = nullptr;
-static PFNGLBINDBUFFERPROC glBindBuffer = nullptr;
-static PFNGLBUFFERDATAPROC glBufferData = nullptr;
-static PFNGLACTIVETEXTUREPROC glActiveTexture = nullptr;
-
-// Load VBO extensions
-static bool LoadVBOExtensions() {
-    static bool loaded = false;
+// Verify that VBO functionality is available through GLAD
+static bool IsVBOAvailable() {
+    static bool checked = false;
     static bool available = false;
-    
-    if (loaded) return available;
-    loaded = true;
-    
-#ifdef _WIN32
-    glGenBuffers = (PFNGLGENBUFFERSPROC)wglGetProcAddress("glGenBuffers");
-    glDeleteBuffers = (PFNGLDELETEBUFFERSPROC)wglGetProcAddress("glDeleteBuffers");
-    glBindBuffer = (PFNGLBINDBUFFERPROC)wglGetProcAddress("glBindBuffer");
-    glBufferData = (PFNGLBUFFERDATAPROC)wglGetProcAddress("glBufferData");
-    glActiveTexture = (PFNGLACTIVETEXTUREPROC)wglGetProcAddress("glActiveTexture");
-#else
-    glGenBuffers = (PFNGLGENBUFFERSPROC)glXGetProcAddress((const GLubyte*)"glGenBuffers");
-    glDeleteBuffers = (PFNGLDELETEBUFFERSPROC)glXGetProcAddress((const GLubyte*)"glDeleteBuffers");
-    glBindBuffer = (PFNGLBINDBUFFERPROC)glXGetProcAddress((const GLubyte*)"glBindBuffer");
-    glBufferData = (PFNGLBUFFERDATAPROC)glXGetProcAddress((const GLubyte*)"glBufferData");
-    glActiveTexture = (PFNGLACTIVETEXTUREPROC)glXGetProcAddress((const GLubyte*)"glActiveTexture");
+
+    if (checked) {
+        return available;
+    }
+
+    checked = true;
+    bool hasVBOExtension = false;
+#ifdef GLAD_GL_ARB_vertex_buffer_object
+    hasVBOExtension = GLAD_GL_ARB_vertex_buffer_object;
 #endif
-    
-    available = (glGenBuffers != nullptr && glBindBuffer != nullptr && glBufferData != nullptr);
+
+    available = GLAD_GL_VERSION_1_5 || hasVBOExtension;
+
+    if (!available) {
+        std::cerr << "OpenGL vertex buffer objects are not available (requires OpenGL 1.5 or GL_ARB_vertex_buffer_object)." << std::endl;
+    }
+
     return available;
 }
 
@@ -78,8 +66,8 @@ Skybox::~Skybox() {
 
 void Skybox::InitCubeMesh() {
     // Load VBO extensions if not already loaded
-    if (!LoadVBOExtensions()) {
-        std::cerr << "VBO extensions not available - skybox will not work" << std::endl;
+    if (!IsVBOAvailable()) {
+        std::cerr << "VBO support not available - skybox will not work" << std::endl;
         return;
     }
     
