@@ -2,7 +2,9 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+#ifdef USE_GLFW
 #include <glad/glad.h>
+#endif
 #include <cmath>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -52,6 +54,7 @@ void Camera::WorldToScreen(double wx, double wy, double wz, int screenW, int scr
     outY = static_cast<int>(sy + 0.5);
 }
 
+#ifdef USE_GLFW
 void Camera::ApplyToOpenGL() const {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -66,3 +69,6 @@ void Camera::ApplyToOpenGL() const {
     // Apply camera translation (move world so camera is at origin)
     glTranslated(-x_, -y_, -z_);
 }
+#else
+void Camera::ApplyToOpenGL() const {}
+#endif

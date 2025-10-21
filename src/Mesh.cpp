@@ -2,6 +2,11 @@
 
 #include <algorithm>
 
+#ifndef USE_GLFW
+// Provide minimal OpenGL constant definitions for headless builds
+static constexpr GLenum GL_TRIANGLES = 0u;
+#endif
+
 Mesh::Mesh()
     : drawMode_(GL_TRIANGLES), attributes_(MeshAttribute_Position | MeshAttribute_Color) {
 }
@@ -14,6 +19,7 @@ Mesh::Mesh(GLenum drawMode, std::vector<MeshVertex> vertices, std::vector<GLuint
 }
 
 void Mesh::Draw() const {
+#ifdef USE_GLFW
     if (vertices_.empty()) {
         return;
     }
@@ -44,6 +50,9 @@ void Mesh::Draw() const {
     }
 
     glPopClientAttrib();
+#else
+    (void)drawMode_;
+#endif
 }
 
 void Mesh::Clear() {

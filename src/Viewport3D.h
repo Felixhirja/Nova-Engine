@@ -40,6 +40,13 @@ public:
     // If OpenGL is in use this flag will be true and an OpenGL context will be owned
     bool usingGL() const { return useGL; }
 
+    // Get the SDL window (returns nullptr if SDL is unavailable)
+#ifdef USE_SDL
+    SDL_Window* GetSDLWindow() const { return sdlWindow; }
+#else
+    void* GetSDLWindow() const { return nullptr; }
+#endif
+
     // Get the GLFW window (returns nullptr if not using GLFW)
 #ifdef USE_GLFW
     GLFWwindow* GetGLFWWindow() const { return glfwWindow; }
@@ -78,15 +85,14 @@ private:
     int width;
     int height;
     bool usingSDL;
+    bool useGL;
 #ifdef USE_SDL
     SDL_Window* sdlWindow;
     SDL_Renderer* sdlRenderer;
     // OpenGL context (SDL_GLContext is a typedef provided by SDL for OpenGL)
     SDL_GLContext sdlGLContext;
-    bool useGL;
 #endif
 #ifdef USE_GLFW
     GLFWwindow* glfwWindow;
-    bool useGL;
 #endif
 };

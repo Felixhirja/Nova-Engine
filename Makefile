@@ -12,10 +12,12 @@ GLAD_INCLUDE := -Isrc/glad/include
 GLFW_CFLAGS := $(shell pkg-config --cflags glfw3 2>/dev/null)
 GLFW_LIBS  := $(shell pkg-config --libs glfw3 2>/dev/null)
 
-# Fallback if pkg-config fails
+# Fallback if pkg-config fails (Windows toolchain support)
 ifeq ($(GLFW_LIBS),)
+ifeq ($(OS),Windows_NT)
 GLFW_CFLAGS := -IC:/msys64/mingw64/include
 GLFW_LIBS := -LC:/msys64/mingw64/lib -lglfw3
+endif
 endif
 
 ifneq ($(GLFW_LIBS),)
@@ -29,17 +31,28 @@ $(info GLFW not found; building ASCII fallback)
 endif
 
 # Include graphics subsystem and GLAD loader
-SRC := $(wildcard src/*.cpp) $(wildcard src/ecs/*.cpp) $(wildcard src/graphics/*.cpp)
+SRC := $(wildcard src/*.cpp) $(wildcard src/ecs/*.cpp)
+GLAD_SRC :=
+GLAD_OBJ :=
+
+ifeq ($(GLFW_LIBS),)
+SRC := $(filter-out src/PostProcessPipeline.cpp src/TextRenderer.cpp,$(SRC))
+else
+SRC += $(wildcard src/graphics/*.cpp)
 GLAD_SRC := src/glad/src/glad.c
-OBJ := $(filter-out src/test_sdl.o src/main_test.o, $(patsubst %.cpp,%.o,$(SRC)))
 GLAD_OBJ := $(patsubst %.c,%.o,$(GLAD_SRC))
+endif
+
+OBJ := $(filter-out src/test_sdl.o src/main_test.o, $(patsubst %.cpp,%.o,$(SRC)))
 TARGET := star-engine
 
 all: $(TARGET)
 
 # Compile GLAD first (C code)
+ifneq ($(GLAD_OBJ),)
 $(GLAD_OBJ): $(GLAD_SRC)
 	$(CC) $(CFLAGS) -c $< -o $@
+endif
 
 # Link with GLAD object file
 $(TARGET): $(GLAD_OBJ) $(OBJ)
