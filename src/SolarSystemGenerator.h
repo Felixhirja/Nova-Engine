@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <random>
+#include <cstdint>
 #include "CelestialBody.h"
 #include "ecs/EntityManager.h"
 
@@ -14,10 +15,65 @@
  * generation. It creates realistic orbital hierarchies and populates systems with
  * diverse celestial bodies and space stations.
  */
+struct GenerationSeeds {
+    unsigned int baseSeed = 0;
+    unsigned int starSeed = 0;
+    unsigned int planetSeed = 0;
+    unsigned int moonSeed = 0;
+    unsigned int asteroidSeed = 0;
+    unsigned int stationSeed = 0;
+    unsigned int namingSeed = 0;
+};
+
 class SolarSystemGenerator {
 public:
     SolarSystemGenerator();
     ~SolarSystemGenerator();
+
+    /**
+     * @brief Categories for deterministic sub-seeds
+     */
+    enum class SeedType {
+        Star,
+        Planet,
+        Moon,
+        Asteroid,
+        Station,
+        Name
+    };
+
+    /**
+     * @brief Configure the generator to use a specific base seed
+     *
+     * Calling this function will update the derived seeds used for each
+     * subsystem (planets, moons, asteroid belts, etc.). The same base seed will
+     * always produce the same derived seeds, ensuring reproducible generation
+     * regardless of the order in which random numbers are consumed.
+     */
+    void SetSeed(unsigned int seed);
+
+    /**
+     * @brief Retrieve the current set of derived seeds
+     * @return Struct containing the base seed and category-specific seeds
+     */
+    const GenerationSeeds& GetSeeds() const { return seeds_; }
+
+    /**
+     * @brief Get a deterministic seed for a specific category
+     *
+     * @param type Category of seed (star, planet, moon, etc.)
+     * @param index Optional index when generating multiple objects in same
+     *              category (e.g. planet number). Different indices produce
+     *              different seeds while remaining reproducible for the same
+     *              base seed.
+     * @return Deterministic seed value for the requested category/index
+     */
+    unsigned int GetSeed(SeedType type, unsigned int index = 0) const;
+
+    /**
+     * @brief Convenience helper to create an RNG seeded for a category/index
+     */
+    std::mt19937 CreateRng(SeedType type, unsigned int index = 0) const;
     
     /**
      * @brief Generate a complete solar system
@@ -322,7 +378,13 @@ private:
                             float minBrightness = 0.3f, float maxBrightness = 1.0f);
 
 private:
+    // Seed management helpers
+    void InitializeSeedState(unsigned int seed);
+    static unsigned int CombineSeed(unsigned int seed, std::uint32_t salt);
+    static unsigned int CombineSeedWithIndex(unsigned int seed, unsigned int index);
+
     // System generation state
     std::string currentSystemName_;
     unsigned int currentSeed_;
+    GenerationSeeds seeds_;
 };
