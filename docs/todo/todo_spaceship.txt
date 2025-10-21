@@ -58,7 +58,7 @@
 
 ### Visuals & Audio
 - [x] Create modular art pipeline for hulls, wings, engine exhausts, and interiors
-	- Established asset structure under `assets/ship_modules`, manifest schema, packaging script (`tools/build_ship_art.py`), and workflow doc `docs/ship_art_pipeline.md`.
+	- Established asset structure under `assets/ship_modules`, manifest schema, packaging script (`scripts/build_ship_art.py`), and workflow doc `docs/ship_art_pipeline.md`.
 - [ ] Add text rendering system for HUD and UI elements
 - [ ] Implement damage decals, particle effects, and LODs
 	- [x] Particle effects system complete (sparks, explosions, shield impacts, muzzle flashes) - See `VisualFeedbackSystem`
