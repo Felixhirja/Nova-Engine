@@ -119,6 +119,12 @@ struct VisualCelestialComponent : public Component {
     float lodDistance0 = 100.0f;      // Distance thresholds for LOD
     float lodDistance1 = 500.0f;
     float lodDistance2 = 2000.0f;
+
+    // Shader configuration (populated by SolarSystem when available)
+    std::string surfaceVertexShader;      // Vertex shader for body surface
+    std::string surfaceFragmentShader;    // Fragment shader for body surface
+    std::string orbitVertexShader;        // Vertex shader for orbit visualization
+    std::string orbitFragmentShader;      // Fragment shader for orbit visualization
 };
 
 /**
