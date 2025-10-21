@@ -2,6 +2,7 @@
 
 #include <vector>
 #include "CelestialBody.h"
+#include "Mesh.h"
 #include "ecs/EntityManager.h"
 
 /**
@@ -39,7 +40,7 @@ public:
      * @brief Set the central star
      * @param starEntity Entity ID of the star
      */
-    void SetStarEntity(Entity starEntity) { starEntity_ = starEntity; }
+    void SetStarEntity(Entity starEntity) { starEntity_ = starEntity; orbitalVisualizationDirty_ = true; }
     
     /**
      * @brief Add a planet to the system
@@ -167,7 +168,13 @@ public:
      * @brief Enable or disable orbital visualization
      * @param enabled True to show orbital paths
      */
-    void SetOrbitalVisualizationEnabled(bool enabled) { orbitalVisualizationEnabled_ = enabled; }
+    void SetOrbitalVisualizationEnabled(bool enabled);
+
+    /**
+     * @brief Get the cached orbital visualization mesh
+     * @return Mesh representing orbital paths (may be empty if disabled)
+     */
+    const Mesh& GetOrbitalVisualizationMesh() const { return orbitalVisualizationMesh_; }
     
     /**
      * @brief Check if orbital visualization is enabled
@@ -198,6 +205,12 @@ private:
      */
     Vector3 GetEntityPosition(Entity entity) const;
 
+    void BuildOrbitalVisualizationMesh();
+    void BuildOrbitMeshRecursive(Entity entity, const Vector3& parentPosition,
+        MeshBuilder& builder, std::vector<Entity>& visitedEntities);
+    void BuildOrbitPathMesh(Entity entity, const OrbitalComponent& orbit,
+        const Vector3& parentPosition, MeshBuilder& builder);
+
 private:
     EntityManager* entityManager_;
     std::string systemName_;
@@ -216,7 +229,9 @@ private:
     
     // Rendering options
     bool orbitalVisualizationEnabled_;
-    
+    Mesh orbitalVisualizationMesh_;
+    bool orbitalVisualizationDirty_;
+
     // Update optimization
     int updateCounter_;             // For staggered updates
     static const int UPDATE_FREQUENCY = 1; // Update every N frames
