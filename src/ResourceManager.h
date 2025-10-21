@@ -1,7 +1,12 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
+
+#ifdef USE_GLFW
+class SpriteMetadataBuffer;
+#endif
 
 class ResourceManager {
 public:
@@ -16,6 +21,12 @@ public:
     struct SpriteInfo { int frameW; int frameH; int frames; int fps; };
     void RegisterSprite(int handle, const SpriteInfo& info);
     bool GetSpriteInfo(int handle, SpriteInfo &out) const;
+
+#ifdef USE_GLFW
+    SpriteMetadataBuffer* GetSpriteMetadataBuffer();
+    const SpriteMetadataBuffer* GetSpriteMetadataBuffer() const;
+    void SyncSpriteMetadataGPU();
+#endif
 
 #ifdef USE_SDL
     // Return cached SDL_Surface* if available (ResourceManager owns the surface)
@@ -34,5 +45,8 @@ private:
     std::unordered_map<void*, std::unordered_map<int, void*>> textures_;
     // sprite metadata
     std::unordered_map<int, SpriteInfo> spriteInfo_;
+#endif
+#ifdef USE_GLFW
+    std::unique_ptr<SpriteMetadataBuffer> spriteMetadataBuffer_;
 #endif
 };
