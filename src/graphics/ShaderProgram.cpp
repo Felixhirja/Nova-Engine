@@ -3,142 +3,22 @@
 #include <sstream>
 #include <iostream>
 
-// OpenGL shader function definitions
-#ifndef GL_VERTEX_SHADER
-#define GL_VERTEX_SHADER 0x8B31
-#define GL_FRAGMENT_SHADER 0x8B30
-#define GL_COMPILE_STATUS 0x8B81
-#define GL_LINK_STATUS 0x8B82
-#define GL_INFO_LOG_LENGTH 0x8B84
-#endif
-
-// Define GLchar if not already defined
-#ifndef GLchar
-typedef char GLchar;
-#endif
-
-// Function pointers for shader extensions (loaded dynamically)
-typedef GLuint (APIENTRY *PFNGLCREATESHADERPROC)(GLenum type);
-typedef void (APIENTRY *PFNGLDELETESHADERPROC)(GLuint shader);
-typedef void (APIENTRY *PFNGLSHADERSOURCEPROC)(GLuint shader, GLsizei count, const GLchar* const* string, const GLint* length);
-typedef void (APIENTRY *PFNGLCOMPILESHADERPROC)(GLuint shader);
-typedef void (APIENTRY *PFNGLGETSHADERIVPROC)(GLuint shader, GLenum pname, GLint* params);
-typedef void (APIENTRY *PFNGLGETSHADERINFOLOGPROC)(GLuint shader, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
-typedef GLuint (APIENTRY *PFNGLCREATEPROGRAMPROC)(void);
-typedef void (APIENTRY *PFNGLDELETEPROGRAMPROC)(GLuint program);
-typedef void (APIENTRY *PFNGLATTACHSHADERPROC)(GLuint program, GLuint shader);
-typedef void (APIENTRY *PFNGLLINKPROGRAMPROC)(GLuint program);
-typedef void (APIENTRY *PFNGLGETPROGRAMIVPROC)(GLuint program, GLenum pname, GLint* params);
-typedef void (APIENTRY *PFNGLGETPROGRAMINFOLOGPROC)(GLuint program, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
-typedef void (APIENTRY *PFNGLUSEPROGRAMPROC)(GLuint program);
-typedef GLint (APIENTRY *PFNGLGETUNIFORMLOCATIONPROC)(GLuint program, const GLchar* name);
-typedef void (APIENTRY *PFNGLUNIFORM1IPROC)(GLint location, GLint v0);
-typedef void (APIENTRY *PFNGLUNIFORM1FPROC)(GLint location, GLfloat v0);
-typedef void (APIENTRY *PFNGLUNIFORM2FPROC)(GLint location, GLfloat v0, GLfloat v1);
-typedef void (APIENTRY *PFNGLUNIFORM3FPROC)(GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
-typedef void (APIENTRY *PFNGLUNIFORM4FPROC)(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
-typedef void (APIENTRY *PFNGLUNIFORMMATRIX4FVPROC)(GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
-
-static PFNGLCREATESHADERPROC glCreateShader = nullptr;
-static PFNGLDELETESHADERPROC glDeleteShader = nullptr;
-static PFNGLSHADERSOURCEPROC glShaderSource = nullptr;
-static PFNGLCOMPILESHADERPROC glCompileShader = nullptr;
-static PFNGLGETSHADERIVPROC glGetShaderiv = nullptr;
-static PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog = nullptr;
-static PFNGLCREATEPROGRAMPROC glCreateProgram = nullptr;
-static PFNGLDELETEPROGRAMPROC glDeleteProgram = nullptr;
-static PFNGLATTACHSHADERPROC glAttachShader = nullptr;
-static PFNGLLINKPROGRAMPROC glLinkProgram = nullptr;
-static PFNGLGETPROGRAMIVPROC glGetProgramiv = nullptr;
-static PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog = nullptr;
-static PFNGLUSEPROGRAMPROC glUseProgram = nullptr;
-static PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation = nullptr;
-static PFNGLUNIFORM1IPROC glUniform1i = nullptr;
-static PFNGLUNIFORM1FPROC glUniform1f = nullptr;
-static PFNGLUNIFORM2FPROC glUniform2f = nullptr;
-static PFNGLUNIFORM3FPROC glUniform3f = nullptr;
-static PFNGLUNIFORM4FPROC glUniform4f = nullptr;
-static PFNGLUNIFORMMATRIX4FVPROC glUniformMatrix4fv = nullptr;
-
-// Helper function to load shader extensions
-static bool LoadShaderExtensions() {
-    static bool loaded = false;
+// Helper function to ensure required OpenGL functionality is available.
+static bool EnsureShaderSupport() {
+    static bool checked = false;
     static bool available = false;
-    
-    if (loaded) return available;
-    loaded = true;
-    
-    // Try to load shader extension functions
-#ifdef _WIN32
-    glCreateShader = (PFNGLCREATESHADERPROC)wglGetProcAddress("glCreateShader");
-    glDeleteShader = (PFNGLDELETESHADERPROC)wglGetProcAddress("glDeleteShader");
-    glShaderSource = (PFNGLSHADERSOURCEPROC)wglGetProcAddress("glShaderSource");
-    glCompileShader = (PFNGLCOMPILESHADERPROC)wglGetProcAddress("glCompileShader");
-    glGetShaderiv = (PFNGLGETSHADERIVPROC)wglGetProcAddress("glGetShaderiv");
-    glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)wglGetProcAddress("glGetShaderInfoLog");
-    glCreateProgram = (PFNGLCREATEPROGRAMPROC)wglGetProcAddress("glCreateProgram");
-    glDeleteProgram = (PFNGLDELETEPROGRAMPROC)wglGetProcAddress("glDeleteProgram");
-    glAttachShader = (PFNGLATTACHSHADERPROC)wglGetProcAddress("glAttachShader");
-    glLinkProgram = (PFNGLLINKPROGRAMPROC)wglGetProcAddress("glLinkProgram");
-    glGetProgramiv = (PFNGLGETPROGRAMIVPROC)wglGetProcAddress("glGetProgramiv");
-    glGetProgramInfoLog = (PFNGLGETPROGRAMINFOLOGPROC)wglGetProcAddress("glGetProgramInfoLog");
-    glUseProgram = (PFNGLUSEPROGRAMPROC)wglGetProcAddress("glUseProgram");
-    glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC)wglGetProcAddress("glGetUniformLocation");
-    glUniform1i = (PFNGLUNIFORM1IPROC)wglGetProcAddress("glUniform1i");
-    glUniform1f = (PFNGLUNIFORM1FPROC)wglGetProcAddress("glUniform1f");
-    glUniform2f = (PFNGLUNIFORM2FPROC)wglGetProcAddress("glUniform2f");
-    glUniform3f = (PFNGLUNIFORM3FPROC)wglGetProcAddress("glUniform3f");
-    glUniform4f = (PFNGLUNIFORM4FPROC)wglGetProcAddress("glUniform4f");
-    glUniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC)wglGetProcAddress("glUniformMatrix4fv");
-#else
-    // For Linux/Unix, use glXGetProcAddress
-    glCreateShader = (PFNGLCREATESHADERPROC)glXGetProcAddress((const GLubyte*)"glCreateShader");
-    glDeleteShader = (PFNGLDELETESHADERPROC)glXGetProcAddress((const GLubyte*)"glDeleteShader");
-    glShaderSource = (PFNGLSHADERSOURCEPROC)glXGetProcAddress((const GLubyte*)"glShaderSource");
-    glCompileShader = (PFNGLCOMPILESHADERPROC)glXGetProcAddress((const GLubyte*)"glCompileShader");
-    glGetShaderiv = (PFNGLGETSHADERIVPROC)glXGetProcAddress((const GLubyte*)"glGetShaderiv");
-    glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)glXGetProcAddress((const GLubyte*)"glGetShaderInfoLog");
-    glCreateProgram = (PFNGLCREATEPROGRAMPROC)glXGetProcAddress((const GLubyte*)"glCreateProgram");
-    glDeleteProgram = (PFNGLDELETEPROGRAMPROC)glXGetProcAddress((const GLubyte*)"glDeleteProgram");
-    glAttachShader = (PFNGLATTACHSHADERPROC)glXGetProcAddress((const GLubyte*)"glAttachShader");
-    glLinkProgram = (PFNGLLINKPROGRAMPROC)glXGetProcAddress((const GLubyte*)"glLinkProgram");
-    glGetProgramiv = (PFNGLGETPROGRAMIVPROC)glXGetProcAddress((const GLubyte*)"glGetProgramiv");
-    glGetProgramInfoLog = (PFNGLGETPROGRAMINFOLOGPROC)glXGetProcAddress((const GLubyte*)"glGetProgramInfoLog");
-    glUseProgram = (PFNGLUSEPROGRAMPROC)glXGetProcAddress((const GLubyte*)"glUseProgram");
-    glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC)glXGetProcAddress((const GLubyte*)"glGetUniformLocation");
-    glUniform1i = (PFNGLUNIFORM1IPROC)glXGetProcAddress((const GLubyte*)"glUniform1i");
-    glUniform1f = (PFNGLUNIFORM1FPROC)glXGetProcAddress((const GLubyte*)"glUniform1f");
-    glUniform2f = (PFNGLUNIFORM2FPROC)glXGetProcAddress((const GLubyte*)"glUniform2f");
-    glUniform3f = (PFNGLUNIFORM3FPROC)glXGetProcAddress((const GLubyte*)"glUniform3f");
-    glUniform4f = (PFNGLUNIFORM4FPROC)glXGetProcAddress((const GLubyte*)"glUniform4f");
-    glUniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC)glXGetProcAddress((const GLubyte*)"glUniformMatrix4fv");
-#endif
-    
-    available = (glCreateShader != nullptr &&
-                 glDeleteShader != nullptr &&
-                 glShaderSource != nullptr &&
-                 glCompileShader != nullptr &&
-                 glGetShaderiv != nullptr &&
-                 glGetShaderInfoLog != nullptr &&
-                 glCreateProgram != nullptr &&
-                 glDeleteProgram != nullptr &&
-                 glAttachShader != nullptr &&
-                 glLinkProgram != nullptr &&
-                 glGetProgramiv != nullptr &&
-                 glGetProgramInfoLog != nullptr &&
-                 glUseProgram != nullptr &&
-                 glGetUniformLocation != nullptr &&
-                 glUniform1i != nullptr &&
-                 glUniform1f != nullptr &&
-                 glUniform2f != nullptr &&
-                 glUniform3f != nullptr &&
-                 glUniform4f != nullptr &&
-                 glUniformMatrix4fv != nullptr);
-    
+
+    if (checked) {
+        return available;
+    }
+
+    checked = true;
+    available = GLAD_GL_VERSION_2_0 != 0;
+
     if (!available) {
         std::cerr << "Shader extensions not available (requires OpenGL 2.0+)" << std::endl;
     }
-    
+
     return available;
 }
 
@@ -154,7 +34,7 @@ ShaderProgram::~ShaderProgram() {
 }
 
 bool ShaderProgram::LoadFromFiles(const std::string& vertexPath, const std::string& fragmentPath) {
-    if (!LoadShaderExtensions()) {
+    if (!EnsureShaderSupport()) {
         errorLog_ = "Shader extensions not supported (OpenGL 2.0+ required)";
         return false;
     }
@@ -181,7 +61,7 @@ bool ShaderProgram::LoadFromFiles(const std::string& vertexPath, const std::stri
 }
 
 bool ShaderProgram::LoadFromSource(const std::string& vertexSrc, const std::string& fragmentSrc) {
-    if (!LoadShaderExtensions()) {
+    if (!EnsureShaderSupport()) {
         errorLog_ = "Shader extensions not supported (OpenGL 2.0+ required)";
         return false;
     }
