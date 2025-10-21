@@ -1,8 +1,6 @@
 #include "TargetingSystem.h"
 #include "ecs/EntityManager.h"
 #include "Transform.h"
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
 
 TargetingSystem::TargetingSystem() {}
 
@@ -66,12 +64,12 @@ bool TargetingSystem::IsValidTarget(EntityManager& entityManager, int shooterEnt
     return true;
 }
 
-glm::vec3 TargetingSystem::CalculateLeadPosition(EntityManager& entityManager, int shooterEntity, int targetEntity, float projectileSpeed) const {
+Vec3 TargetingSystem::CalculateLeadPosition(EntityManager& entityManager, int shooterEntity, int targetEntity, float projectileSpeed) const {
     (void)entityManager;
     (void)shooterEntity;
     (void)targetEntity;
     (void)projectileSpeed;
     
     // TODO: Implement lead calculation when Transform/physics components are integrated
-    return glm::vec3(0.0f);
+    return Vec3{};
 }

@@ -3,7 +3,12 @@
 #include "ecs/System.h"
 #include <unordered_map>
 #include <vector>
-#include <glm/glm.hpp>
+
+struct Vec3 {
+    float x{0.0f};
+    float y{0.0f};
+    float z{0.0f};
+};
 
 // Targeting system for lock-on mechanics and range checks
 class TargetingSystem : public System {
@@ -25,7 +30,7 @@ public:
     bool IsValidTarget(EntityManager& entityManager, int shooterEntity, int targetEntity) const;
 
     // Calculate lead position for projectile
-    glm::vec3 CalculateLeadPosition(EntityManager& entityManager, int shooterEntity, int targetEntity, float projectileSpeed) const;
+    Vec3 CalculateLeadPosition(EntityManager& entityManager, int shooterEntity, int targetEntity, float projectileSpeed) const;
 
 private:
     // Map shooter entity to target entity
