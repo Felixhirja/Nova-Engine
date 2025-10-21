@@ -554,6 +554,12 @@ void Viewport3D::DrawEntity(const Transform &t, int textureHandle, class Resourc
 }
 
 void Viewport3D::DrawEntity(const Transform &t, int textureHandle, class ResourceManager* resourceManager, const class Camera* camera, int currentFrame) {
+#if !defined(USE_SDL)
+    (void)textureHandle;
+    (void)resourceManager;
+    (void)camera;
+    (void)currentFrame;
+#endif
     if (usingSDL) {
 #ifdef USE_SDL
         int px, py;
