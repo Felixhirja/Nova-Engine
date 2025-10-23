@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IRenderer.h"
+#include "MainMenu.h"
 #include "Transform.h"
 #include "EnergyHUDTelemetry.h"
 #include <string>
@@ -61,6 +62,12 @@ public:
     void BeginFrame();
     void FinishFrame();
     void ActivateView(const class Camera* camera, double playerX, double playerY, double playerZ, size_t viewIndex);
+    void ConfigureLayouts(std::vector<ViewportLayout> layouts);
+    void CycleLayout();
+    void SetActiveLayout(size_t index);
+    const ViewportLayout& GetActiveLayout() const;
+    std::string GetActiveLayoutName() const;
+    static std::vector<ViewportLayout> CreateDefaultLayouts();
     size_t GetActiveViewCount() const;
     ViewRole GetViewRole(size_t viewIndex) const;
     bool IsOverlayView(size_t viewIndex) const;
@@ -116,6 +123,9 @@ public:
                  bool,
                  const class ShipAssemblyResult*,
                  const struct EnergyHUDTelemetry* energyTelemetry = nullptr);
+
+    // Overlay rendering
+    void RenderMenuOverlay(const MainMenu::RenderData& menuData);
 
     // Bloom and letterbox settings (stubs for now)
     bool IsBloomEnabled() const { return false; }

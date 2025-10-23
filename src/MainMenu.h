@@ -19,7 +19,6 @@ public:
         NewGame,
         Continue,
         Settings,
-        Credits,
         Quit
     };
 
@@ -65,14 +64,12 @@ private:
     static constexpr int ITEM_NEW_GAME = 0;
     static constexpr int ITEM_CONTINUE = 1;
     static constexpr int ITEM_SETTINGS = 2;
-    static constexpr int ITEM_CREDITS = 3;
-    static constexpr int ITEM_QUIT = 4;
+    static constexpr int ITEM_QUIT = 3;
 
     void BuildMenu();
     void OnNewGame();
     void OnContinue();
     void OnSettings();
-    void OnCredits();
     void OnQuit();
 
     bool ActivateShortcutKey(int key);

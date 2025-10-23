@@ -35,6 +35,9 @@
 #include "Camera.h"
 #endif
 #include "VisualFeedbackSystem.h"
+#ifdef USE_GLFW
+#include "TextRenderer.h"
+#endif
 #if defined(USE_GLFW) || defined(USE_SDL)
 #include "graphics/ParticleRenderer.h"
 #endif
@@ -1817,12 +1820,277 @@ static void drawSevenSegDigit(SDL_Renderer* r, int x, int y, int segLen, int seg
 }
 #endif // USE_SDL
 
-void Viewport3D::DrawHUD(const class Camera* camera,
-                         double fps,
-                         double playerX,
-                         double playerY,
-                         double playerZ,
-                         const EnergyHUDTelemetry* energyTelemetry) {
+void Viewport3D::RenderMenuOverlay(const MainMenu::RenderData& menuData) {
+#if defined(USE_GLFW) || defined(USE_SDL)
+#ifdef USE_GLFW
+    if (!useGL || width <= 0 || height <= 0) {
+        return;
+    }
+
+    auto toTextColor = [](const MenuSystem::MenuStyle::Color& color, float alphaMultiplier = 1.0f) {
+        return TextColor(
+            static_cast<float>(color.r) / 255.0f,
+            static_cast<float>(color.g) / 255.0f,
+            static_cast<float>(color.b) / 255.0f,
+            static_cast<float>(color.a) / 255.0f * alphaMultiplier);
+    };
+
+    auto toFontSize = [](float requestedSize) {
+        if (requestedSize >= 56.0f) {
+            return FontSize::Large;
+        }
+        if (requestedSize >= 28.0f) {
+            return FontSize::Medium;
+        }
+        if (requestedSize >= 18.0f) {
+            return FontSize::Fixed;
+        }
+        return FontSize::Small;
+    };
+
+    const FontSize titleFont = toFontSize(menuData.style.titleFontSize);
+    const FontSize subtitleFont = toFontSize(menuData.style.subtitleFontSize);
+    const FontSize itemFont = toFontSize(menuData.style.itemFontSize);
+    const FontSize footerFont = toFontSize(menuData.style.footerFontSize);
+    const FontSize descriptionFont = FontSize::Small;
+
+    const int titleHeight = TextRenderer::GetFontHeight(titleFont);
+    const int subtitleHeight = TextRenderer::GetFontHeight(subtitleFont);
+    const int itemHeight = TextRenderer::GetFontHeight(itemFont);
+    const int footerHeight = TextRenderer::GetFontHeight(footerFont);
+    const int descriptionHeight = TextRenderer::GetFontHeight(descriptionFont);
+
+    std::vector<const MenuSystem::MenuItem*> visibleItems;
+    visibleItems.reserve(menuData.items.size());
+    for (const auto& item : menuData.items) {
+        if (item.visible) {
+            visibleItems.push_back(&item);
+        }
+    }
+
+    const MenuSystem::MenuItem* selectedItem = nullptr;
+    if (menuData.selectedIndex >= 0 && menuData.selectedIndex < static_cast<int>(menuData.items.size())) {
+        const auto& candidate = menuData.items[menuData.selectedIndex];
+        if (candidate.visible) {
+            selectedItem = &candidate;
+        }
+    }
+
+    int maxLineWidth = 0;
+    if (!menuData.title.empty()) {
+        maxLineWidth = std::max(maxLineWidth, TextRenderer::MeasureText(menuData.title, titleFont));
+    }
+    if (!menuData.subtitle.empty()) {
+        maxLineWidth = std::max(maxLineWidth, TextRenderer::MeasureText(menuData.subtitle, subtitleFont));
+    }
+    for (const auto* item : visibleItems) {
+        maxLineWidth = std::max(maxLineWidth, TextRenderer::MeasureText(item->text, itemFont));
+    }
+    if (selectedItem && !selectedItem->description.empty()) {
+        maxLineWidth = std::max(maxLineWidth, TextRenderer::MeasureText(selectedItem->description, descriptionFont));
+    }
+    if (!menuData.footer.empty()) {
+        maxLineWidth = std::max(maxLineWidth, TextRenderer::MeasureText(menuData.footer, footerFont));
+    }
+    maxLineWidth = std::max(maxLineWidth, 320);
+
+    const float centerX = static_cast<float>(width) * 0.5f;
+    const float baseY = static_cast<float>(height) * 0.25f;
+
+    float cursorY = baseY;
+    float titleBaseline = 0.0f;
+    float subtitleBaseline = 0.0f;
+    std::vector<float> itemBaselines;
+    itemBaselines.reserve(visibleItems.size());
+    float descriptionBaseline = 0.0f;
+    float footerBaseline = 0.0f;
+
+    if (!menuData.title.empty()) {
+        cursorY += static_cast<float>(titleHeight);
+        titleBaseline = cursorY;
+    }
+    if (!menuData.subtitle.empty()) {
+        cursorY += menuData.style.subtitleSpacing;
+        cursorY += static_cast<float>(subtitleHeight);
+        subtitleBaseline = cursorY;
+    }
+
+    cursorY += menuData.style.titleSpacing;
+
+    for (size_t i = 0; i < visibleItems.size(); ++i) {
+        cursorY += static_cast<float>(itemHeight);
+        itemBaselines.push_back(cursorY);
+        if (i + 1 < visibleItems.size()) {
+            cursorY += menuData.style.itemSpacing;
+        }
+    }
+
+    if (selectedItem && !selectedItem->description.empty()) {
+        cursorY += std::max(menuData.style.itemSpacing * 0.5f, 24.0f);
+        cursorY += static_cast<float>(descriptionHeight);
+        descriptionBaseline = cursorY;
+    }
+
+    if (!menuData.footer.empty()) {
+        cursorY += menuData.style.footerSpacing;
+        cursorY += static_cast<float>(footerHeight);
+        footerBaseline = cursorY;
+    }
+
+    const float backgroundWidth = static_cast<float>(maxLineWidth) + menuData.style.backgroundPadding * 2.0f;
+    const float contentHeight = std::max(cursorY - baseY, static_cast<float>(itemHeight));
+    const float backgroundHeight = contentHeight + menuData.style.backgroundPadding * 2.0f;
+    const float backgroundLeft = centerX - backgroundWidth * 0.5f;
+    const float backgroundTop = baseY - menuData.style.backgroundPadding;
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0.0, static_cast<double>(width), static_cast<double>(height), 0.0, -1.0, 1.0);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    if (menuData.style.drawBackground) {
+        const auto bg = menuData.style.backgroundColor;
+        const float bgR = static_cast<float>(bg.r) / 255.0f;
+        const float bgG = static_cast<float>(bg.g) / 255.0f;
+        const float bgB = static_cast<float>(bg.b) / 255.0f;
+        const float bgA = static_cast<float>(bg.a) / 255.0f;
+
+        glColor4f(bgR, bgG, bgB, bgA);
+        glBegin(GL_QUADS);
+        glVertex2f(backgroundLeft, backgroundTop);
+        glVertex2f(backgroundLeft + backgroundWidth, backgroundTop);
+        glVertex2f(backgroundLeft + backgroundWidth, backgroundTop + backgroundHeight);
+        glVertex2f(backgroundLeft, backgroundTop + backgroundHeight);
+        glEnd();
+
+        glColor4f(bgR, bgG, bgB, std::min(1.0f, bgA + 0.15f));
+        glLineWidth(1.5f);
+        glBegin(GL_LINE_LOOP);
+        glVertex2f(backgroundLeft, backgroundTop);
+        glVertex2f(backgroundLeft + backgroundWidth, backgroundTop);
+        glVertex2f(backgroundLeft + backgroundWidth, backgroundTop + backgroundHeight);
+        glVertex2f(backgroundLeft, backgroundTop + backgroundHeight);
+        glEnd();
+        glLineWidth(1.0f);
+    }
+
+    if (titleBaseline > 0.0f && !menuData.title.empty()) {
+        TextRenderer::RenderTextAligned(menuData.title,
+                                        static_cast<int>(centerX),
+                                        static_cast<int>(titleBaseline),
+                                        TextAlign::Center,
+                                        toTextColor(menuData.style.titleColor),
+                                        titleFont);
+    }
+
+    if (subtitleBaseline > 0.0f && !menuData.subtitle.empty()) {
+        TextRenderer::RenderTextAligned(menuData.subtitle,
+                                        static_cast<int>(centerX),
+                                        static_cast<int>(subtitleBaseline),
+                                        TextAlign::Center,
+                                        toTextColor(menuData.style.subtitleColor, 0.9f),
+                                        subtitleFont);
+    }
+
+    for (size_t i = 0; i < visibleItems.size(); ++i) {
+        const auto* item = visibleItems[i];
+        const bool isSelected = (menuData.selectedIndex >= 0 &&
+                                 menuData.selectedIndex < static_cast<int>(menuData.items.size()) &&
+                                 &menuData.items[menuData.selectedIndex] == item);
+
+        TextColor color;
+        if (!item->enabled) {
+            color = toTextColor(menuData.style.disabledColor, 0.75f);
+        } else if (isSelected) {
+            color = toTextColor(menuData.style.selectedColor, menuData.selectedItemAlpha);
+        } else {
+            color = toTextColor(menuData.style.normalColor);
+        }
+
+        const float baseline = itemBaselines[i];
+        TextRenderer::RenderTextAligned(item->text,
+                                        static_cast<int>(centerX),
+                                        static_cast<int>(baseline),
+                                        TextAlign::Center,
+                                        color,
+                                        itemFont);
+
+        if (isSelected) {
+            const float indicatorAlpha = std::clamp(menuData.selectedItemAlpha, 0.0f, 1.0f);
+            const float indicatorHeight = static_cast<float>(itemHeight) * std::max(menuData.selectedItemScale, 1.0f);
+            const float indicatorHalf = indicatorHeight * 0.5f;
+            const float indicatorY = baseline - static_cast<float>(itemHeight) * 0.65f;
+            const float leftX = centerX - backgroundWidth * 0.5f + 16.0f;
+            const float rightX = centerX + backgroundWidth * 0.5f - 16.0f;
+            const TextColor indicatorColor = toTextColor(menuData.style.selectedColor, indicatorAlpha);
+
+            glColor4f(indicatorColor.r, indicatorColor.g, indicatorColor.b, indicatorColor.a);
+            glBegin(GL_TRIANGLES);
+            glVertex2f(leftX, indicatorY - indicatorHalf);
+            glVertex2f(leftX + 12.0f, indicatorY);
+            glVertex2f(leftX, indicatorY + indicatorHalf);
+            glVertex2f(rightX, indicatorY - indicatorHalf);
+            glVertex2f(rightX - 12.0f, indicatorY);
+            glVertex2f(rightX, indicatorY + indicatorHalf);
+            glEnd();
+
+            if (!item->shortcutHint.empty()) {
+                const std::string hint = "[" + item->shortcutHint + "]";
+                TextRenderer::RenderTextAligned(hint,
+                                                static_cast<int>(centerX + backgroundWidth * 0.5f - 40.0f),
+                                                static_cast<int>(baseline),
+                                                TextAlign::Right,
+                                                toTextColor(menuData.style.footerColor, 0.8f),
+                                                FontSize::Small);
+            }
+        }
+    }
+
+    if (descriptionBaseline > 0.0f && selectedItem && !selectedItem->description.empty()) {
+        const int wrapWidth = std::max(maxLineWidth - 60, 240);
+        const int descriptionX = static_cast<int>(centerX) - wrapWidth / 2;
+        const int descriptionTop = static_cast<int>(descriptionBaseline) - descriptionHeight;
+        TextRenderer::RenderTextBlock(selectedItem->description,
+                                      descriptionX,
+                                      descriptionTop,
+                                      wrapWidth,
+                                      toTextColor(menuData.style.subtitleColor, 0.85f),
+                                      descriptionFont,
+                                      2);
+    }
+
+    if (footerBaseline > 0.0f && !menuData.footer.empty()) {
+        TextRenderer::RenderTextAligned(menuData.footer,
+                                        static_cast<int>(centerX),
+                                        static_cast<int>(footerBaseline),
+                                        TextAlign::Center,
+                                        toTextColor(menuData.style.footerColor, 0.9f),
+                                        footerFont);
+    }
+
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+#else
+    (void)menuData;
+#endif
+#else
+    (void)menuData;
+#endif
+}
+
+void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ) {
     (void)camera;
     (void)fps;
     (void)playerX;

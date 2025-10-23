@@ -7,21 +7,20 @@ Nova-Engine Development Roadmap - Next Steps
 PHASE 1: FOUNDATION (Next 1-2 months)
 -------------------------------------
 ✅ Game Design Document [COMPLETE - Living Document]
-  ✅ Core mechanics documented (GAME_DESIGN_DOCUMENT.md)
+  ✅ Core mechanics documented
   ✅ Solar system concept outlined
-  ✅ Spaceship types and classes defined
+  ✅ Spaceship types defined
   ✅ Progression systems planned
-  ✅ Technical specifications complete
-  ✅ Development phases mapped
-  
-  PERIODIC REFINEMENTS (Optional):
-  □ Enhance solar system details (align with implementation - see docs/solar_system_generation.md)
-  □ Add detailed component specifications as systems are built
-  □ Expand faction system with 5+ specific factions
-  □ Define resource and crafting system details
-  
-  See docs/game_design_assessment.md for enhancement roadmap
-  Overall Completeness: 94% - Excellent foundation for Phase 1 development
+
+  PERIODIC UPDATES:
+  □ Enhance solar system generation details (align with implementation)
+  □ Add detailed spaceship component specifications
+  □ Define player progression and skill systems
+  □ Expand faction system with specific factions
+  □ Add resource and crafting system details
+
+  See docs/game_design_enhancements.md for enhancement roadmap
+  Current Status: Comprehensive foundation complete, refinements optional
 
 ✅ Spaceship Classes & Components [75% COMPLETE - Core Systems Functional]
   ✅ Design & taxonomy complete (docs/spaceship_taxonomy.md) - Professional quality
