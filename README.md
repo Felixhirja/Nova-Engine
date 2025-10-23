@@ -53,6 +53,16 @@ cd Nova-Engine
    pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-glfw mingw-w64-x86_64-glu
    ```
 
+3. Before building or launching on Windows, verify that all required runtime
+   DLLs are available in the repository root:
+
+   ```powershell
+   pwsh -File scripts/check_dlls.ps1
+   ```
+
+   The script copies missing DLLs from your MSYS2 installation when possible
+   and surfaces actionable errors for unresolved dependencies.
+
 #### Linux
 
 ```bash
