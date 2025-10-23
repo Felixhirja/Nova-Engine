@@ -72,6 +72,10 @@ int Input::PollKey() {
         if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) return 'e';
         if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) return 'c';
         if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) return 't';
+        if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) return 'i';
+        if (glfwGetKey(window, GLFW_KEY_LEFT_BRACKET) == GLFW_PRESS) return '[';
+        if (glfwGetKey(window, GLFW_KEY_RIGHT_BRACKET) == GLFW_PRESS) return ']';
+        if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS) return '0';
         if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) return '1';
         if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) return '2';
         if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS) return '3';
@@ -101,6 +105,10 @@ int Input::PollKey() {
             if (kc == SDLK_z) return 'z';
             if (kc == SDLK_x) return 'x';
             if (kc == SDLK_t) return 't';
+            if (kc == SDLK_i) return 'i';
+            if (kc == SDLK_LEFTBRACKET) return '[';
+            if (kc == SDLK_RIGHTBRACKET) return ']';
+            if (kc == SDLK_0) return '0';
             if (kc == SDLK_1) return '1';
             if (kc == SDLK_2) return '2';
             if (kc == SDLK_3) return '3';

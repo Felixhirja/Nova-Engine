@@ -1,6 +1,13 @@
 #include "EntityManager.h"
 #include "Components.h"
+#include "TypeNameUtils.h"
 #include "../CelestialBody.h"
+
+#include <algorithm>
+#include <cassert>
+#include <iostream>
+#include <sstream>
+#include <unordered_set>
 
 EntityManager::EntityManager() {}
 EntityManager::~EntityManager() {}
@@ -155,4 +162,104 @@ void EntityManager::EnableArchetypeFacade() {
     }
 
     usingArchetypes_ = true;
+}
+
+std::vector<std::type_index> EntityManager::GetComponentTypes(Entity e) const {
+    std::vector<std::type_index> result;
+    if (!IsAlive(e)) {
+        return result;
+    }
+
+    std::unordered_set<std::type_index> seen;
+    seen.reserve(16);
+
+    if (usingArchetypes_) {
+        ecs::EntityHandle handle = GetModernHandle(e);
+        if (!handle.IsNull()) {
+            auto archetypeTypes = archetypeManager_.GetComponentTypes(handle);
+            for (const auto& typeIndex : archetypeTypes) {
+                if (seen.insert(typeIndex).second) {
+                    result.push_back(typeIndex);
+                }
+            }
+        }
+    }
+
+    for (const auto& [typeIndex, entityMap] : components) {
+        auto it = entityMap.find(e);
+        if (it != entityMap.end()) {
+            if (seen.insert(typeIndex).second) {
+                result.push_back(typeIndex);
+            }
+        }
+    }
+
+    std::sort(result.begin(), result.end(), [](const std::type_index& a, const std::type_index& b) {
+        return a.hash_code() < b.hash_code();
+    });
+
+    return result;
+}
+
+void EntityManager::EnumerateEntities(const std::function<void(Entity, const std::vector<std::type_index>&)>& callback) const {
+    if (!callback) {
+        return;
+    }
+
+    for (Entity entity : aliveEntities) {
+        callback(entity, GetComponentTypes(entity));
+    }
+}
+
+namespace {
+std::string JoinTypeNames(const std::vector<std::type_index>& types) {
+    if (types.empty()) {
+        return "(none)";
+    }
+
+    std::ostringstream oss;
+    bool first = true;
+    for (const auto& type : types) {
+        if (!first) {
+            oss << ", ";
+        }
+        oss << ecs::debug::GetReadableTypeName(type);
+        first = false;
+    }
+    return oss.str();
+}
+} // namespace
+
+void EntityManager::LogForEachComponentMismatch(Entity entity,
+                                                const std::vector<std::type_index>& requested,
+                                                const std::vector<std::type_index>& missing) {
+    if (missing.empty()) {
+        return;
+    }
+
+    static std::unordered_set<std::string> loggedMessages;
+    std::ostringstream keyStream;
+    keyStream << entity;
+    for (const auto& type : missing) {
+        keyStream << '|' << type.name();
+    }
+    keyStream << "->";
+    for (const auto& type : requested) {
+        keyStream << type.name() << ';';
+    }
+
+    std::string key = keyStream.str();
+    if (!loggedMessages.insert(key).second) {
+        return;
+    }
+
+    std::ostringstream message;
+    message << "[ECS] ForEach mismatch on entity " << entity
+            << ": missing {" << JoinTypeNames(missing)
+            << "} while requesting {" << JoinTypeNames(requested) << "}";
+    std::cerr << message.str() << std::endl;
+
+#ifndef NDEBUG
+    assert(!"Entity missing required components for ForEach");
+#endif
 }
