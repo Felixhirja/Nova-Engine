@@ -223,6 +223,7 @@ private:
         const Vector3& parentPosition, MeshBuilder& builder);
 
     void AssignDefaultShaders(Entity entity);
+    void InitializeOrbitState(Entity entity);
 
 private:
     EntityManager* entityManager_;
