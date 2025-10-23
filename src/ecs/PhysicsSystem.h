@@ -3,6 +3,9 @@
 #include "EntityManager.h"
 #include <vector>
 #include <cmath>
+#include <memory>
+
+#include "../physics/PhysicsEngine.h"
 
 /**
  * PhysicsSystem: Handles physics simulation for entities with RigidBody components
@@ -17,8 +20,13 @@
 class PhysicsSystem : public System {
 public:
     PhysicsSystem(EntityManager* em);
-    
+
     void Update(EntityManager& entityManager, double dt) override;
+
+    void UseExternalEngine(std::shared_ptr<physics::IPhysicsEngine> engine);
+    void ResetToBuiltin();
+    physics::PhysicsBackendType GetActiveBackendType() const noexcept { return activeBackend_; }
+    void StepWithBuiltin(EntityManager& entityManager, double dt);
     
     // Configuration
     void SetGravity(double x, double y, double z);
@@ -62,6 +70,8 @@ public:
     
 private:
     EntityManager* entityManager_;
+    std::shared_ptr<physics::IPhysicsEngine> externalEngine_;
+    physics::PhysicsBackendType activeBackend_ = physics::PhysicsBackendType::BuiltIn;
     
     // Global physics settings
     double globalGravityX_ = 0.0;
@@ -82,6 +92,8 @@ private:
     void UpdateCharacterControllers(double dt);
     void UpdateJoints(double dt);
     void ClearFrameForces();
+
+    void RunBuiltinSimulation(double dt);
     
     // Collision detection helpers
     struct CollisionPair {

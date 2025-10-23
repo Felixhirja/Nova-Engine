@@ -66,12 +66,22 @@ struct ShipAssemblyRequest {
     std::unordered_map<std::string, std::string> slotAssignments; // slotId -> componentId
 };
 
+struct ComponentSuggestion {
+    std::string slotId;
+    std::string reason;
+    std::vector<std::string> suggestedComponentIds;
+};
+
 struct ShipAssemblyDiagnostics {
     std::vector<std::string> errors;
     std::vector<std::string> warnings;
+    std::vector<ComponentSuggestion> suggestions;
 
     void AddError(const std::string& msg);
     void AddWarning(const std::string& msg);
+    void AddSuggestion(const std::string& slotId,
+                       const std::string& reason,
+                       std::vector<std::string> suggestedComponentIds);
     bool HasErrors() const { return !errors.empty(); }
 };
 

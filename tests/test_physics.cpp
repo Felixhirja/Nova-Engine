@@ -3,10 +3,15 @@
  */
 #include "../src/ecs/EntityManager.h"
 #include "../src/ecs/PhysicsSystem.h"
+#include "../src/ecs/SpaceshipPhysicsSystem.h"
 #include "../src/ecs/Components.h"
+#include "../src/physics/BulletPhysicsEngine.h"
+#include "../src/physics/PhysXPhysicsEngine.h"
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <memory>
 
 void TestRigidBodyComponent() {
     std::cout << "Testing RigidBody component..." << std::endl;
@@ -268,6 +273,141 @@ void TestGravitySource() {
     std::cout << "  Gravity source tests passed" << std::endl;
 }
 
+void TestBulletPhysicsEngineIntegration() {
+    std::cout << "Testing Bullet physics engine integration..." << std::endl;
+
+    EntityManager em;
+    PhysicsSystem physics(&em);
+    physics.SetGlobalDamping(0.0, 0.0);
+
+    auto bullet = std::make_shared<physics::BulletPhysicsEngine>();
+    physics.UseExternalEngine(bullet);
+
+    physics::PhysicsEngineInitParams params;
+    params.fixedTimeStep = 1.0 / 120.0;
+    params.maxSubSteps = 240;
+    bullet->Initialize(params);
+
+    auto entity = em.CreateEntity();
+    em.EmplaceComponent<RigidBody>(entity);
+    auto& pos = em.EmplaceComponent<Position>(entity);
+    pos.x = 0.0; pos.y = 0.0; pos.z = 5.0;
+    em.EmplaceComponent<Velocity>(entity);
+
+    physics.SetGravity(0.0, 0.0, -9.8);
+    physics.Update(em, 1.0);
+
+    auto* vel = em.GetComponent<Velocity>(entity);
+    assert(physics.GetActiveBackendType() == physics::PhysicsBackendType::Bullet);
+    assert(vel != nullptr);
+    assert(vel->vz < 0.0);
+
+    physics.ResetToBuiltin();
+    assert(physics.GetActiveBackendType() == physics::PhysicsBackendType::BuiltIn);
+
+    std::cout << "  Bullet integration tests passed" << std::endl;
+}
+
+void TestPhysXPhysicsEngineIntegration() {
+    std::cout << "Testing PhysX physics engine integration..." << std::endl;
+
+    EntityManager em;
+    PhysicsSystem physics(&em);
+    physics.SetGlobalDamping(0.0, 0.0);
+
+    auto physx = std::make_shared<physics::PhysXPhysicsEngine>();
+    physics.UseExternalEngine(physx);
+
+    physics::PhysicsEngineInitParams params;
+    params.fixedTimeStep = 1.0 / 90.0;
+    params.maxSubSteps = 180;
+    physx->Initialize(params);
+
+    auto entity = em.CreateEntity();
+    em.EmplaceComponent<RigidBody>(entity);
+    auto& pos = em.EmplaceComponent<Position>(entity);
+    pos.x = 0.0; pos.y = 0.0; pos.z = 8.0;
+    em.EmplaceComponent<Velocity>(entity);
+
+    physics.SetGravity(0.0, 0.0, -9.8);
+    physics.Update(em, 1.0);
+
+    auto* vel = em.GetComponent<Velocity>(entity);
+    assert(physics.GetActiveBackendType() == physics::PhysicsBackendType::PhysX);
+    assert(vel != nullptr);
+    assert(vel->vz < 0.0);
+
+    physics.ResetToBuiltin();
+    assert(physics.GetActiveBackendType() == physics::PhysicsBackendType::BuiltIn);
+
+    std::cout << "  PhysX integration tests passed" << std::endl;
+}
+
+void TestSpaceshipPhysicsSystem() {
+    std::cout << "Testing spaceship flight physics..." << std::endl;
+
+    EntityManager em;
+    auto entity = em.CreateEntity();
+    auto& flight = em.EmplaceComponent<SpaceshipFlightModel>(entity);
+    auto& velocity = em.EmplaceComponent<Velocity>(entity);
+    auto& position = em.EmplaceComponent<Position>(entity);
+    auto& acceleration = em.EmplaceComponent<Acceleration>(entity);
+    (void)acceleration; // Prevent unused warning in release builds
+
+    flight.massKg = 12000.0;
+    flight.maxMainThrustN = 240000.0;
+    flight.maxReverseThrustN = 160000.0;
+    flight.maxLateralThrustN = 80000.0;
+    flight.maxVerticalThrustN = 90000.0;
+    flight.linearDamping = 0.0;
+    flight.maxLinearSpeed = 0.0;
+    flight.dragCoefficient = 0.3;
+    flight.liftCoefficient = 0.6;
+    flight.referenceArea = 25.0;
+    flight.gravity = -9.81;
+    flight.atmosphericFlightEnabled = true;
+
+    SpaceshipPhysicsSystem system;
+
+    flight.throttle = 1.0;
+    position.z = 0.0;
+
+    system.Update(em, 1.0);
+
+    double expectedForwardSpeed = flight.maxMainThrustN / flight.massKg;
+    double tolerance = std::max(0.05 * expectedForwardSpeed, 0.25);
+    assert(velocity.vy > 0.0);
+    assert(std::abs(velocity.vy - expectedForwardSpeed) < tolerance);
+    assert(flight.lastAppliedForceY > 0.0);
+    assert(flight.currentAtmosphericDensity > 0.0);
+
+    auto* accel = em.GetComponent<Acceleration>(entity);
+    assert(accel != nullptr);
+    assert(std::abs(accel->ay - expectedForwardSpeed) < tolerance);
+
+    // Drag should slow the craft when throttle is zero and velocity is high
+    velocity.vy = 200.0;
+    flight.throttle = 0.0;
+    system.Update(em, 1.0);
+    assert(velocity.vy < 200.0);
+
+    // Atmospheric density should fall off at high altitude
+    double denseAtmosphere = flight.currentAtmosphericDensity;
+    position.z = flight.atmosphereScaleHeight * 3.0;
+    system.Update(em, 0.5);
+    double thinAtmosphere = flight.currentAtmosphericDensity;
+    assert(thinAtmosphere < denseAtmosphere);
+
+    // Orientation controls should change angular state
+    double previousPitch = flight.pitch;
+    flight.pitchInput = 1.0;
+    system.Update(em, 0.5);
+    assert(flight.pitch != previousPitch);
+    assert(std::abs(flight.lastAppliedTorqueX) > 0.0);
+
+    std::cout << "  Spaceship physics tests passed" << std::endl;
+}
+
 int main() {
     std::cout << "Running Physics System Tests" << std::endl;
     std::cout << "=============================" << std::endl;
@@ -281,6 +421,9 @@ int main() {
     TestForceApplication();
     TestKinematicBodies();
     TestGravitySource();
+    TestBulletPhysicsEngineIntegration();
+    TestPhysXPhysicsEngineIntegration();
+    TestSpaceshipPhysicsSystem();
     
     std::cout << "=============================" << std::endl;
     std::cout << "All physics tests passed!" << std::endl;

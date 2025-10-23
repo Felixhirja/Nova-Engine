@@ -39,7 +39,7 @@ $(info GLFW not found; building ASCII fallback)
 endif
 
 # Include graphics subsystem and GLAD loader
-SRC := $(wildcard src/*.cpp) $(wildcard src/ecs/*.cpp)
+SRC := $(wildcard src/*.cpp) $(wildcard src/ecs/*.cpp) $(wildcard src/physics/*.cpp)
 GLAD_SRC :=
 GLAD_OBJ :=
 
@@ -69,7 +69,7 @@ $(TARGET): $(GLAD_OBJ) $(OBJ)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-test: tests/test_simulation tests/test_camera tests/test_camera_follow tests/test_camera_edgecases tests/test_camera_presets tests/test_ship_assembly tests/test_shield_energy tests/test_feedback_systems tests/test_text_rendering tests/test_ecs_v2 tests/test_physics tests/test_solar_system tests/test_animation_system tests/test_entity_migration tests/test_simulation_scheduler
+test: tests/test_simulation tests/test_camera tests/test_camera_follow tests/test_camera_edgecases tests/test_camera_presets tests/test_ship_assembly tests/test_shield_energy tests/test_feedback_systems tests/test_text_rendering tests/test_ecs_v2 tests/test_physics tests/test_solar_system tests/test_animation_system tests/test_weapon_targeting
 
 tests/test_simulation: tests/test_simulation.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./src -o $@ tests/test_simulation.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
@@ -110,11 +110,8 @@ tests/test_solar_system: tests/test_solar_system.cpp src/SolarSystem.cpp src/Cel
 tests/test_animation_system: tests/test_animation_system.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./src -o $@ tests/test_animation_system.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
-tests/test_entity_migration: tests/test_entity_migration.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./src -o $@ tests/test_entity_migration.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
-
-tests/test_simulation_scheduler: tests/test_simulation_scheduler.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./src -o $@ tests/test_simulation_scheduler.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_weapon_targeting: tests/test_weapon_targeting.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ)
+	$(CXX) $(CXXFLAGS) -I./src -o $@ tests/test_weapon_targeting.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
 clean:
 	rm -f $(OBJ) $(GLAD_OBJ) $(TARGET) tests/test_simulation tests/test_camera tests/test_camera_follow tests/test_camera_edgecases tests/test_camera_presets tests/test_ship_assembly tests/test_shield_energy tests/test_feedback_systems tests/test_text_rendering tests/test_ecs_v2 tests/test_physics tests/test_solar_system tests/test_animation_system tests/test_entity_migration tests/test_simulation_scheduler
