@@ -49,6 +49,11 @@ struct EnvironmentColliderDefinition {
     double sizeX = 1.0;
     double sizeY = 1.0;
     double sizeZ = 1.0;
+    LocomotionSurfaceType surfaceType = LocomotionSurfaceType::PlanetaryGround;
+    bool overridesProfile = false;
+    SurfaceMovementProfile movementProfile;
+    bool isHazard = false;
+    HazardModifier hazardModifier;
 };
 
 double ComputeSpan(double minValue, double maxValue, double fallback) {
@@ -85,6 +90,7 @@ std::vector<EnvironmentColliderDefinition> BuildEnvironmentFromBounds(const Move
         floor.sizeX = spanX + 2.0 * kEnvironmentWallThickness;
         floor.sizeY = spanY + 2.0 * kEnvironmentWallThickness;
         floor.sizeZ = kEnvironmentWallThickness;
+        floor.surfaceType = LocomotionSurfaceType::PlanetaryGround;
         colliders.push_back(floor);
     }
 
@@ -96,6 +102,17 @@ std::vector<EnvironmentColliderDefinition> BuildEnvironmentFromBounds(const Move
         ceiling.sizeX = spanX + 2.0 * kEnvironmentWallThickness;
         ceiling.sizeY = spanY + 2.0 * kEnvironmentWallThickness;
         ceiling.sizeZ = kEnvironmentWallThickness;
+        ceiling.surfaceType = LocomotionSurfaceType::Spacewalk;
+        ceiling.overridesProfile = true;
+        ceiling.movementProfile.gravityMultiplier = 0.05;
+        ceiling.movementProfile.accelerationMultiplier = 0.6;
+        ceiling.movementProfile.decelerationMultiplier = 0.6;
+        ceiling.movementProfile.maxSpeedMultiplier = 0.85;
+        ceiling.isHazard = true;
+        ceiling.hazardModifier.gravityMultiplier = 0.5;
+        ceiling.hazardModifier.speedMultiplier = 0.75;
+        ceiling.hazardModifier.accelerationMultiplier = 0.6;
+        ceiling.hazardModifier.heatGainRate = 10.0;
         colliders.push_back(ceiling);
     }
 
@@ -121,6 +138,12 @@ std::vector<EnvironmentColliderDefinition> BuildEnvironmentFromBounds(const Move
         wall.sizeX = kEnvironmentWallThickness;
         wall.sizeY = spanY + 2.0 * kEnvironmentWallThickness;
         wall.sizeZ = wallHeight;
+        wall.surfaceType = LocomotionSurfaceType::ZeroGInterior;
+        wall.overridesProfile = true;
+        wall.movementProfile.gravityMultiplier = 0.15;
+        wall.movementProfile.accelerationMultiplier = 0.75;
+        wall.movementProfile.decelerationMultiplier = 0.75;
+        wall.movementProfile.maxSpeedMultiplier = 0.9;
         colliders.push_back(wall);
     }
 
@@ -132,6 +155,12 @@ std::vector<EnvironmentColliderDefinition> BuildEnvironmentFromBounds(const Move
         wall.sizeX = kEnvironmentWallThickness;
         wall.sizeY = spanY + 2.0 * kEnvironmentWallThickness;
         wall.sizeZ = wallHeight;
+        wall.surfaceType = LocomotionSurfaceType::ZeroGInterior;
+        wall.overridesProfile = true;
+        wall.movementProfile.gravityMultiplier = 0.15;
+        wall.movementProfile.accelerationMultiplier = 0.75;
+        wall.movementProfile.decelerationMultiplier = 0.75;
+        wall.movementProfile.maxSpeedMultiplier = 0.9;
         colliders.push_back(wall);
     }
 
@@ -143,6 +172,12 @@ std::vector<EnvironmentColliderDefinition> BuildEnvironmentFromBounds(const Move
         wall.sizeX = spanX + 2.0 * kEnvironmentWallThickness;
         wall.sizeY = kEnvironmentWallThickness;
         wall.sizeZ = wallHeight;
+        wall.surfaceType = LocomotionSurfaceType::ZeroGInterior;
+        wall.overridesProfile = true;
+        wall.movementProfile.gravityMultiplier = 0.15;
+        wall.movementProfile.accelerationMultiplier = 0.75;
+        wall.movementProfile.decelerationMultiplier = 0.75;
+        wall.movementProfile.maxSpeedMultiplier = 0.9;
         colliders.push_back(wall);
     }
 
@@ -154,6 +189,12 @@ std::vector<EnvironmentColliderDefinition> BuildEnvironmentFromBounds(const Move
         wall.sizeX = spanX + 2.0 * kEnvironmentWallThickness;
         wall.sizeY = kEnvironmentWallThickness;
         wall.sizeZ = wallHeight;
+        wall.surfaceType = LocomotionSurfaceType::ZeroGInterior;
+        wall.overridesProfile = true;
+        wall.movementProfile.gravityMultiplier = 0.15;
+        wall.movementProfile.accelerationMultiplier = 0.75;
+        wall.movementProfile.decelerationMultiplier = 0.75;
+        wall.movementProfile.maxSpeedMultiplier = 0.9;
         colliders.push_back(wall);
     }
 
@@ -510,6 +551,10 @@ Simulation::Simulation()
       inputStrafeLeft(false),
       inputStrafeRight(false),
       inputCameraYaw(0.0),
+      inputSprint(false),
+      inputCrouch(false),
+      inputSlide(false),
+      inputBoost(false),
       prevJumpHeld(false),
       useThrustMode(false),
       inputLeft(false),
@@ -578,6 +623,10 @@ void Simulation::Init(EntityManager* externalEm) {
     controller->moveDown = false;
     controller->strafeLeft = false;
     controller->strafeRight = false;
+    controller->sprint = false;
+    controller->crouch = false;
+    controller->slide = false;
+    controller->boost = false;
     controller->cameraYaw = 0.0;
     useEm->AddComponent<PlayerController>(playerEntity, controller);
 
@@ -620,7 +669,17 @@ void Simulation::Init(EntityManager* externalEm) {
         locomotion->idleSpeedThreshold = std::max(0.1, baseSpeed * 0.1);
         locomotion->walkSpeedThreshold = std::max(locomotion->idleSpeedThreshold + 0.1, baseSpeed * 0.4);
         locomotion->sprintSpeedThreshold = std::max(locomotion->walkSpeedThreshold + 0.1, baseSpeed * 0.85);
+        locomotion->slideSpeedThreshold = std::max(locomotion->walkSpeedThreshold, baseSpeed * 0.65);
     }
+    locomotion->stamina = locomotion->maxStamina;
+    locomotion->heat = 0.0;
+    locomotion->activeSurfaceType = locomotion->defaultSurfaceType;
+    if (locomotion->surfaceProfiles.count(locomotion->defaultSurfaceType)) {
+        locomotion->activeSurfaceProfile = locomotion->surfaceProfiles.at(locomotion->defaultSurfaceType);
+    }
+    locomotion->activeHazardModifier = locomotion->hazardBaseline;
+    locomotion->currentCameraOffset = locomotion->defaultCameraOffset;
+    locomotion->baseJumpImpulse = physics->jumpImpulse;
     useEm->AddComponent<LocomotionStateMachine>(playerEntity, locomotion);
 
     auto targetLock = std::make_shared<TargetLock>();
@@ -640,6 +699,10 @@ void Simulation::Init(EntityManager* externalEm) {
     inputStrafeLeft = false;
     inputStrafeRight = false;
     inputCameraYaw = 0.0;
+    inputSprint = false;
+    inputCrouch = false;
+    inputSlide = false;
+    inputBoost = false;
     prevJumpHeld = false;
 
     std::cout << "Simulation: created player entity id=" << playerEntity << std::endl;
@@ -662,6 +725,10 @@ void Simulation::Update(double dt) {
         controller->moveDown = inputDown;
         controller->strafeLeft = inputStrafeLeft;
         controller->strafeRight = inputStrafeRight;
+        controller->sprint = inputSprint;
+        controller->crouch = inputCrouch;
+        controller->slide = inputSlide;
+        controller->boost = inputBoost;
         controller->cameraYaw = inputCameraYaw;
         controller->thrustMode = useThrustMode;
         controller->jumpRequested = (!useThrustMode && jumpJustPressed);
@@ -726,7 +793,8 @@ LocomotionStateMachine::Weights Simulation::GetLocomotionBlendWeights() const {
     return weights;
 }
 
-void Simulation::SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw) {
+void Simulation::SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw,
+                               bool sprint, bool crouch, bool slide, bool boost) {
     inputForward = forward;
     inputBackward = backward;
     inputUp = up;
@@ -734,6 +802,10 @@ void Simulation::SetPlayerInput(bool forward, bool backward, bool up, bool down,
     inputStrafeLeft = strafeLeft;
     inputStrafeRight = strafeRight;
     inputCameraYaw = cameraYaw;
+    inputSprint = sprint;
+    inputCrouch = crouch;
+    inputSlide = slide;
+    inputBoost = boost;
 }
 
 void Simulation::SetUseThrustMode(bool thrustMode) {
@@ -834,6 +906,14 @@ void Simulation::RebuildEnvironmentColliders(EntityManager& entityManager) {
         collider->collisionMask = kCollisionLayerPlayer;
         collider->isTrigger = false;
         entityManager.AddComponent<BoxCollider>(colliderEntity, collider);
+
+        auto surface = std::make_shared<EnvironmentSurface>();
+        surface->surfaceType = def.surfaceType;
+        surface->overridesProfile = def.overridesProfile;
+        surface->movementProfile = def.movementProfile;
+        surface->isHazard = def.isHazard;
+        surface->hazardModifier = def.hazardModifier;
+        entityManager.AddComponent<EnvironmentSurface>(colliderEntity, surface);
 
         auto velocity = std::make_shared<Velocity>();
         velocity->vx = 0.0;

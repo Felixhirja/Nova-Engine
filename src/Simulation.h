@@ -28,7 +28,8 @@ public:
     LocomotionStateMachine::Weights GetLocomotionBlendWeights() const;
     Entity GetPlayerEntity() const { return playerEntity; }
     // Set player input state
-    void SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw);
+    void SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw,
+                        bool sprint = false, bool crouch = false, bool slide = false, bool boost = false);
     void SetUseThrustMode(bool thrustMode);
     void ConfigureMovementParameters(const MovementParameters& params);
     const MovementParameters& GetMovementParameters() const { return movementConfig; }
@@ -59,6 +60,10 @@ private:
     bool inputStrafeLeft;
     bool inputStrafeRight;
     double inputCameraYaw;
+    bool inputSprint;
+    bool inputCrouch;
+    bool inputSlide;
+    bool inputBoost;
     bool prevJumpHeld;
     bool useThrustMode;
     bool inputLeft;

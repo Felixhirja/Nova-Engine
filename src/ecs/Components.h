@@ -2,6 +2,7 @@
 #include "Component.h"
 #include <limits>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 struct Position : public Component {
@@ -77,9 +78,45 @@ struct PlayerController : public Component {
     bool strafeLeft = false;
     bool strafeRight = false;
     bool jumpRequested = false;
+    bool sprint = false;
+    bool crouch = false;
+    bool slide = false;
+    bool boost = false;
     bool thrustMode = false;
     double cameraYaw = 0.0;
     double facingYaw = 0.0;  // Player's facing direction for camera following
+};
+
+enum class LocomotionSurfaceType {
+    Unknown,
+    PlanetaryGround,
+    Spacewalk,
+    ZeroGInterior
+};
+
+struct SurfaceMovementProfile {
+    double accelerationMultiplier = 1.0;
+    double decelerationMultiplier = 1.0;
+    double maxSpeedMultiplier = 1.0;
+    double jumpImpulseMultiplier = 1.0;
+    double gravityMultiplier = 1.0;
+    double frictionMultiplier = 1.0;
+};
+
+struct HazardModifier {
+    double speedMultiplier = 1.0;
+    double accelerationMultiplier = 1.0;
+    double gravityMultiplier = 1.0;
+    double staminaDrainRate = 0.0;
+    double heatGainRate = 0.0;
+};
+
+struct EnvironmentSurface : public Component {
+    LocomotionSurfaceType surfaceType = LocomotionSurfaceType::PlanetaryGround;
+    bool overridesProfile = false;
+    SurfaceMovementProfile movementProfile;
+    bool isHazard = false;
+    HazardModifier hazardModifier;
 };
 
 struct MovementParameters : public Component {
@@ -125,7 +162,9 @@ struct LocomotionStateMachine : public Component {
         Walk,
         Sprint,
         Airborne,
-        Landing
+        Landing,
+        Crouch,
+        Slide
     };
 
     struct Weights {
@@ -134,6 +173,8 @@ struct LocomotionStateMachine : public Component {
         double sprint = 0.0;
         double airborne = 0.0;
         double landing = 0.0;
+        double crouch = 0.0;
+        double slide = 0.0;
     };
 
     State currentState = State::Idle;
@@ -148,6 +189,56 @@ struct LocomotionStateMachine : public Component {
     double sprintSpeedThreshold = 4.5;
     double airborneVerticalSpeedThreshold = 0.2;
     bool wasGrounded = true;
+    double crouchCameraOffset = -0.4;
+    double slideCameraOffset = -0.6;
+    double defaultCameraOffset = 0.0;
+    double cameraSmoothing = 12.0;
+    double currentCameraOffset = 0.0;
+    double stamina = 100.0;
+    double maxStamina = 100.0;
+    double staminaRegenRate = 25.0;
+    double sprintStaminaCost = 35.0;
+    double sprintAccelerationMultiplier = 1.2;
+    double sprintSpeedMultiplier = 1.35;
+    double crouchSpeedMultiplier = 0.4;
+    double crouchAccelerationMultiplier = 0.35;
+    double slideSpeedMultiplier = 1.15;
+    double slideDecelerationMultiplier = 0.45;
+    double slideDuration = 0.75;
+    double slideCooldown = 0.65;
+    double slideSpeedThreshold = 3.0;
+    double slideTimer = 0.0;
+    double slideCooldownTimer = 0.0;
+    double airborneAccelerationMultiplier = 0.5;
+    double boostDuration = 0.35;
+    double boostTimer = 0.0;
+    double boostSpeedMultiplier = 1.4;
+    double boostAccelerationMultiplier = 1.35;
+    double heat = 0.0;
+    double maxHeat = 100.0;
+    double heatDissipationRate = 35.0;
+    double boostHeatCostPerSecond = 45.0;
+    LocomotionSurfaceType activeSurfaceType = LocomotionSurfaceType::PlanetaryGround;
+    LocomotionSurfaceType defaultSurfaceType = LocomotionSurfaceType::PlanetaryGround;
+    SurfaceMovementProfile activeSurfaceProfile;
+    HazardModifier activeHazardModifier;
+    std::unordered_map<LocomotionSurfaceType, SurfaceMovementProfile> surfaceProfiles = {
+        {LocomotionSurfaceType::PlanetaryGround, SurfaceMovementProfile{}},
+        {LocomotionSurfaceType::Spacewalk, SurfaceMovementProfile{0.55, 0.4, 0.75, 0.35, 0.2, 0.1}},
+        {LocomotionSurfaceType::ZeroGInterior, SurfaceMovementProfile{0.7, 0.65, 0.85, 0.15, 0.15, 0.25}},
+    };
+    HazardModifier hazardBaseline;
+    double runtimeAccelerationMultiplier = 1.0;
+    double runtimeDecelerationMultiplier = 1.0;
+    double runtimeMaxSpeedMultiplier = 1.0;
+    double runtimeGravityMultiplier = 1.0;
+    double runtimeFrictionMultiplier = 1.0;
+    double runtimeJumpImpulseMultiplier = 1.0;
+    bool boostActive = false;
+    double baseGravity = -9.8;
+    bool baseGravityInitialized = false;
+    double baseJumpImpulse = 6.0;
+    bool baseJumpInitialized = false;
 };
 
 struct TargetLock : public Component {
