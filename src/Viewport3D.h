@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IRenderer.h"
+#include "MainMenu.h"
 #include "Transform.h"
 #include <string>
 #include <iostream>
@@ -103,6 +104,9 @@ public:
     void DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ);
     // Extended HUD with additional parameters
     void DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ, bool, const class ShipAssemblyResult*);
+
+    // Overlay rendering
+    void RenderMenuOverlay(const MainMenu::RenderData& menuData);
 
     // Bloom and letterbox settings (stubs for now)
     bool IsBloomEnabled() const { return false; }

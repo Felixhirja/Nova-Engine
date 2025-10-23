@@ -6,30 +6,34 @@
 #endif
 
 MainMenu::MainMenu()
-    : menu_("STAR ENGINE")
+    : menu_("NOVA ENGINE")
     , lastAction_(Action::None)
     , hasSaveGame_(false)
 {
     // Customize the menu style before building to ensure derived data uses the new look
     auto style = menu_.GetStyle();
-    style.titleColor = {255, 220, 100, 255};   // Golden title
-    style.subtitleColor = {190, 210, 255, 255};
-    style.footerColor = {160, 170, 180, 255};
-    style.titleFontSize = 64.0f;
+    style.titleColor = {255, 235, 165, 255};   // Warm golden title
+    style.subtitleColor = {200, 220, 255, 255};
+    style.footerColor = {180, 190, 205, 255};
+    style.normalColor = {200, 210, 220, 255};
+    style.selectedColor = {255, 255, 255, 255};
+    style.disabledColor = {120, 120, 130, 255};
+    style.backgroundColor = {12, 18, 28, 200};
+    style.titleFontSize = 60.0f;
     style.subtitleFontSize = 30.0f;
-    style.itemFontSize = 32.0f;
-    style.itemSpacing = 52.0f;
-    style.titleSpacing = 120.0f;
-    style.subtitleSpacing = 36.0f;
-    style.footerSpacing = 90.0f;
-    style.backgroundPadding = 60.0f;
-    style.selectedPulseSpeed = 2.5f;
-    style.selectedPulseMinAlpha = 0.6f;
+    style.itemFontSize = 30.0f;
+    style.itemSpacing = 54.0f;
+    style.titleSpacing = 110.0f;
+    style.subtitleSpacing = 34.0f;
+    style.footerSpacing = 88.0f;
+    style.backgroundPadding = 64.0f;
+    style.selectedPulseSpeed = 2.2f;
+    style.selectedPulseMinAlpha = 0.5f;
     style.selectedPulseMaxAlpha = 1.0f;
-    style.selectedScaleAmplitude = 0.08f;
+    style.selectedScaleAmplitude = 0.1f;
     menu_.SetStyle(style);
 
-    menu_.SetSubtitle("Command Interface v0.3 — Prepare for Launch");
+    menu_.SetSubtitle("Command Interface v0.9 — Prepare for Launch");
     menu_.SetFooter("Use W/S or Arrow Keys to navigate • Enter to confirm • Esc to exit");
 
     BuildMenu();
@@ -39,7 +43,7 @@ void MainMenu::BuildMenu() {
     menu_.ClearItems();
 
     // New Game
-    MenuSystem::MenuItem newGame("New Campaign", [this]() { OnNewGame(); });
+    MenuSystem::MenuItem newGame("New Game", [this]() { OnNewGame(); });
     newGame.description = "Launch a brand-new expedition from the bridge.";
     newGame.shortcutHint = "N";
     menu_.AddItem(newGame);
@@ -58,12 +62,6 @@ void MainMenu::BuildMenu() {
     settingsItem.description = "Adjust audio, video, and control preferences.";
     settingsItem.shortcutHint = "S";
     menu_.AddItem(settingsItem);
-
-    // Credits
-    MenuSystem::MenuItem creditsItem("Credits", [this]() { OnCredits(); });
-    creditsItem.description = "Meet the crew responsible for Nova Engine.";
-    creditsItem.shortcutHint = "R";
-    menu_.AddItem(creditsItem);
 
     // Quit
     MenuSystem::MenuItem quitItem("Quit", [this]() { OnQuit(); });
@@ -151,10 +149,6 @@ void MainMenu::OnContinue() {
 
 void MainMenu::OnSettings() {
     lastAction_ = Action::Settings;
-}
-
-void MainMenu::OnCredits() {
-    lastAction_ = Action::Credits;
 }
 
 void MainMenu::OnQuit() {
