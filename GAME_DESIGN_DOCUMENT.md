@@ -34,6 +34,25 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 - **Space Stations:** Orbital habitats, trading posts, and military installations
 - **Jump Gates:** Fast travel network connecting major systems
 
+#### Procedural Parameters
+- **Seed-Based Generation:** Integer seeds ensure reproducible systems for missions, lore, and multiplayer synchronization.
+- **Orbital Mechanics:** Keplerian ellipses with per-body eccentricity, inclination, and orbital period to support dynamic day/night cycles and patrol routes.
+- **Spectral Type Distribution:**
+  - O-type (<0.1%) and B-type (~0.1%) stars appear rarely but anchor high-reward regions.
+  - A-type (~0.6%) and F-type (~3%) stars provide mid-tier challenge systems.
+  - G-type (~7.6%) stars form the backbone of story-critical locations.
+  - K-type (~12%) and M-type (~76%) stars populate frontier space with varied gameplay opportunities.
+- **Planetary Zoning:**
+  - **Inner Band (0.3-2 AU):** High-density trade hubs and industrial colonies.
+  - **Mid Band (2-5 AU):** Mixed rocky worlds and gas giants supporting faction-controlled refineries.
+  - **Outer Band (5-30 AU):** Resource-rich gas/ice giants, pirate hideouts, and deep-space science stations.
+  - **Far Band (30-50 AU):** Dwarf planets and comets with rare crafting reagents.
+
+#### Habitability & Points of Interest
+- **Habitability Score:** Combines atmosphere, temperature, magnetic field, and gravity to classify landing requirements.
+- **Environmental Events:** Periodic solar flares, meteor storms, and aurora events influence mission availability and risk.
+- **Exploration Seeds:** Ancient ruins, derelict megastructures, and procedural story hooks spawn based on star age and faction presence.
+
 ### Planetary Features
 - **Atmospheric Flight:** Different flight characteristics in planetary atmospheres
 - **Surface Exploration:** Landing zones, outposts, and exploration sites
@@ -76,6 +95,29 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 - **Internal Layout:** Crew positioning and module placement
 - **Performance Tuning:** Overclocking and efficiency modifications
 
+#### Component Slots & Hardpoints
+1. **Power Plant Slot:** One per ship, sized S–XL, drives the total power budget and dictates upgrade ceiling.
+2. **Thruster Network:**
+   - Main engines: 1-4 per hull, scaling thrust and fuel efficiency.
+   - Maneuvering thrusters: 8-32 directional ports tuned per mass class for precision control.
+3. **Weapon Hardpoints:**
+   - Fighters: 2-4 light/mid mounts with gimbal or fixed options.
+   - Medium hulls: 4-8 modular pylons supporting turrets or missile racks.
+   - Capital ships: 20+ mixed-size emplacements with crew-operated batteries.
+4. **Shield Emitters:** 1-3 units providing coverage arcs; overlapping arcs enable reinforcement tactics.
+5. **Utility Bays:** Slots for scanners, tractor beams, repair drones, and specialized mission modules.
+
+#### System Interdependencies
+- **Power vs. Consumption:** Overloading triggers heat spikes and temporary module shutdowns; efficient load balancing unlocks stealth and endurance builds.
+- **Mass vs. Thrust:** Heavier modules affect acceleration and drift, influencing fuel cost and combat agility.
+- **Heat vs. Cooling:** Each module lists BTU output; radiator placement and coolant upgrades mitigate overheating penalties.
+- **Compatibility Matrix:** Manufacturers impose loyalty bonuses/penalties, encouraging faction progression and economy interaction.
+
+#### Upgrade Progression
+- **Tiers:** Civilian (T1-T2), Industrial (T3), Military (T4), Experimental (T5) with escalating power and maintenance needs.
+- **Quality Grades:** Rated A-D to represent durability and efficiency; higher grades reduce failure chance and upkeep cost.
+- **Specializations:** Combat modules emphasize burst damage and shield piercing; trading modules extend cargo and scanning; exploration kits add jump range and anomaly analyzers.
+
 ### Combat System
 
 #### Space Combat
@@ -108,6 +150,12 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 - **Trading Routes:** Establish profitable trade lanes
 - **Corporations:** Player-formed organizations for large-scale operations
 
+#### Resource & Crafting Loop
+- **Resource Tiers:** Common ores (iron, copper), advanced alloys (titanium, graphene), and exotic materials (quantum filaments) dictate crafting complexity and market value.
+- **Processing Pipeline:** Raw ore → refined materials → components → ship frames; each stage requires specialized facilities or modules, incentivizing cooperative play.
+- **Industrial Gameplay:** Players can operate refineries, fabricate modules in blueprint-driven factories, and auction finished goods via station marketplaces.
+- **Risk vs. Reward:** Deep-space mining zones yield rare resources but feature environmental hazards and pirate activity; escort contracts and corporation security provide counterplay.
+
 ### Exploration & Missions
 
 #### Exploration Mechanics
@@ -120,6 +168,34 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 - **Cargo Delivery:** Transport goods across systems
 - **Bounty Hunting:** Track and eliminate criminals
 - **Search & Rescue:** Locate and recover lost ships/crew
+
+## Player Progression & Social Systems
+
+### Player Progression System
+- **Reputation:** Each major faction tracks standing from -100 (hostile) to +100 (ally), unlocking exclusive gear, docking rights, and storyline arcs.
+- **Pilot Ranks:**
+  1. **Rookie** (0-10 flight hours) – tutorial missions and basic contracts.
+  2. **Cadet** (10-25 hours) – introduces faction conflicts and advanced ship roles.
+  3. **Pilot** (25-50 hours) – grants access to medium hulls and cooperative objectives.
+  4. **Veteran** (50-100 hours) – enables capital ship crews and large-scale events.
+  5. **Elite** (100-250 hours) – unlocks faction flagships and strategic management missions.
+  6. **Legend** (250+ hours) – opens endgame raids, political influence, and player governance tools.
+- **Skill Specializations:** Four trees (Combat, Trading, Exploration, Engineering) provide passive bonuses, active abilities, and unique mission modifiers; progress via mission completion and milestone achievements.
+- **Progression Rewards:** Titles, hangar trophies, blueprint access, and social prestige showcase player accomplishments without breaking balance.
+
+### Faction System
+- **United Earth Coalition (UEC):** Central government controlling core worlds; excels in balanced military/civilian tech.
+- **Free Traders Guild (FTG):** Merchant consortium dominating trade lanes; offers cargo efficiency modules and market intel.
+- **Frontier Explorers (FE):** Scientific collective charting outer rim anomalies; provides exploration hulls and jump upgrades.
+- **Crimson Corsairs:** Decentralized pirate clans holding asteroid belts; specialize in ambush gear and stealth tech.
+- **Mining Consortium (MC):** Industrial alliance exploiting resource-rich systems; unlocks mining rigs, refineries, and logistics bonuses.
+- **Faction Missions & Events:** Dynamic contracts adjust to territorial control, with seasonal wars influencing trade taxes, security levels, and public events.
+- **Shared Objectives:** Player corporations can align with factions to access large-scale operations such as blockade runs, system sieges, and megastructure construction.
+
+### Social Features
+- **Corporation Progression:** Shared hangars, research trees, and taxation policies allow groups to specialize and compete for regional dominance.
+- **Player Governance:** High-ranking legends can run for sector governor, influencing tariffs, law enforcement patrols, and public infrastructure projects.
+- **Dynamic World Reactions:** Reputation swings trigger NPC responses—escorts, ambushes, discounts, or embargoes—making player choices visible in the universe.
 
 ## Technical Specifications
 
