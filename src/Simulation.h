@@ -6,6 +6,9 @@
 #include "ecs/System.h"
 
 #include <string>
+#include <vector>
+
+class PhysicsSystem;
 
 class Simulation {
 public:
@@ -64,6 +67,13 @@ private:
     std::string movementBoundsConfigPath;
     std::string movementBoundsProfile;
     bool useMovementBoundsFile;
+
+    PhysicsSystem* physicsSystem = nullptr;
+    std::vector<Entity> environmentColliderEntities;
+
+    void DestroyEnvironmentColliders(EntityManager& entityManager);
+    void RebuildEnvironmentColliders(EntityManager& entityManager);
+    void CreatePlayerPhysicsComponents(EntityManager& entityManager, PlayerPhysics& playerPhysics);
 };
 
 #endif // SIMULATION_H

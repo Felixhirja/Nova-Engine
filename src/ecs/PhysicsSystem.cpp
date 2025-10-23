@@ -381,19 +381,19 @@ bool PhysicsSystem::CheckBoxBox(const BoxCollider& a, const Position& posA,
     
     // Find axis of minimum penetration (collision normal)
     if (penetX < penetY && penetX < penetZ) {
-        result.normalX = (posA.x < posB.x) ? -1.0 : 1.0;
+        result.normalX = (posA.x < posB.x) ? 1.0 : -1.0;
         result.normalY = 0.0;
         result.normalZ = 0.0;
         result.penetration = penetX;
     } else if (penetY < penetZ) {
         result.normalX = 0.0;
-        result.normalY = (posA.y < posB.y) ? -1.0 : 1.0;
+        result.normalY = (posA.y < posB.y) ? 1.0 : -1.0;
         result.normalZ = 0.0;
         result.penetration = penetY;
     } else {
         result.normalX = 0.0;
         result.normalY = 0.0;
-        result.normalZ = (posA.z < posB.z) ? -1.0 : 1.0;
+        result.normalZ = (posA.z < posB.z) ? 1.0 : -1.0;
         result.penetration = penetZ;
     }
     
@@ -565,20 +565,37 @@ void PhysicsSystem::ResolveCollisionPair(const CollisionPair& pair, double dt) {
     
     if (invMassSum > 0.0) {
         j /= invMassSum;
-        
+
         // Apply impulse
         if (rbA && !rbA->isKinematic) {
             velA->vx -= j * invMassA * pair.normalX;
             velA->vy -= j * invMassA * pair.normalY;
             velA->vz -= j * invMassA * pair.normalZ;
         }
-        
+
         if (rbB && !rbB->isKinematic) {
             velB->vx += j * invMassB * pair.normalX;
             velB->vy += j * invMassB * pair.normalY;
             velB->vz += j * invMassB * pair.normalZ;
         }
     }
+
+    auto updateGrounding = [&](unsigned int entity, double verticalComponent) {
+        auto* playerPhysics = entityManager_->GetComponent<PlayerPhysics>(entity);
+        if (!playerPhysics) return;
+
+        if (verticalComponent > 0.5) {
+            playerPhysics->isGrounded = true;
+            if (auto* entityVelocity = entityManager_->GetComponent<Velocity>(entity)) {
+                if (entityVelocity->vz < 0.0) {
+                    entityVelocity->vz = 0.0;
+                }
+            }
+        }
+    };
+
+    updateGrounding(pair.entityA, -pair.normalZ);
+    updateGrounding(pair.entityB, pair.normalZ);
 }
 
 void PhysicsSystem::SeparateColliders(unsigned int entityA, unsigned int entityB,

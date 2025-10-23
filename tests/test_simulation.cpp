@@ -17,12 +17,12 @@ int main() {
         return 1;
     }
 
-    // Test 2: hold right for long time, position should clamp at <= 5.0
+    // Test 2: hold right for long time, position should clamp at <= 4.5 (half-width offset)
     for (int i = 0; i < 600; ++i) sim.Update(dt);
     x = sim.GetPlayerX();
     std::cout << "Test2 player x=" << x << std::endl;
-    if (x > 5.0 + 1e-6) {
-        std::cerr << "Test2 FAILED: expected <=5.0" << std::endl;
+    if (x > 4.5 + 1e-6) {
+        std::cerr << "Test2 FAILED: expected <=4.5" << std::endl;
         return 2;
     }
 
@@ -44,12 +44,12 @@ int main() {
         return 4;
     }
 
-    // Test 4: hold forward for long time, position should clamp at <= 5.0 on Y
+    // Test 4: hold forward for long time, position should clamp at <= 4.5 on Y
     for (int i = 0; i < 600; ++i) sim.Update(dt);
     y = sim.GetPlayerY();
     std::cout << "Test4 player y=" << y << std::endl;
-    if (y > 5.0 + 1e-6) {
-        std::cerr << "Test4 FAILED: expected y <=5.0" << std::endl;
+    if (y > 4.5 + 1e-6) {
+        std::cerr << "Test4 FAILED: expected y <=4.5" << std::endl;
         return 5;
     }
 
@@ -59,8 +59,8 @@ int main() {
     for (int i = 0; i < 600; ++i) sim.Update(dt);
     y = sim.GetPlayerY();
     std::cout << "Test5 player y=" << y << std::endl;
-    if (y < -5.0 - 1e-6) {
-        std::cerr << "Test5 FAILED: expected y >= -5.0" << std::endl;
+    if (y < -4.5 - 1e-6) {
+        std::cerr << "Test5 FAILED: expected y >= -4.5" << std::endl;
         return 6;
     }
 
@@ -88,11 +88,11 @@ int main() {
     Simulation zeroSim;
     EntityManager zeroEm;
     zeroSim.Init(&zeroEm);
-    if (auto* zeroBounds = zeroEm.GetComponent<MovementBounds>(zeroSim.GetPlayerEntity())) {
-        zeroBounds->clampX = false;
-        zeroBounds->clampY = false;
-        zeroBounds->clampZ = false;
-    }
+    MovementBounds openBounds = zeroSim.GetMovementBounds();
+    openBounds.clampX = false;
+    openBounds.clampY = false;
+    openBounds.clampZ = false;
+    zeroSim.ConfigureMovementBounds(openBounds);
     if (auto* zeroPhysics = zeroEm.GetComponent<PlayerPhysics>(zeroSim.GetPlayerEntity())) {
         zeroPhysics->enableGravity = false;
         zeroPhysics->thrustMode = false;
@@ -102,7 +102,7 @@ int main() {
     double zeroX = zeroSim.GetPlayerX();
     double zeroY = zeroSim.GetPlayerY();
     std::cout << "Test7 zero-gravity x=" << zeroX << " y=" << zeroY << std::endl;
-    if (zeroY <= 5.0 + 1e-6) {
+    if (zeroY <= 4.5 + 1e-6) {
         std::cerr << "Test7 FAILED: expected y to exceed clamp in zero-gravity" << std::endl;
         return 10;
     }
@@ -211,7 +211,7 @@ int main() {
         std::cerr << "Test11 FAILED: expected movement to reach wider bound" << std::endl;
         return 20;
     }
-    if (wideX > 10.0 + 1e-6) {
+    if (wideX > 9.5 + 1e-6) {
         std::cerr << "Test11 FAILED: expected clamp at new max X" << std::endl;
         return 21;
     }
