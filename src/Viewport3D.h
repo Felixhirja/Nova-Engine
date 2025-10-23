@@ -163,6 +163,10 @@ private:
     SDL_Renderer* sdlRenderer;
     // OpenGL context (SDL_GLContext is a typedef provided by SDL for OpenGL)
     SDL_GLContext sdlGLContext;
+    SDL_Texture* spaceshipHudTexture_;
+    int spaceshipHudTextureWidth_;
+    int spaceshipHudTextureHeight_;
+    bool spaceshipHudTextureFailed_;
 #endif
 #ifdef USE_GLFW
     GLFWwindow* glfwWindow;
@@ -177,4 +181,7 @@ private:
     void RenderOpenGLViews(const class Camera* camera, double playerX, double playerY, double playerZ);
     void ActivateOpenGLView(const ViewportView& view, const class Camera* camera, double playerX, double playerY, double playerZ);
     void ActivateSDLView(const ViewportView& view);
+#ifdef USE_SDL
+    void EnsureSpaceshipHudTexture();
+#endif
 };

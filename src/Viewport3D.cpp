@@ -28,6 +28,7 @@
 #include "sdl_compat.h"
 #endif
 #include "ResourceManager.h"
+#include "SVGSurfaceLoader.h"
 #include "Camera.h"
 #endif
 #ifdef USE_GLFW
@@ -447,6 +448,10 @@ Viewport3D::Viewport3D()
     , sdlWindow(nullptr)
     , sdlRenderer(nullptr)
     , sdlGLContext(nullptr)
+    , spaceshipHudTexture_(nullptr)
+    , spaceshipHudTextureWidth_(0)
+    , spaceshipHudTextureHeight_(0)
+    , spaceshipHudTextureFailed_(false)
 #endif
 #ifdef USE_GLFW
     , glfwWindow(nullptr)
@@ -1334,6 +1339,13 @@ void Viewport3D::Shutdown() {
 #endif
     if (usingSDL) {
 #ifdef USE_SDL
+        if (spaceshipHudTexture_) {
+            SDL_DestroyTexture(spaceshipHudTexture_);
+            spaceshipHudTexture_ = nullptr;
+            spaceshipHudTextureWidth_ = 0;
+            spaceshipHudTextureHeight_ = 0;
+            spaceshipHudTextureFailed_ = false;
+        }
         if (sdlRenderer) SDL_DestroyRenderer(sdlRenderer);
         if (useGL && sdlGLContext) {
             compat_GL_DeleteContext(sdlGLContext);
@@ -2090,6 +2102,41 @@ void Viewport3D::RenderMenuOverlay(const MainMenu::RenderData& menuData) {
 #endif
 }
 
+#ifdef USE_SDL
+void Viewport3D::EnsureSpaceshipHudTexture() {
+    if (spaceshipHudTexture_ || spaceshipHudTextureFailed_) {
+        return;
+    }
+
+    if (!sdlRenderer) {
+        return;
+    }
+
+    SDL_Surface* surface = LoadSVGSurface("assets/ui/spaceship_hud.svg");
+    if (!surface) {
+        std::cerr << "Viewport3D: failed to load spaceship HUD SVG" << std::endl;
+        spaceshipHudTextureFailed_ = true;
+        return;
+    }
+
+    spaceshipHudTextureWidth_ = surface->w;
+    spaceshipHudTextureHeight_ = surface->h;
+    spaceshipHudTexture_ = compat_CreateTextureFromSurface(sdlRenderer, surface);
+    compat_DestroySurface(surface);
+
+    if (!spaceshipHudTexture_) {
+        std::cerr << "Viewport3D: failed to create texture for spaceship HUD SVG: "
+                  << SDL_GetError() << std::endl;
+        spaceshipHudTextureFailed_ = true;
+        spaceshipHudTextureWidth_ = 0;
+        spaceshipHudTextureHeight_ = 0;
+        return;
+    }
+
+    SDL_SetTextureBlendMode(spaceshipHudTexture_, SDL_BLENDMODE_BLEND);
+}
+#endif
+
 void Viewport3D::DrawHUD(const class Camera* camera,
                          double fps,
                          double playerX,
@@ -2586,13 +2633,37 @@ void Viewport3D::DrawHUD(const class Camera* camera,
     } else {
         // SDL renderer HUD drawing
         if (!sdlRenderer) return;
-        // Draw semi-transparent background box with border
+
+        bool drewSpaceshipHud = false;
+#ifdef USE_SDL
+        EnsureSpaceshipHudTexture();
+        if (spaceshipHudTexture_) {
+            drewSpaceshipHud = true;
+            const float scaleX = static_cast<float>(width) /
+                                 static_cast<float>(std::max(1, spaceshipHudTextureWidth_));
+            const float scaleY = static_cast<float>(height) /
+                                 static_cast<float>(std::max(1, spaceshipHudTextureHeight_));
+            const float scale = std::min(scaleX, scaleY);
+            const int destW = static_cast<int>(spaceshipHudTextureWidth_ * scale);
+            const int destH = static_cast<int>(spaceshipHudTextureHeight_ * scale);
+            SDL_Rect dest{
+                (width - destW) / 2,
+                (height - destH) / 2,
+                destW,
+                destH
+            };
+            compat_RenderCopy(sdlRenderer, spaceshipHudTexture_, nullptr, &dest);
+        }
+#endif
+
+        // Draw semi-transparent background box with border for telemetry readout
         SDL_SetRenderDrawBlendMode(sdlRenderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, 180);
+        const Uint8 backgroundAlpha = drewSpaceshipHud ? 140 : 180;
+        SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, backgroundAlpha);
         SDL_Rect bg{8, 8, 380, 180};
         compat_RenderFillRect(sdlRenderer, &bg);
         // white border
-        SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 255, 180);
+        SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 255, backgroundAlpha);
         compat_RenderDrawRect(sdlRenderer, &bg);
 
         // HUD text color: bright white for digits
