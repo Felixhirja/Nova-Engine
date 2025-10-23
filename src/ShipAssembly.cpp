@@ -97,11 +97,11 @@ void RegisterDefaultComponents() {
         registry.components.push_back(blueprint);
     };
 
-    add({"fusion_core_mk1", "Fusion Core Mk.I", "Baseline fighter fusion core.", ComponentSlotCategory::PowerPlant, SlotSize::Small, 6.5, 10.0, 0.2, 0.0, 4.0, 1.5, 1, 0});
+    add({"fusion_core_mk1", "Fusion Core Mk.I", "Baseline fighter fusion core.", ComponentSlotCategory::PowerPlant, SlotSize::Small, 6.5, 10.0, 0.2, 0.0, 2.5, 1.5, 1, 0});
     add({"fusion_core_mk2", "Fusion Core Mk.II", "Enhanced output for larger hulls.", ComponentSlotCategory::PowerPlant, SlotSize::Medium, 11.0, 18.0, 0.3, 0.0, 6.0, 2.5, 2, 0});
-    add({"main_thruster_viper", "Viper Main Thruster", "High thrust ratio for fighters.", ComponentSlotCategory::MainThruster, SlotSize::Small, 4.0, 0.0, 4.0, 220.0, 6.0, 1.0, 0, 0});
+    add({"main_thruster_viper", "Viper Main Thruster", "High thrust ratio for fighters.", ComponentSlotCategory::MainThruster, SlotSize::Small, 4.0, 0.0, 4.0, 220.0, 5.0, 1.0, 0, 0});
     add({"main_thruster_freighter", "Atlas Drive", "Cargo-optimized main thruster.", ComponentSlotCategory::MainThruster, SlotSize::Medium, 12.0, 0.0, 6.0, 320.0, 10.0, 2.0, 1, 0});
-    add({"rcs_cluster_micro", "Micro RCS Cluster", "Reaction control thrusters for fine maneuvers.", ComponentSlotCategory::ManeuverThruster, SlotSize::XS, 0.8, 0.0, 0.5, 35.0, 0.5, 0.2, 0, 0});
+    add({"rcs_cluster_micro", "Micro RCS Cluster", "Reaction control thrusters for fine maneuvers.", ComponentSlotCategory::ManeuverThruster, SlotSize::XS, 0.8, 0.0, 0.5, 35.0, 0.3, 0.3, 0, 0});
     add({"shield_array_light", "Light Shield Array", "Directional shield generator for fighters.", ComponentSlotCategory::Shield, SlotSize::Small, 3.2, 0.0, 2.5, 0.0, 3.0, 0.5, 0, 0, 0.0, 0.0, 0.0, 0, "", false, 0.0, 0.0, 150.0, 5.0, 3.0, 0.8});
     add({"shield_array_medium", "Medium Shield Array", "Balanced shield system for freighters and explorers.", ComponentSlotCategory::Shield, SlotSize::Medium, 6.5, 0.0, 4.0, 0.0, 5.0, 1.0, 1, 0, 0.0, 0.0, 0.0, 0, "", false, 0.0, 0.0, 300.0, 8.0, 4.0, 0.85});
     add({"shield_array_heavy", "Heavy Shield Array", "Capital-grade shield with rapid recharge.", ComponentSlotCategory::Shield, SlotSize::Large, 12.0, 0.0, 8.0, 0.0, 10.0, 2.0, 2, 0, 0.0, 0.0, 0.0, 0, "", false, 0.0, 0.0, 600.0, 12.0, 5.0, 0.9});
@@ -111,7 +111,7 @@ void RegisterDefaultComponents() {
     add({"weapon_defensive_turret", "Defensive Turret", "Rotating cannon for freighters and explorers.", ComponentSlotCategory::Weapon, SlotSize::Medium, 8.0, 0.0, 4.0, 0.0, 4.0, 2.0, 1, 0, 20.0, 8.0, 5.0, 100, "projectile", true, 60.0, 1.8});
     add({"weapon_beam_array", "Beam Array", "Energy weapon for capital ships.", ComponentSlotCategory::Weapon, SlotSize::Large, 12.0, 0.0, 8.0, 0.0, 10.0, 3.0, 2, 0, 30.0, 15.0, 1.0, 50, "energy", true, 30.0, 300.0});
     add({"cargo_rack_standard", "Cargo Rack", "Standard modular cargo rack.", ComponentSlotCategory::Cargo, SlotSize::Large, 15.0, 0.0, 1.0, 0.0, 0.4, 0.5, 2, 0});
-    add({"support_life_pod", "Emergency Life Support Pod", "Sustains crew during hull breaches.", ComponentSlotCategory::Support, SlotSize::XS, 1.2, 0.0, 0.6, 0.0, 0.2, 0.5, 0, 2});
+    add({"support_life_pod", "Emergency Life Support Pod", "Sustains crew during hull breaches.", ComponentSlotCategory::Support, SlotSize::XS, 1.2, 0.0, 0.6, 0.0, 0.1, 0.5, 0, 2});
     add({"sensor_targeting_mk1", "Combat Sensor Suite", "Targeting computer with enhanced tracking.", ComponentSlotCategory::Sensor, SlotSize::Small, 1.4, 0.0, 1.2, 0.0, 1.5, 0.5, 0, 0});
 }
 
