@@ -125,6 +125,24 @@ struct SpaceStationComponent : public Component {
 };
 ```
 
+#### Component Implementation Reference
+
+To keep the design document aligned with the live implementation (`src/CelestialBody.h`), this section captures the exact data surfaces available to systems that consume solar-system entities.
+
+| Component | Key Fields | Notes |
+|-----------|------------|-------|
+| **CelestialBodyComponent** | `type`, `mass`, `radius`, `rotationPeriod`, `axialTilt`, `temperature`, `hasAtmosphere`, `hasRings`, `hasMagneticField`, `isHabitable`, `isLandable`, `isDockable`, `faction` | Base metadata shared by all bodies. `faction` mirrors the ECS `Faction` component for ownership and conflict simulation. |
+| **OrbitalComponent** | `parentEntity`, `semiMajorAxis`, `eccentricity`, `inclination`, `longitudeOfAscendingNode`, `argumentOfPeriapsis`, `meanAnomalyAtEpoch`, `orbitalPeriod`, `currentMeanAnomaly`, `cachedPosition`, `cachedVelocity` | Encodes Keplerian elements. Systems cache Cartesian state to avoid recomputation every frame. |
+| **VisualCelestialComponent** | `textureHandle`, `normalMapHandle`, `cloudTextureHandle`, `color*`, `emissive`, `specular`, `roughness`, `metallic`, `cloudCoverage`, `ringTextureHandle`, `ringInnerRadius`, `ringOuterRadius`, `ringOpacity`, `lodDistance*`, shader string handles | Rendering pipeline hooks for every LOD tier and shader override slot. |
+| **AtmosphereComponent** | `density`, `scaleHeight`, `pressure`, color channels, `oxygenRatio`, `nitrogenRatio`, `carbonDioxideRatio`, `hasWeather`, `cloudSpeed`, `weatherIntensity` | Drives scattering shaders and gameplay constraints (landing, survival). |
+| **SpaceStationComponent** | `stationType`, `dockingPorts`, `hasShipyard`, `hasRepairFacility`, `hasRefuelStation`, `hasMarket`, `population`, `maxPopulation`, `availableServices`, `wealthLevel` | Supports trade, mission, and progression systems. Population scales service availability. |
+| **SatelliteSystemComponent** | `satelliteEntities`, `moonCount`, `stationCount` | Maintains relationships between parent bodies and satellites for efficient lookups. |
+| **StarComponent** | `spectralType`, `spectralSubclass`, `luminosity`, `surfaceTemperature`, `habitableZoneInner`, `habitableZoneOuter`, `coronaSize`, `hasFlares`, `flareIntensity` | Couples generation rules with rendering/lighting. |
+| **AsteroidBeltComponent** | `innerRadius`, `outerRadius`, `thickness`, `density`, `composition`, `asteroidCount`, `resourceRichness` | Input for mining, resource spawning, and navigation hazard simulation. |
+| **PlanetComponent** | `isTectonicallyActive`, `hasVolcanism`, `hasOceans`, `oceanCoverage`, `hasIceCaps`, `iceCoverage`, `hasLife`, `hasIntelligentLife`, `biodiversityIndex`, `mineralWealth`, `organicResources`, `gravity`, `radiationLevel` | Differentiates terrestrial worlds and feeds mission/crafting hooks. |
+
+All new systems that rely on procedural data should query these components directly instead of introducing parallel metadata structures.
+
 ## Procedural Generation Algorithm
 
 ### Phase 1: Star Generation
@@ -229,6 +247,47 @@ struct SpaceStationComponent : public Component {
    - Orbital parameters similar to moons
    - Services and facilities based on type
 ```
+
+## Socio-Economic Simulation Layers
+
+### Faction Framework
+
+Every generated system integrates with the core ECS `Faction` component (`src/ecs/Components.h`) and the `CelestialBodyComponent::faction` field to model territorial control, docking permissions, and conflict triggers. The baseline campaign ships with the following primary factions:
+
+| Faction | Identity | Typical Presence | Gameplay Hooks |
+|---------|----------|------------------|----------------|
+| **Auroran Combine** | Technocratic trade league prioritizing infrastructure and neutral markets. | Habitable-zone trade hubs and high-traffic jump points. | Controls most **Trading** stations; offers escort and supply contracts; low aggression thresholds. |
+| **Helios Dominion** | Militaristic successor state defending old core worlds. | Inner-system military bastions and fortified moons. | Provides bounty missions, navy-grade ship variants, and enforces strict docking clearance. |
+| **Orion Prospectors Guild** | Decentralized mining consortium with strong union presence. | Dense asteroid belts and outer-system refineries. | Unlocks mining licenses, bulk ore contracts, and specialized extraction modules. |
+| **Voidbound Syndicate** | Smuggler coalition thriving in unregulated sectors. | Shadow ports near Lagrange points and remote stations. | Offers black-market modules, sabotage missions, and dynamic contraband pricing. |
+| **Lumen Research Collective** | Academic alliance seeking stellar anomalies. | Research stations near exotic phenomena and flare-prone stars. | Grants access to experimental tech trees and exploration quests; reputation gates scientific modules. |
+| **Frontier Wardens** | Volunteer defense militia protecting emerging colonies. | Sparse outer colonies and ice-giant moons. | Supplies defensive turrets, patrol missions, and civilian evacuation events. |
+
+Factions dictate procedural naming templates, encounter tables, and spawn weighting for fleets. During generation, each station or habitable body is assigned a controlling faction based on location heuristics (e.g., mining belts skew toward the Prospectors Guild). Reputation changes are stored per entity, enabling mission scripting to respond to player actions without additional lookups.
+
+### Resource and Crafting Loops
+
+The procedural data also seeds the economy layer, aligning with `PlanetComponent`, `AsteroidBeltComponent`, and station metadata.
+
+1. **Resource Categories**
+   - **Metallic Ores:** Derived from asteroid belts with `composition = Metallic` or planets with `mineralWealth > 0.6`. Feeds hull fabrication and weapon crafting.
+   - **Volatiles & Fuels:** Generated by icy bodies (`composition = Icy`, `organicResources > 0.4`) and gas giants with high atmospheric density. Used for propulsion consumables and reactor maintenance.
+   - **Organics & Biomass:** Available on habitable or ocean worlds (`hasLife`, `organicResources > 0.5`). Enables medical supplies, foodstuffs, and bio-upgrade crafting.
+   - **Exotics:** Tagged on anomaly-rich locations (flare-heavy stars, `radiationLevel > 0.6`). Required for advanced shield matrices and research unlocks.
+
+2. **Extraction Gameplay**
+   - Asteroid belts expose discrete mining nodes scaled by `resourceRichness`. Stations owned by the Prospectors Guild provide refining bonuses and unique blueprints.
+   - Planetary landing sites check `isLandable`, atmospheric density, and gravity to determine viable extraction rigs and required gear.
+
+3. **Crafting Pipelines**
+   - Crafting recipes consume categorized resources and station services. Shipyards with `hasShipyard = true` fabricate hull frames; research stations unlock prototype components when the player delivers exotics plus faction-specific requisitions.
+   - Wealthier stations (`wealthLevel >= 3`) maintain broader blueprint inventories and reduce crafting time. Population metrics gate production queues and restocking rates.
+
+4. **Dynamic Economy Hooks**
+   - Faction conflicts adjust supply/demand curves system-wide. Military blockades by the Helios Dominion increase fuel prices; Syndicate smuggling bypasses shortages at the risk of patrol encounters.
+   - Procedural events (e.g., flare activity from `StarComponent::hasFlares`) trigger temporary modifiers such as research surges or evacuation missions, encouraging players to harvest resources under time pressure.
+
+These layers ensure each generated system feeds mission design, ship progression, and player-driven crafting without diverging from the existing ECS surface area.
 
 ## Orbital Mechanics Implementation
 
