@@ -2,6 +2,7 @@
 #include "ecs/AnimationSystem.h"
 #include "ecs/LocomotionSystem.h"
 #include "ecs/MovementSystem.h"
+#include "ecs/PhysicsSystem.h"
 #include "ecs/PlayerControlSystem.h"
 #include "TargetingSystem.h"
 #include "WeaponSystem.h"
@@ -9,14 +10,14 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <memory>
-#include <cmath>
 #include <sstream>
 #include <unordered_map>
 #include <vector>
-#include <limits>
 
 namespace {
 
@@ -32,6 +33,130 @@ MovementBounds CreateDefaultMovementBounds() {
     bounds.maxZ = 5.0;
     bounds.clampZ = true;
     return bounds;
+}
+
+constexpr unsigned int kCollisionLayerEnvironment = 1u << 0;
+constexpr unsigned int kCollisionLayerPlayer = 1u << 1;
+constexpr double kEnvironmentWallThickness = 0.5;
+constexpr double kDefaultEnvironmentSpan = 50.0;
+constexpr double kDefaultEnvironmentHeight = 10.0;
+
+struct EnvironmentColliderDefinition {
+    double centerX = 0.0;
+    double centerY = 0.0;
+    double centerZ = 0.0;
+    double sizeX = 1.0;
+    double sizeY = 1.0;
+    double sizeZ = 1.0;
+};
+
+double ComputeSpan(double minValue, double maxValue, double fallback) {
+    if (!std::isfinite(minValue) || !std::isfinite(maxValue)) {
+        return fallback;
+    }
+    double span = maxValue - minValue;
+    return (span > 0.0) ? span : fallback;
+}
+
+double ComputeCenter(double minValue, double maxValue) {
+    if (!std::isfinite(minValue) || !std::isfinite(maxValue)) {
+        return 0.0;
+    }
+    return (minValue + maxValue) * 0.5;
+}
+
+std::vector<EnvironmentColliderDefinition> BuildEnvironmentFromBounds(const MovementBounds& bounds) {
+    std::vector<EnvironmentColliderDefinition> colliders;
+
+    double spanX = ComputeSpan(bounds.minX, bounds.maxX, kDefaultEnvironmentSpan);
+    double spanY = ComputeSpan(bounds.minY, bounds.maxY, kDefaultEnvironmentSpan);
+    double spanZ = ComputeSpan(bounds.minZ, bounds.maxZ, kDefaultEnvironmentHeight);
+
+    double centerX = ComputeCenter(bounds.minX, bounds.maxX);
+    double centerY = ComputeCenter(bounds.minY, bounds.maxY);
+    double centerZ = ComputeCenter(bounds.minZ, bounds.maxZ);
+
+    if (bounds.clampZ && std::isfinite(bounds.minZ)) {
+        EnvironmentColliderDefinition floor;
+        floor.centerX = centerX;
+        floor.centerY = centerY;
+        floor.centerZ = bounds.minZ - kEnvironmentWallThickness * 0.5;
+        floor.sizeX = spanX + 2.0 * kEnvironmentWallThickness;
+        floor.sizeY = spanY + 2.0 * kEnvironmentWallThickness;
+        floor.sizeZ = kEnvironmentWallThickness;
+        colliders.push_back(floor);
+    }
+
+    if (bounds.clampZ && std::isfinite(bounds.maxZ)) {
+        EnvironmentColliderDefinition ceiling;
+        ceiling.centerX = centerX;
+        ceiling.centerY = centerY;
+        ceiling.centerZ = bounds.maxZ + kEnvironmentWallThickness * 0.5;
+        ceiling.sizeX = spanX + 2.0 * kEnvironmentWallThickness;
+        ceiling.sizeY = spanY + 2.0 * kEnvironmentWallThickness;
+        ceiling.sizeZ = kEnvironmentWallThickness;
+        colliders.push_back(ceiling);
+    }
+
+    double wallHeight = bounds.clampZ && std::isfinite(bounds.minZ) && std::isfinite(bounds.maxZ)
+                            ? std::max(spanZ, kEnvironmentWallThickness)
+                            : kDefaultEnvironmentHeight;
+    double wallCenterZ;
+    if (bounds.clampZ && std::isfinite(bounds.minZ) && std::isfinite(bounds.maxZ)) {
+        wallCenterZ = (bounds.minZ + bounds.maxZ) * 0.5;
+    } else if (std::isfinite(bounds.minZ)) {
+        wallCenterZ = bounds.minZ + wallHeight * 0.5;
+    } else if (std::isfinite(bounds.maxZ)) {
+        wallCenterZ = bounds.maxZ - wallHeight * 0.5;
+    } else {
+        wallCenterZ = centerZ;
+    }
+
+    if (bounds.clampX && std::isfinite(bounds.maxX)) {
+        EnvironmentColliderDefinition wall;
+        wall.centerX = bounds.maxX + kEnvironmentWallThickness * 0.5;
+        wall.centerY = centerY;
+        wall.centerZ = wallCenterZ;
+        wall.sizeX = kEnvironmentWallThickness;
+        wall.sizeY = spanY + 2.0 * kEnvironmentWallThickness;
+        wall.sizeZ = wallHeight;
+        colliders.push_back(wall);
+    }
+
+    if (bounds.clampX && std::isfinite(bounds.minX)) {
+        EnvironmentColliderDefinition wall;
+        wall.centerX = bounds.minX - kEnvironmentWallThickness * 0.5;
+        wall.centerY = centerY;
+        wall.centerZ = wallCenterZ;
+        wall.sizeX = kEnvironmentWallThickness;
+        wall.sizeY = spanY + 2.0 * kEnvironmentWallThickness;
+        wall.sizeZ = wallHeight;
+        colliders.push_back(wall);
+    }
+
+    if (bounds.clampY && std::isfinite(bounds.maxY)) {
+        EnvironmentColliderDefinition wall;
+        wall.centerX = centerX;
+        wall.centerY = bounds.maxY + kEnvironmentWallThickness * 0.5;
+        wall.centerZ = wallCenterZ;
+        wall.sizeX = spanX + 2.0 * kEnvironmentWallThickness;
+        wall.sizeY = kEnvironmentWallThickness;
+        wall.sizeZ = wallHeight;
+        colliders.push_back(wall);
+    }
+
+    if (bounds.clampY && std::isfinite(bounds.minY)) {
+        EnvironmentColliderDefinition wall;
+        wall.centerX = centerX;
+        wall.centerY = bounds.minY - kEnvironmentWallThickness * 0.5;
+        wall.centerZ = wallCenterZ;
+        wall.sizeX = spanX + 2.0 * kEnvironmentWallThickness;
+        wall.sizeY = kEnvironmentWallThickness;
+        wall.sizeZ = wallHeight;
+        colliders.push_back(wall);
+    }
+
+    return colliders;
 }
 
 std::string Trim(const std::string& value) {
@@ -407,6 +532,8 @@ void Simulation::Init(EntityManager* externalEm) {
     activeEm = externalEm ? externalEm : &em;
     EntityManager* useEm = activeEm;
 
+    DestroyEnvironmentColliders(*useEm);
+
     if (!externalEm) {
         useEm->Clear();
     }
@@ -450,20 +577,25 @@ void Simulation::Init(EntityManager* externalEm) {
     controller->cameraYaw = 0.0;
     useEm->AddComponent<PlayerController>(playerEntity, controller);
 
+    auto physics = std::make_shared<PlayerPhysics>();
+    physics->thrustMode = useThrustMode;
+    physics->enableGravity = true;
+    physics->isGrounded = true;
+    useEm->AddComponent<PlayerPhysics>(playerEntity, physics);
+
+    CreatePlayerPhysicsComponents(*useEm, *physics);
+
+    if (physicsSystem) {
+        physicsSystem->SetGravity(0.0, 0.0, physics->gravity);
+    }
+
     MovementBounds resolvedBounds = movementBoundsConfig;
     if (useMovementBoundsFile) {
         resolvedBounds = ResolveMovementBounds(movementBoundsConfig, movementBoundsConfigPath, movementBoundsProfile);
     }
     movementBoundsConfig = resolvedBounds;
 
-    auto bounds = std::make_shared<MovementBounds>(movementBoundsConfig);
-    useEm->AddComponent<MovementBounds>(playerEntity, bounds);
-
-    auto physics = std::make_shared<PlayerPhysics>();
-    physics->thrustMode = useThrustMode;
-    physics->enableGravity = true;
-    physics->isGrounded = true;
-    useEm->AddComponent<PlayerPhysics>(playerEntity, physics);
+    RebuildEnvironmentColliders(*useEm);
 
     MovementParameters resolvedParams = movementConfig;
     if (useMovementParametersFile) {
@@ -638,12 +770,7 @@ void Simulation::ConfigureMovementBounds(const MovementBounds& bounds) {
         return;
     }
 
-    if (auto* existing = useEm->GetComponent<MovementBounds>(playerEntity)) {
-        *existing = movementBoundsConfig;
-    } else {
-        auto movementBounds = std::make_shared<MovementBounds>(movementBoundsConfig);
-        useEm->AddComponent<MovementBounds>(playerEntity, movementBounds);
-    }
+    RebuildEnvironmentColliders(*useEm);
 }
 
 void Simulation::SetMovementBoundsConfigPath(const std::string& path) {
@@ -653,6 +780,89 @@ void Simulation::SetMovementBoundsConfigPath(const std::string& path) {
 
 void Simulation::SetMovementBoundsProfile(const std::string& profile) {
     movementBoundsProfile = profile;
+}
+
+
+void Simulation::DestroyEnvironmentColliders(EntityManager& entityManager) {
+    for (Entity colliderEntity : environmentColliderEntities) {
+        if (entityManager.IsAlive(colliderEntity)) {
+            entityManager.DestroyEntity(colliderEntity);
+        }
+    }
+    environmentColliderEntities.clear();
+}
+
+void Simulation::RebuildEnvironmentColliders(EntityManager& entityManager) {
+    DestroyEnvironmentColliders(entityManager);
+
+    auto definitions = BuildEnvironmentFromBounds(movementBoundsConfig);
+    environmentColliderEntities.reserve(definitions.size());
+
+    for (const auto& def : definitions) {
+        Entity colliderEntity = entityManager.CreateEntity();
+
+        auto position = std::make_shared<Position>();
+        position->x = def.centerX;
+        position->y = def.centerY;
+        position->z = def.centerZ;
+        entityManager.AddComponent<Position>(colliderEntity, position);
+
+        auto rigidBody = std::make_shared<RigidBody>();
+        rigidBody->isKinematic = true;
+        rigidBody->useGravity = false;
+        rigidBody->linearDamping = 0.0;
+        rigidBody->angularDamping = 0.0;
+        rigidBody->UpdateInverseMass();
+        entityManager.AddComponent<RigidBody>(colliderEntity, rigidBody);
+
+        auto collider = std::make_shared<BoxCollider>();
+        collider->width = def.sizeX;
+        collider->height = def.sizeY;
+        collider->depth = def.sizeZ;
+        collider->collisionLayer = kCollisionLayerEnvironment;
+        collider->collisionMask = kCollisionLayerPlayer;
+        collider->isTrigger = false;
+        entityManager.AddComponent<BoxCollider>(colliderEntity, collider);
+
+        auto velocity = std::make_shared<Velocity>();
+        velocity->vx = 0.0;
+        velocity->vy = 0.0;
+        velocity->vz = 0.0;
+        entityManager.AddComponent<Velocity>(colliderEntity, velocity);
+
+        environmentColliderEntities.push_back(colliderEntity);
+    }
+
+}
+
+void Simulation::CreatePlayerPhysicsComponents(EntityManager& entityManager, PlayerPhysics& playerPhysics) {
+    if (!entityManager.IsAlive(playerEntity)) {
+        return;
+    }
+
+    auto rigidBody = std::make_shared<RigidBody>();
+    rigidBody->SetMass(1.0);
+    rigidBody->useGravity = playerPhysics.enableGravity;
+    rigidBody->linearDamping = 0.0;
+    rigidBody->angularDamping = 0.0;
+    rigidBody->freezeRotationX = true;
+    rigidBody->freezeRotationY = true;
+    rigidBody->freezeRotationZ = true;
+    entityManager.AddComponent<RigidBody>(playerEntity, rigidBody);
+
+    auto collider = std::make_shared<BoxCollider>();
+    collider->width = 1.0;
+    collider->height = 1.0;
+    collider->depth = 1.8;
+    collider->offsetZ = collider->depth * 0.5;
+    collider->collisionLayer = kCollisionLayerPlayer;
+    collider->collisionMask = kCollisionLayerEnvironment;
+    collider->isTrigger = false;
+    entityManager.AddComponent<BoxCollider>(playerEntity, collider);
+
+    if (!entityManager.GetComponent<CollisionInfo>(playerEntity)) {
+        entityManager.EmplaceComponent<CollisionInfo>(playerEntity);
+    }
 }
 
 
