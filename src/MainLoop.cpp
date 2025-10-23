@@ -58,10 +58,9 @@ MainLoop::MainLoop()
     , version("1.0.0")
     , viewport(nullptr)
     , simulation(nullptr)
+    , thrustModeEnabled(false)
     , mouseLookYawOffset(0.0)
     , mouseLookPitchOffset(0.0)
-    , cameraFollowConfig()
-    , cameraFollowState()
     , cameraPresets(GetDefaultCameraPresets()) {
     ecsInspector = std::make_unique<ECSInspector>();
 }
@@ -412,44 +411,16 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             followInput.mouseLookYawOffset = mouseLookYawOffset;
             followInput.mouseLookPitchOffset = mouseLookPitchOffset;
 
-            CameraFollow::UpdateTargetLockCamera(*camera, cameraFollowState, cameraFollowConfig, followInput, deltaTime);
+            CameraMovementInput movementInput;
+            movementInput.moveForward = cameraForward;
+            movementInput.moveBackward = cameraBackward;
+            movementInput.moveLeft = cameraLeft;
+            movementInput.moveRight = cameraRight;
+            movementInput.moveUp = cameraUp;
+            movementInput.moveDown = cameraDown;
+            movementInput.moveSpeed = cameraMoveSpeed;
 
-            if (!runtime.targetLocked && cameraFollowState.targetLockTransition <= 0.0) {
-                double newCameraX = camera->x();
-                double newCameraY = camera->y();
-                double newCameraZ = camera->z();
-
-                if (cameraForward) newCameraY += cameraMoveSpeed * deltaTime;
-                if (cameraBackward) newCameraY -= cameraMoveSpeed * deltaTime;
-                if (cameraLeft) newCameraX -= cameraMoveSpeed * deltaTime;
-                if (cameraRight) newCameraX += cameraMoveSpeed * deltaTime;
-                if (cameraUp) newCameraZ += cameraMoveSpeed * deltaTime;
-                if (cameraDown) newCameraZ -= cameraMoveSpeed * deltaTime;
-
-                double playerX = followInput.playerX;
-                double playerY = followInput.playerY;
-                double playerZ = followInput.playerZ;
-
-                double minDistanceFromPlayer = 1.0;
-                double freeCamToPlayerX = newCameraX - playerX;
-                double freeCamToPlayerY = newCameraY - playerY;
-                double freeCamToPlayerZ = newCameraZ - playerZ;
-                double distanceFromPlayer = sqrt(freeCamToPlayerX * freeCamToPlayerX + freeCamToPlayerY * freeCamToPlayerY + freeCamToPlayerZ * freeCamToPlayerZ);
-
-                if (distanceFromPlayer < minDistanceFromPlayer) {
-                    double pushFactor = minDistanceFromPlayer / distanceFromPlayer;
-                    newCameraX = playerX + freeCamToPlayerX * pushFactor;
-                    newCameraY = playerY + freeCamToPlayerY * pushFactor;
-                    newCameraZ = playerZ + freeCamToPlayerZ * pushFactor;
-                }
-
-                double groundLevel = 0.5;
-                if (newCameraZ < groundLevel) {
-                    newCameraZ = groundLevel;
-                }
-
-                camera->SetPosition(newCameraX, newCameraY, newCameraZ);
-            }
+            cameraFollowController.Update(*camera, followInput, movementInput, deltaTime);
         }
     };
 
@@ -479,25 +450,21 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         viewport->DrawPlayer(playerX, playerY, playerZ);
 
         if (camera) {
-            double baseMouseSensitivity = 0.002;
-            double mouseSensitivity = baseMouseSensitivity;
-
             double wheelDelta = Input::GetMouseWheelDelta();
             if (wheelDelta != 0.0) {
                 double zoomFactor = 1.0 + (wheelDelta * 0.1);
                 double newZoom = camera->targetZoom() * zoomFactor;
-                if (newZoom > 128.0) newZoom = 128.0;
-                if (newZoom < 4.0) newZoom = 4.0;
+                newZoom = std::clamp(newZoom, 4.0, 128.0);
                 camera->SetTargetZoom(newZoom);
                 Input::ResetMouseWheelDelta();
             }
 
+            const double mouseDecay = 0.96;
             if (runtime.targetLocked) {
-                double targetLockSensitivity = 0.004;
-                double mouseDecay = 0.96;
+                const double targetLockSensitivity = 0.004;
                 double accelerationFactor = 1.0;
-
-                double mouseSpeed = sqrt(runtime.mouseDeltaX * runtime.mouseDeltaX + runtime.mouseDeltaY * runtime.mouseDeltaY);
+                double mouseSpeed = std::sqrt(runtime.mouseDeltaX * runtime.mouseDeltaX +
+                                              runtime.mouseDeltaY * runtime.mouseDeltaY);
                 if (mouseSpeed > 5.0) {
                     accelerationFactor = 1.0 + (mouseSpeed - 5.0) * 0.02;
                 }
@@ -510,78 +477,46 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                     mouseLookPitchOffset *= mouseDecay;
                 }
 
-                const double PI = acos(-1.0);
+                const double PI = std::acos(-1.0);
                 const double maxYawOffset = PI * 2.0;
                 const double maxPitchOffset = PI / 3.0;
                 const double minPitchOffset = -PI / 2.5;
-                double clampFactor = 0.1;
 
-                if (mouseLookYawOffset > maxYawOffset) {
-                    mouseLookYawOffset = maxYawOffset + (mouseLookYawOffset - maxYawOffset) * (1.0 - clampFactor);
-                }
-
-                const auto viewRole = viewport->GetViewRole(viewIndex);
-                if (camera) {
-                    viewport->DrawCameraDebug(camera.get(), playerX, playerY, playerZ, viewRole);
-                }
-                if (camera && viewRole != ViewRole::Minimap) {
-                    viewport->DrawCameraMarker(camera.get());
-                }
-
-                if (viewRole == ViewRole::Main) {
-                    double hudPlayerX = playerX;
-                    double hudPlayerY = playerY;
-                    double hudPlayerZ = playerZ;
-                    bool hudTargetLocked = isTargetLocked;
-                    const ShipAssemblyResult* hudAssemblyPtr = nullptr;
-                    if (hudShipAssembly.hull || !hudShipAssembly.diagnostics.errors.empty() || !hudShipAssembly.diagnostics.warnings.empty()) {
-                        hudAssemblyPtr = &hudShipAssembly;
-                    }
-                    viewport->DrawHUD(camera.get(), currentFPS, hudPlayerX, hudPlayerY, hudPlayerZ, hudTargetLocked, hudAssemblyPtr);
-                    if (visualFeedbackSystem) {
-                        viewport->RenderParticles(camera.get(), visualFeedbackSystem.get());
-                    }
-                    if (ecsInspector) {
-                        ecsInspector->Render(*viewport);
-                    }
-                    // If STAR_CAPTURE env var is set, dump the renderer contents to BMP for inspection
-                    const char* cap = std::getenv("STAR_CAPTURE");
-                    if (cap && std::string(cap) == "1") {
-                        viewport->CaptureToBMP("/workspaces/Nova-Engine/renderer_capture.bmp");
-                    }
-                }
-                Transform t;
-                t.x = pos->x;
-                t.y = pos->y;
-                t.z = pos->z;
-                viewport->DrawEntity(t, th, resourceManager.get(), camera.get(), spr->frame);
+                mouseLookYawOffset = std::clamp(mouseLookYawOffset, -maxYawOffset, maxYawOffset);
+                mouseLookPitchOffset = std::clamp(mouseLookPitchOffset, minPitchOffset, maxPitchOffset);
+            } else {
+                mouseLookYawOffset *= mouseDecay;
+                mouseLookPitchOffset *= mouseDecay;
             }
 
-            viewport->FinishFrame();
-            viewport->Present();
-        }
-
-        if (viewport && camera) {
             camera->UpdateZoom(fixedDt);
             viewport->DrawCameraMarker(camera.get());
-            double hudPlayerX = simulation ? simulation->GetPlayerX() : 0.0;
-            double hudPlayerY = simulation ? simulation->GetPlayerY() : 0.0;
-            double hudPlayerZ = simulation ? simulation->GetPlayerZ() : 0.0;
-            bool hudTargetLocked = runtime.targetLocked;
-            const ShipAssemblyResult* hudAssemblyPtr = nullptr;
-            if (hudShipAssembly.hull || !hudShipAssembly.diagnostics.errors.empty() || !hudShipAssembly.diagnostics.warnings.empty()) {
-                hudAssemblyPtr = &hudShipAssembly;
-            }
-            viewport->DrawHUD(camera.get(), runtime.currentFPS, hudPlayerX, hudPlayerY, hudPlayerZ, hudTargetLocked, hudAssemblyPtr);
-            if (visualFeedbackSystem) {
-                viewport->RenderParticles(camera.get(), visualFeedbackSystem.get());
-            }
-            const char* cap = std::getenv("STAR_CAPTURE");
-            if (cap && std::string(cap) == "1") {
-                viewport->CaptureToBMP("/workspaces/Nova-Engine/renderer_capture.bmp");
-            }
-            viewport->Present();
         }
+
+        double hudPlayerX = simulation ? simulation->GetPlayerX() : 0.0;
+        double hudPlayerY = simulation ? simulation->GetPlayerY() : 0.0;
+        double hudPlayerZ = simulation ? simulation->GetPlayerZ() : 0.0;
+        bool hudTargetLocked = runtime.targetLocked;
+        const ShipAssemblyResult* hudAssemblyPtr = nullptr;
+        if (hudShipAssembly.hull || !hudShipAssembly.diagnostics.errors.empty() || !hudShipAssembly.diagnostics.warnings.empty()) {
+            hudAssemblyPtr = &hudShipAssembly;
+        }
+
+        viewport->DrawHUD(camera.get(), runtime.currentFPS, hudPlayerX, hudPlayerY, hudPlayerZ, hudTargetLocked, hudAssemblyPtr);
+        if (visualFeedbackSystem) {
+            viewport->RenderParticles(camera.get(), visualFeedbackSystem.get());
+        }
+        if (ecsInspector) {
+            ecsInspector->Render(*viewport);
+        }
+
+        const char* cap = std::getenv("STAR_CAPTURE");
+        if (cap && std::string(cap) == "1") {
+            viewport->CaptureToBMP("/workspaces/Nova-Engine/renderer_capture.bmp");
+        }
+
+        viewport->FinishFrame();
+        viewport->Present();
     };
 
     callbacks.onFrameComplete = [&](const FrameSchedulerFrameInfo& info) {
