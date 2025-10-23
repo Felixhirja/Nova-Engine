@@ -2,6 +2,7 @@
 
 #include "IRenderer.h"
 #include "Transform.h"
+#include "EnergyHUDTelemetry.h"
 #include <string>
 #include <iostream>
 #include <memory>
@@ -100,9 +101,21 @@ public:
     void DrawCameraMarker(const class Camera* camera);
     void DrawCameraDebug(const class Camera* camera, double playerX, double playerY, double playerZ, ViewRole role);
     // Draw HUD (zoom, fps, player x)
-    void DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ);
+    void DrawHUD(const class Camera* camera,
+                 double fps,
+                 double playerX,
+                 double playerY,
+                 double playerZ,
+                 const struct EnergyHUDTelemetry* energyTelemetry = nullptr);
     // Extended HUD with additional parameters
-    void DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ, bool, const class ShipAssemblyResult*);
+    void DrawHUD(const class Camera* camera,
+                 double fps,
+                 double playerX,
+                 double playerY,
+                 double playerZ,
+                 bool,
+                 const class ShipAssemblyResult*,
+                 const struct EnergyHUDTelemetry* energyTelemetry = nullptr);
 
     // Bloom and letterbox settings (stubs for now)
     bool IsBloomEnabled() const { return false; }

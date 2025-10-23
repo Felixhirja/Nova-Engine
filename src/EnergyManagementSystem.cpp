@@ -60,6 +60,27 @@ const EnergyManagementState* EnergyManagementSystem::GetState(int entityId) cons
     return (it != states_.end()) ? &it->second : nullptr;
 }
 
+void EnergyManagementSystem::UpdateDemand(int entityId,
+                                          double totalPower,
+                                          double availablePower,
+                                          double shieldReq,
+                                          double weaponReq,
+                                          double thrusterReq) {
+    auto it = states_.find(entityId);
+    if (it == states_.end()) {
+        return;
+    }
+
+    EnergyManagementState& state = it->second;
+    state.totalPowerMW = std::max(0.0, totalPower);
+    state.availablePowerMW = std::clamp(availablePower, 0.0, state.totalPowerMW > 0.0 ? state.totalPowerMW : availablePower);
+    state.shieldRequirementMW = std::max(0.0, shieldReq);
+    state.weaponRequirementMW = std::max(0.0, weaponReq);
+    state.thrusterRequirementMW = std::max(0.0, thrusterReq);
+
+    BalancePower(state);
+}
+
 void EnergyManagementSystem::DivertPower(int entityId, PowerPriority priority, double amount) {
     auto it = states_.find(entityId);
     if (it == states_.end()) {

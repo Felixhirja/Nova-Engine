@@ -10,6 +10,7 @@
 #include "EngineStateMachine.h"
 #include "ShipAssembly.h"
 #include "FramePacingController.h"
+#include "EnergyHUDTelemetry.h"
 
 class Viewport3D;
 class Simulation;
@@ -55,17 +56,29 @@ private:
     ShipAssemblyResult hudShipAssembly;
     EngineStateMachine stateMachine;
     bool thrustModeEnabled;
-    
+
+    std::unique_ptr<class EnergyManagementSystem> energyManagementSystem;
+    int hudEnergyEntityId;
+    EnergyHUDTelemetry energyTelemetry;
+    double hudShieldCurrentMJ;
+    double hudShieldRechargeTimer;
+    double hudShieldRequirementMW;
+    double hudWeaponRequirementMW;
+    double hudThrusterRequirementMW;
+    double hudOtherDrawMW;
+
     // Mouse look offsets for target lock mode
     double mouseLookYawOffset;
     double mouseLookPitchOffset;
-    
+
     // Target lock transition smoothing
     CameraFollowController cameraFollowController;
     FramePacingController framePacingController;
     std::array<CameraPreset, 3> cameraPresets;
 
     void ApplyCameraPreset(size_t index);
+    void ConfigureEnergyTelemetry();
+    void UpdateEnergyTelemetry(double deltaSeconds);
 };
 
 #endif // MAIN_LOOP_H
