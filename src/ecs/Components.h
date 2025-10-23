@@ -63,6 +63,10 @@ struct Name : public Component {
     std::string value;
 };
 
+struct Faction : public Component {
+    int id = 0;
+};
+
 struct PlayerController : public Component {
     bool moveLeft = false;
     bool moveRight = false;
@@ -123,6 +127,20 @@ struct TargetLock : public Component {
     double offsetZ = 10.0;            // Camera offset from target
     double followDistance = 15.0;     // Distance to maintain from target
     double followHeight = 5.0;        // Height above target
+};
+
+struct Projectile : public Component {
+    int ownerEntity = 0;
+    std::string weaponSlot;
+};
+
+struct DamagePayload : public Component {
+    double amount = 0.0;
+    int sourceEntity = 0;
+};
+
+struct Lifetime : public Component {
+    double remaining = 0.0;
 };
 
 // ============================================================================

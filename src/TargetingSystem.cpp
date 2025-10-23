@@ -1,6 +1,8 @@
 #include "TargetingSystem.h"
+#include "ecs/Components.h"
 #include "ecs/EntityManager.h"
-#include "Transform.h"
+#include <cmath>
+#include <utility>
 
 TargetingSystem::TargetingSystem() {}
 
@@ -51,17 +53,50 @@ int TargetingSystem::GetTarget(int shooterEntity) const {
     return (it != lockedTargets_.end()) ? it->second : -1;
 }
 
-bool TargetingSystem::IsValidTarget(EntityManager& entityManager, int shooterEntity, int targetEntity) const {
-    (void)entityManager; // TODO: Implement proper entity validation
-    (void)shooterEntity;
-    (void)targetEntity;
-    
-    // TODO: Check if entities exist and have transforms
-    // TODO: Check range validation
-    // TODO: Check line of sight, faction, etc.
-    
-    // For now, return true - this will be implemented when Transform component is integrated
+bool TargetingSystem::AcquireTarget(EntityManager& entityManager, int shooterEntity, int targetEntity) const {
+    if (shooterEntity == targetEntity) {
+        return false;
+    }
+
+    if (!entityManager.IsAlive(shooterEntity) || !entityManager.IsAlive(targetEntity)) {
+        return false;
+    }
+
+    Vec3 shooterPos;
+    Vec3 targetPos;
+    if (!ExtractPosition(entityManager, shooterEntity, shooterPos) ||
+        !ExtractPosition(entityManager, targetEntity, targetPos)) {
+        return false;
+    }
+
+    if (auto* shooterFaction = entityManager.GetComponent<Faction>(shooterEntity)) {
+        if (auto* targetFaction = entityManager.GetComponent<Faction>(targetEntity)) {
+            if (shooterFaction->id == targetFaction->id) {
+                return false;
+            }
+        }
+    }
+
+    const double dx = static_cast<double>(targetPos.x) - static_cast<double>(shooterPos.x);
+    const double dy = static_cast<double>(targetPos.y) - static_cast<double>(shooterPos.y);
+    const double dz = static_cast<double>(targetPos.z) - static_cast<double>(shooterPos.z);
+    const double distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+    const double maxRange = static_cast<double>(targetingRangeKm_) * 1000.0; // Positions treated as meters
+    if (distance > maxRange) {
+        return false;
+    }
+
+    if (lineOfSightValidator_) {
+        if (!lineOfSightValidator_(shooterPos, targetPos)) {
+            return false;
+        }
+    }
+
     return true;
+}
+
+bool TargetingSystem::IsValidTarget(EntityManager& entityManager, int shooterEntity, int targetEntity) const {
+    return AcquireTarget(entityManager, shooterEntity, targetEntity);
 }
 
 Vec3 TargetingSystem::CalculateLeadPosition(EntityManager& entityManager, int shooterEntity, int targetEntity, float projectileSpeed) const {
@@ -72,4 +107,26 @@ Vec3 TargetingSystem::CalculateLeadPosition(EntityManager& entityManager, int sh
     
     // TODO: Implement lead calculation when Transform/physics components are integrated
     return Vec3{};
+}
+
+void TargetingSystem::SetLineOfSightValidator(std::function<bool(const Vec3&, const Vec3&)> validator) {
+    lineOfSightValidator_ = std::move(validator);
+}
+
+bool TargetingSystem::ExtractPosition(EntityManager& entityManager, int entity, Vec3& outPosition) const {
+    if (auto* position = entityManager.GetComponent<Position>(entity)) {
+        outPosition.x = static_cast<float>(position->x);
+        outPosition.y = static_cast<float>(position->y);
+        outPosition.z = static_cast<float>(position->z);
+        return true;
+    }
+
+    if (auto* transform2D = entityManager.GetComponent<Transform2D>(entity)) {
+        outPosition.x = static_cast<float>(transform2D->x);
+        outPosition.y = static_cast<float>(transform2D->y);
+        outPosition.z = 0.0f;
+        return true;
+    }
+
+    return false;
 }
