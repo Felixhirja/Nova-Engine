@@ -184,12 +184,41 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 - **Progression Rewards:** Titles, hangar trophies, blueprint access, and social prestige showcase player accomplishments without breaking balance.
 
 ### Faction System
-- **United Earth Coalition (UEC):** Central government controlling core worlds; excels in balanced military/civilian tech.
-- **Free Traders Guild (FTG):** Merchant consortium dominating trade lanes; offers cargo efficiency modules and market intel.
-- **Frontier Explorers (FE):** Scientific collective charting outer rim anomalies; provides exploration hulls and jump upgrades.
-- **Crimson Corsairs:** Decentralized pirate clans holding asteroid belts; specialize in ambush gear and stealth tech.
-- **Mining Consortium (MC):** Industrial alliance exploiting resource-rich systems; unlocks mining rigs, refineries, and logistics bonuses.
-- **Faction Missions & Events:** Dynamic contracts adjust to territorial control, with seasonal wars influencing trade taxes, security levels, and public events.
+
+#### United Earth Coalition (UEC)
+- **Type:** Unified government overseeing the core worlds and major population centers.
+- **Territory:** Core systems with high security and dense infrastructure.
+- **Specialty:** Balanced military and civilian ships capable of multi-role deployments.
+- **Relations:** Maintains diplomatic neutrality with most groups but aggressively suppresses pirate activity.
+
+#### Free Traders Guild (FTG)
+- **Type:** Independent guild of merchants, haulers, and brokers.
+- **Territory:** Major trade routes, customs checkpoints, and orbital marketplaces.
+- **Specialty:** Cargo optimization, convoy coordination, and economic influence across the network.
+- **Relations:** Pragmatic neutrality—prioritizes profit and market stability above ideological alignment.
+
+#### Frontier Explorers (FE)
+- **Type:** Scientific coalition focused on discovery and research.
+- **Territory:** Frontier and outer systems rich with anomalies and uncharted space.
+- **Specialty:** Exploration vessels, survey drones, and advanced scanning technology.
+- **Relations:** Peaceful knowledge-seekers that collaborate with factions willing to fund expeditions.
+
+#### Crimson Corsairs (Pirates)
+- **Type:** Outlaw confederation of pirate clans and raider crews.
+- **Territory:** Asteroid belts, smuggler havens, and lawless zones on the fringe of patrol coverage.
+- **Specialty:** Fast attack ships, boarding parties, and black-market distribution.
+- **Relations:** Hostile to law enforcement and opportunistic toward vulnerable trade targets.
+
+#### Mining Consortium (MC)
+- **Type:** Industrial cooperative uniting corporate and independent mining interests.
+- **Territory:** Resource-rich systems, strip-mined moons, and refinery stations.
+- **Specialty:** High-yield mining rigs, refining infrastructure, and logistics support chains.
+- **Relations:** Neutral and business-oriented, selling resources to any faction that honors contracts.
+
+#### Faction Missions & Events
+- Reputation gain or loss based on mission outcomes impacts docking rights, taxes, and support fleets.
+- Exclusive high-tier missions unlock as players become trusted allies, granting unique hull variants and tech.
+- Dynamic faction wars influence trade lanes, security checkpoints, and travel advisories across the sector.
 - **Shared Objectives:** Player corporations can align with factions to access large-scale operations such as blockade runs, system sieges, and megastructure construction.
 
 ### Social Features
