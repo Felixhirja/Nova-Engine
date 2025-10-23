@@ -2090,7 +2090,12 @@ void Viewport3D::RenderMenuOverlay(const MainMenu::RenderData& menuData) {
 #endif
 }
 
-void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ) {
+void Viewport3D::DrawHUD(const class Camera* camera,
+                         double fps,
+                         double playerX,
+                         double playerY,
+                         double playerZ,
+                         const struct EnergyHUDTelemetry* energyTelemetry) {
     (void)camera;
     (void)fps;
     (void)playerX;
