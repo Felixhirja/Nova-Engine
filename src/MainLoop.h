@@ -5,9 +5,10 @@
 #include <memory>
 #include <array>
 
-#include "CameraFollow.h"
+#include "CameraFollowController.h"
 #include "CameraPresets.h"
 #include "ShipAssembly.h"
+#include "FramePacingController.h"
 
 class Viewport3D;
 class Simulation;
@@ -55,8 +56,8 @@ private:
     double mouseLookPitchOffset;
     
     // Target lock transition smoothing
-    CameraFollowConfig cameraFollowConfig;
-    CameraFollowState cameraFollowState;
+    CameraFollowController cameraFollowController;
+    FramePacingController framePacingController;
     std::array<CameraPreset, 3> cameraPresets;
 
     void ApplyCameraPreset(size_t index);

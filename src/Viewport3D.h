@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <memory>
+#include <vector>
 
 class ParticleRenderer;
 struct ParticleRendererDeleter {
@@ -26,6 +27,27 @@ struct ParticleRendererDeleter {
 #include <GLFW/glfw3.h>
 #endif
 
+enum class ViewRole {
+    Main,
+    Secondary,
+    Minimap
+};
+
+struct ViewportView {
+    std::string name;
+    double normalizedX = 0.0;
+    double normalizedY = 0.0;
+    double normalizedWidth = 1.0;
+    double normalizedHeight = 1.0;
+    ViewRole role = ViewRole::Main;
+    bool overlay = false;
+};
+
+struct ViewportLayout {
+    std::string name;
+    std::vector<ViewportView> views;
+};
+
 // If SDL2 is available, this class will open a window and render a simple rectangle
 // representing the player. Otherwise it falls back to ASCII console output.
 class Viewport3D : public IRenderer {
@@ -35,6 +57,13 @@ public:
 
     void Init();
     void Render(const class Camera* camera, double playerX, double playerY, double playerZ);
+    void BeginFrame();
+    void FinishFrame();
+    void ActivateView(const class Camera* camera, double playerX, double playerY, double playerZ, size_t viewIndex);
+    size_t GetActiveViewCount() const;
+    ViewRole GetViewRole(size_t viewIndex) const;
+    bool IsOverlayView(size_t viewIndex) const;
+    void DrawMinimapOverlay(double playerX, double playerY, double playerZ);
     void Resize(int width, int height);
     // Draw a player at world x coordinate (for simple ASCII demo)
     void DrawPlayer(double x, double y = 0.0, double z = 0.0);
@@ -69,6 +98,7 @@ public:
     void DrawCameraVisual(const class Camera* camera);
     // Draw a small crosshair at camera center for debugging
     void DrawCameraMarker(const class Camera* camera);
+    void DrawCameraDebug(const class Camera* camera, double playerX, double playerY, double playerZ, ViewRole role);
     // Draw HUD (zoom, fps, player x)
     void DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ);
     // Extended HUD with additional parameters
@@ -80,6 +110,11 @@ public:
     bool IsLetterboxEnabled() const { return false; }
     void SetLetterboxEnabled(bool) {}
 
+    void SetVSyncEnabled(bool enabled);
+    bool IsVSyncEnabled() const { return vsyncEnabled_; }
+    void SetFramePacingHint(bool vsyncEnabled, double fps);
+    double FrameRateLimitHint() const { return frameRateLimitHint_; }
+
     // Render particles
     void RenderParticles(const class Camera*, const class VisualFeedbackSystem*);
 
@@ -90,11 +125,20 @@ public:
     void Clear() override;
     void Present() override;
 
+    void ConfigureLayouts(std::vector<ViewportLayout> layouts);
+    void CycleLayout();
+    void SetActiveLayout(size_t index);
+    const ViewportLayout& GetActiveLayout() const;
+    std::string GetActiveLayoutName() const;
+    static std::vector<ViewportLayout> CreateDefaultLayouts();
+
 private:
     int width;
     int height;
     bool usingSDL;
     bool useGL;
+    bool vsyncEnabled_;
+    double frameRateLimitHint_;
 #ifdef USE_SDL
     SDL_Window* sdlWindow;
     SDL_Renderer* sdlRenderer;
@@ -105,4 +149,13 @@ private:
     GLFWwindow* glfwWindow;
 #endif
     std::unique_ptr<ParticleRenderer, ParticleRendererDeleter> particleRenderer_;
+    std::vector<ViewportLayout> layouts_;
+    size_t activeLayoutIndex_;
+
+    void EnsureLayoutConfiguration();
+    void ApplyViewportView(const ViewportView& view);
+    void ResetViewport();
+    void RenderOpenGLViews(const class Camera* camera, double playerX, double playerY, double playerZ);
+    void ActivateOpenGLView(const ViewportView& view, const class Camera* camera, double playerX, double playerY, double playerZ);
+    void ActivateSDLView(const ViewportView& view);
 };

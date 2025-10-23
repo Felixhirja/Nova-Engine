@@ -7,7 +7,6 @@
 #include "Spaceship.h"
 #include "Camera.h"
 #include "CameraPresets.h"
-#include "CameraFollow.h"
 #include "GamepadManager.h"
 #include "ecs/EntityManager.h"
 #include "ecs/Components.h"
@@ -18,6 +17,7 @@
 #include <chrono>
 #include <thread>
 #include <algorithm>
+#include <vector>
 #include <fstream>
 #include <cmath>
 #include <iomanip>
@@ -100,7 +100,16 @@ ShipAssemblyResult BuildHudAssembly() {
 
 } // namespace
 
-MainLoop::MainLoop() : running(false), version("1.0.0"), viewport(nullptr), simulation(nullptr), mouseLookYawOffset(0.0), mouseLookPitchOffset(0.0), cameraFollowConfig(), cameraFollowState(), cameraPresets(GetDefaultCameraPresets()) {}
+MainLoop::MainLoop()
+    : running(false)
+    , version("1.0.0")
+    , viewport(nullptr)
+    , simulation(nullptr)
+    , mouseLookYawOffset(0.0)
+    , mouseLookPitchOffset(0.0)
+    , cameraFollowController()
+    , framePacingController()
+    , cameraPresets(GetDefaultCameraPresets()) {}
 
 MainLoop::~MainLoop() {
     Shutdown();
@@ -150,6 +159,14 @@ void MainLoop::Init() {
     viewport = std::make_unique<Viewport3D>();
     viewport->Init();
     std::cout << "Viewport3D::Init() completed" << std::endl;
+
+    if (viewport) {
+        viewport->ConfigureLayouts(Viewport3D::CreateDefaultLayouts());
+        viewport->SetFramePacingHint(framePacingController.IsVSyncEnabled(), framePacingController.TargetFPS());
+    }
+
+    cameraFollowController.SetConfig(CameraFollowConfig{});
+    cameraFollowController.ResetState();
 
     // Set up GLFW window resize callback
     std::cout << "Setting up GLFW window resize callback" << std::endl;
@@ -331,8 +348,6 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     using clock = std::chrono::high_resolution_clock;
     const double updateHz = 60.0;
     const std::chrono::duration<double> fixedDt(1.0 / updateHz);
-    const double maxFPS = 144.0;  // INCREASED to 144 to allow higher FPS
-    const std::chrono::duration<double> minFrameTime(1.0 / maxFPS);
     std::cout << "Nova Engine Fixed-Timestep Main Loop (update @ " << updateHz << " Hz)" << std::endl;
 
     auto demoStart = clock::now();
@@ -477,11 +492,44 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             viewport->SetBloomEnabled(!bloomEnabled);
             std::cout << "Bloom effect: " << (!bloomEnabled ? "ENABLED" : "DISABLED") << std::endl;
         }
-        
+
         if ((key == 'l' || key == 'L') && viewport) {
             bool letterboxEnabled = viewport->IsLetterboxEnabled();
             viewport->SetLetterboxEnabled(!letterboxEnabled);
             std::cout << "Letterbox overlay: " << (!letterboxEnabled ? "ENABLED" : "DISABLED") << std::endl;
+        }
+
+        if ((key == 'v' || key == 'V') && viewport) {
+            viewport->CycleLayout();
+            std::cout << "Viewport layout switched to " << viewport->GetActiveLayoutName() << std::endl;
+        }
+
+        if ((key == 'f' || key == 'F') && viewport) {
+            framePacingController.ToggleVSync();
+            viewport->SetVSyncEnabled(framePacingController.IsVSyncEnabled());
+            viewport->SetFramePacingHint(framePacingController.IsVSyncEnabled(), framePacingController.TargetFPS());
+            std::cout << "Frame pacing: VSync "
+                      << (framePacingController.IsVSyncEnabled() ? "ENABLED" : "DISABLED") << std::endl;
+        }
+
+        if (key == '[') {
+            framePacingController.AdjustTargetFPS(-15.0);
+            viewport->SetFramePacingHint(framePacingController.IsVSyncEnabled(), framePacingController.TargetFPS());
+            if (framePacingController.TargetFPS() <= 0.0) {
+                std::cout << "Frame pacing: unlimited FPS" << std::endl;
+            } else {
+                std::cout << "Frame pacing: target FPS set to " << framePacingController.TargetFPS() << std::endl;
+            }
+        }
+
+        if (key == ']') {
+            framePacingController.AdjustTargetFPS(15.0);
+            viewport->SetFramePacingHint(framePacingController.IsVSyncEnabled(), framePacingController.TargetFPS());
+            if (framePacingController.TargetFPS() <= 0.0) {
+                std::cout << "Frame pacing: unlimited FPS" << std::endl;
+            } else {
+                std::cout << "Frame pacing: target FPS set to " << framePacingController.TargetFPS() << std::endl;
+            }
         }
 
         // Set player input based on held keys using Input class
@@ -524,8 +572,8 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
         // Apply camera movement or target lock
         if (camera) {
-            double cameraMoveSpeed = 0.5; // units per second
-            double deltaTime = fixedDt.count();
+            const double cameraMoveSpeed = 0.5; // units per second
+            const double deltaTime = fixedDt.count();
 
             CameraFollowInput followInput;
             followInput.playerX = simulation ? simulation->GetPlayerX() : 0.0;
@@ -535,62 +583,16 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             followInput.mouseLookYawOffset = mouseLookYawOffset;
             followInput.mouseLookPitchOffset = mouseLookPitchOffset;
 
-            CameraFollow::UpdateTargetLockCamera(*camera, cameraFollowState, cameraFollowConfig, followInput, deltaTime);
+            CameraMovementInput movementInput;
+            movementInput.moveForward = cameraForward;
+            movementInput.moveBackward = cameraBackward;
+            movementInput.moveLeft = cameraLeft;
+            movementInput.moveRight = cameraRight;
+            movementInput.moveUp = cameraUp;
+            movementInput.moveDown = cameraDown;
+            movementInput.moveSpeed = cameraMoveSpeed;
 
-            // Free camera mode (only when fully out of target lock)
-            if (!isTargetLocked && cameraFollowState.targetLockTransition <= 0.0) {
-                // Free camera mode: handle arrow key movement (world space)
-                double newCameraX = camera->x();
-                double newCameraY = camera->y();
-                double newCameraZ = camera->z();
-                
-                if (cameraForward) {
-                    newCameraY += cameraMoveSpeed * deltaTime;
-                }
-                if (cameraBackward) {
-                    newCameraY -= cameraMoveSpeed * deltaTime;
-                }
-                if (cameraLeft) {
-                    newCameraX -= cameraMoveSpeed * deltaTime;
-                }
-                if (cameraRight) {
-                    newCameraX += cameraMoveSpeed * deltaTime;
-                }
-                if (cameraUp) {
-                    newCameraZ += cameraMoveSpeed * deltaTime;
-                }
-                if (cameraDown) {
-                    newCameraZ -= cameraMoveSpeed * deltaTime;
-                }
-                
-                // Apply collision avoidance to free camera
-                double playerX = followInput.playerX;
-                double playerY = followInput.playerY;
-                double playerZ = followInput.playerZ;
-                
-                // Minimum distance from player in free camera mode
-                double minDistanceFromPlayer = 1.0;
-                double freeCamToPlayerX = newCameraX - playerX;
-                double freeCamToPlayerY = newCameraY - playerY;
-                double freeCamToPlayerZ = newCameraZ - playerZ;
-                double distanceFromPlayer = sqrt(freeCamToPlayerX * freeCamToPlayerX + freeCamToPlayerY * freeCamToPlayerY + freeCamToPlayerZ * freeCamToPlayerZ);
-                
-                if (distanceFromPlayer < minDistanceFromPlayer) {
-                    // Push camera away from player
-                    double pushFactor = minDistanceFromPlayer / distanceFromPlayer;
-                    newCameraX = playerX + freeCamToPlayerX * pushFactor;
-                    newCameraY = playerY + freeCamToPlayerY * pushFactor;
-                    newCameraZ = playerZ + freeCamToPlayerZ * pushFactor;
-                }
-                
-                // Ground collision for free camera
-                double groundLevel = 0.5;
-                if (newCameraZ < groundLevel) {
-                    newCameraZ = groundLevel;
-                }
-                
-                camera->SetPosition(newCameraX, newCameraY, newCameraZ);
-            }
+            cameraFollowController.Update(*camera, followInput, movementInput, deltaTime);
         }
 
         if (!paused) {
@@ -606,131 +608,125 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         }
 
         if (viewport) {
-            double playerX = simulation ? simulation->GetPlayerX() : 0.0;
-            double playerY = simulation ? simulation->GetPlayerY() : 0.0;
-            double playerZ = simulation ? simulation->GetPlayerZ() : 0.0;
-            // Clear once per frame
-            viewport->Clear();
-            // Set up 3D rendering with camera looking at player
-            viewport->Render(camera.get(), playerX, playerY, playerZ);
-            // Draw player at its world position
-            viewport->DrawPlayer(playerX, playerY, playerZ);
-            // Render all entities from scene
-            {
-                // Advance animations and render
-                // Free look camera: update yaw and pitch based on mouse movement
-                if (camera) {
-                    // Enhanced mouse controls with configurable sensitivity
-                    double baseMouseSensitivity = 0.002;
-                    double mouseSensitivity = baseMouseSensitivity;
-                    
-                    // Handle mouse wheel for zoom
-                    double wheelDelta = Input::GetMouseWheelDelta();
-                    if (wheelDelta != 0.0) {
-                        double zoomFactor = 1.0 + (wheelDelta * 0.1);
-                        double newZoom = camera->targetZoom() * zoomFactor;
-                        // Clamp zoom to reasonable limits
-                        if (newZoom > 128.0) newZoom = 128.0;
-                        if (newZoom < 4.0) newZoom = 4.0;
-                        camera->SetTargetZoom(newZoom);
-                        Input::ResetMouseWheelDelta(); // Reset after processing
-                    }
-                    
-                    if (isTargetLocked) {
-                        // Enhanced target lock mouse controls with improved sensitivity curves
-                        double targetLockSensitivity = 0.004;
-                        double mouseDecay = 0.96; // Slightly faster decay for more responsive feel
-                        double accelerationFactor = 1.0;
-                        
-                        // Adaptive sensitivity based on mouse movement speed
-                        double mouseSpeed = sqrt(mouseDeltaX * mouseDeltaX + mouseDeltaY * mouseDeltaY);
-                        if (mouseSpeed > 5.0) {
-                            accelerationFactor = 1.0 + (mouseSpeed - 5.0) * 0.02; // Accelerate for fast movements
-                        }
-                        
-                        // Apply mouse input with improved acceleration
-                        if (abs(mouseDeltaX) > 0.1 || abs(mouseDeltaY) > 0.1) {
-                            mouseLookYawOffset += mouseDeltaX * targetLockSensitivity * accelerationFactor;
-                            mouseLookPitchOffset += mouseDeltaY * targetLockSensitivity * accelerationFactor;
-                        } else {
-                            // Smooth decay when mouse is still
-                            mouseLookYawOffset *= mouseDecay;
-                            mouseLookPitchOffset *= mouseDecay;
-                        }
-                        
-                        // Improved clamping with orbital limits and smooth boundaries
-                        const double PI = acos(-1.0);
-                        const double maxYawOffset = PI * 2.0; // Allow full orbit
-                        const double maxPitchOffset = PI / 3.0; // 60 degrees up
-                        const double minPitchOffset = -PI / 2.5; // -72 degrees down
-                        
-                        // Smooth clamping to prevent harsh stops
-                        double clampFactor = 0.1;
-                        if (mouseLookYawOffset > maxYawOffset) {
-                            mouseLookYawOffset = maxYawOffset + (mouseLookYawOffset - maxYawOffset) * (1.0 - clampFactor);
-                        }
-                        if (mouseLookYawOffset < -maxYawOffset) {
-                            mouseLookYawOffset = -maxYawOffset + (mouseLookYawOffset + maxYawOffset) * (1.0 - clampFactor);
-                        }
-                        if (mouseLookPitchOffset > maxPitchOffset) {
-                            mouseLookPitchOffset = maxPitchOffset + (mouseLookPitchOffset - maxPitchOffset) * (1.0 - clampFactor);
-                        }
-                        if (mouseLookPitchOffset < minPitchOffset) {
-                            mouseLookPitchOffset = minPitchOffset + (mouseLookPitchOffset - minPitchOffset) * (1.0 - clampFactor);
-                        }
-                    } else {
-                        // Free camera mode: direct mouse look with enhanced sensitivity
-                        double currentYaw = camera->yaw();
-                        double currentPitch = camera->pitch();
-                        
-                        // Adaptive sensitivity for free camera
-                        double freeCameraSensitivity = mouseSensitivity * 1.2; // Slightly more sensitive in free camera
-                        double freeAccelerationFactor = 1.0;
-                        
-                        double mouseSpeed = sqrt(mouseDeltaX * mouseDeltaX + mouseDeltaY * mouseDeltaY);
-                        if (mouseSpeed > 3.0) {
-                            freeAccelerationFactor = 1.0 + (mouseSpeed - 3.0) * 0.015;
-                        }
-                        
-                        currentYaw += mouseDeltaX * freeCameraSensitivity * freeAccelerationFactor;
-                        currentPitch += mouseDeltaY * freeCameraSensitivity * freeAccelerationFactor;
-                        
-                        // Smooth pitch clamping to prevent flipping
-                        const double PI = acos(-1.0);
-                        double maxPitch = PI/2 - 0.1;
-                        double minPitch = -PI/2 + 0.1;
-                        
-                        if (currentPitch > maxPitch) currentPitch = maxPitch;
-                        if (currentPitch < minPitch) currentPitch = minPitch;
-                        
-                        camera->SetOrientation(currentPitch, currentYaw);
-                        
-                        // Reset mouse look offsets when not in target lock
-                        mouseLookYawOffset *= 0.95; // Gradual reset
-                        mouseLookPitchOffset *= 0.95;
-                    }
+            const double playerX = simulation ? simulation->GetPlayerX() : 0.0;
+            const double playerY = simulation ? simulation->GetPlayerY() : 0.0;
+            const double playerZ = simulation ? simulation->GetPlayerZ() : 0.0;
+
+            if (camera) {
+                // Enhanced mouse controls with configurable sensitivity
+                double baseMouseSensitivity = 0.002;
+                double mouseSensitivity = baseMouseSensitivity;
+
+                double wheelDelta = Input::GetMouseWheelDelta();
+                if (wheelDelta != 0.0) {
+                    double zoomFactor = 1.0 + (wheelDelta * 0.1);
+                    double newZoom = camera->targetZoom() * zoomFactor;
+                    if (newZoom > 128.0) newZoom = 128.0;
+                    if (newZoom < 4.0) newZoom = 4.0;
+                    camera->SetTargetZoom(newZoom);
+                    Input::ResetMouseWheelDelta();
                 }
 
-                // Ensure sprite metadata buffer is uploaded once when updated
-#ifdef USE_GLFW
-                if (resourceManager) {
-                    resourceManager->SyncSpriteMetadataGPU();
+                if (isTargetLocked) {
+                    double targetLockSensitivity = 0.004;
+                    double mouseDecay = 0.96;
+                    double accelerationFactor = 1.0;
+
+                    double mouseSpeed = sqrt(mouseDeltaX * mouseDeltaX + mouseDeltaY * mouseDeltaY);
+                    if (mouseSpeed > 5.0) {
+                        accelerationFactor = 1.0 + (mouseSpeed - 5.0) * 0.02;
+                    }
+
+                    if (abs(mouseDeltaX) > 0.1 || abs(mouseDeltaY) > 0.1) {
+                        mouseLookYawOffset += mouseDeltaX * targetLockSensitivity * accelerationFactor;
+                        mouseLookPitchOffset += mouseDeltaY * targetLockSensitivity * accelerationFactor;
+                    } else {
+                        mouseLookYawOffset *= mouseDecay;
+                        mouseLookPitchOffset *= mouseDecay;
+                    }
+
+                    const double PI = acos(-1.0);
+                    const double maxYawOffset = PI * 2.0;
+                    const double maxPitchOffset = PI / 3.0;
+                    const double minPitchOffset = -PI / 2.5;
+
+                    double clampFactor = 0.1;
+                    if (mouseLookYawOffset > maxYawOffset) {
+                        mouseLookYawOffset = maxYawOffset + (mouseLookYawOffset - maxYawOffset) * (1.0 - clampFactor);
+                    }
+                    if (mouseLookYawOffset < -maxYawOffset) {
+                        mouseLookYawOffset = -maxYawOffset + (mouseLookYawOffset + maxYawOffset) * (1.0 - clampFactor);
+                    }
+                    if (mouseLookPitchOffset > maxPitchOffset) {
+                        mouseLookPitchOffset = maxPitchOffset + (mouseLookPitchOffset - maxPitchOffset) * (1.0 - clampFactor);
+                    }
+                    if (mouseLookPitchOffset < minPitchOffset) {
+                        mouseLookPitchOffset = minPitchOffset + (mouseLookPitchOffset - minPitchOffset) * (1.0 - clampFactor);
+                    }
+                } else {
+                    double currentYaw = camera->yaw();
+                    double currentPitch = camera->pitch();
+
+                    double freeCameraSensitivity = mouseSensitivity * 1.2;
+                    double freeAccelerationFactor = 1.0;
+
+                    double mouseSpeed = sqrt(mouseDeltaX * mouseDeltaX + mouseDeltaY * mouseDeltaY);
+                    if (mouseSpeed > 3.0) {
+                        freeAccelerationFactor = 1.0 + (mouseSpeed - 3.0) * 0.015;
+                    }
+
+                    currentYaw += mouseDeltaX * freeCameraSensitivity * freeAccelerationFactor;
+                    currentPitch += mouseDeltaY * freeCameraSensitivity * freeAccelerationFactor;
+
+                    const double PI = acos(-1.0);
+                    double maxPitch = PI/2 - 0.1;
+                    double minPitch = -PI/2 + 0.1;
+
+                    if (currentPitch > maxPitch) currentPitch = maxPitch;
+                    if (currentPitch < minPitch) currentPitch = minPitch;
+
+                    camera->SetOrientation(currentPitch, currentYaw);
+
+                    mouseLookYawOffset *= 0.95;
+                    mouseLookPitchOffset *= 0.95;
                 }
+
+                camera->UpdateZoom(fixedDt.count());
+            }
+
+            viewport->BeginFrame();
+
+#ifdef USE_GLFW
+            if (resourceManager) {
+                resourceManager->SyncSpriteMetadataGPU();
+            }
 #endif
 
-                // Render from ECS: iterate all entities that have a Sprite component
-                auto sprites = entityManager->GetAllWith<Sprite>();
+            std::vector<std::pair<Entity, Sprite*>> sprites;
+            if (entityManager) {
+                sprites = entityManager->GetAllWith<Sprite>();
+            }
+
+            const size_t activeViewCount = viewport->GetActiveViewCount();
+            for (size_t viewIndex = 0; viewIndex < activeViewCount; ++viewIndex) {
+                viewport->ActivateView(camera.get(), playerX, playerY, playerZ, viewIndex);
+
+                viewport->DrawPlayer(playerX, playerY, playerZ);
+
                 for (auto &kv : sprites) {
                     Entity ent = kv.first;
                     Sprite* spr = kv.second;
-                    if (!spr) continue;
-                    Position* pos = entityManager->GetComponent<Position>(ent);
-                    if (!pos) continue;
+                    if (!spr) {
+                        continue;
+                    }
+                    Position* pos = entityManager ? entityManager->GetComponent<Position>(ent) : nullptr;
+                    if (!pos) {
+                        continue;
+                    }
                     int th = spr->textureHandle;
                     if (th != 0 && resourceManager) {
                         ResourceManager::SpriteInfo info;
                         if (resourceManager->GetSpriteInfo(th, info)) {
-                            // advance frame by fixed timestep
                             spr->frame = (spr->frame + 1) % std::max(1, info.frames);
                             Transform t; t.x = pos->x; t.y = pos->y; t.z = 0.0;
                             viewport->DrawEntity(t, th, resourceManager.get(), camera.get(), spr->frame);
@@ -740,35 +736,39 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                     Transform t; t.x = pos->x; t.y = pos->y; t.z = pos->z;
                     viewport->DrawEntity(t, th, resourceManager.get(), camera.get(), spr->frame);
                 }
-                // Draw camera debug marker on top and HUD
-                if (viewport && camera) {
-                    // Ensure smooth zoom is updated each frame
-                    camera->UpdateZoom(fixedDt.count());
+
+                const auto viewRole = viewport->GetViewRole(viewIndex);
+                if (camera) {
+                    viewport->DrawCameraDebug(camera.get(), playerX, playerY, playerZ, viewRole);
+                }
+                if (camera && viewRole != ViewRole::Minimap) {
                     viewport->DrawCameraMarker(camera.get());
-                    // Draw HUD with currentFPS - RE-ENABLED
-                    double hudPlayerX = simulation ? simulation->GetPlayerX() : 0.0;
-                    double hudPlayerY = simulation ? simulation->GetPlayerY() : 0.0;
-                    double hudPlayerZ = simulation ? simulation->GetPlayerZ() : 0.0;
-                    // Get target lock state from player component
+                }
+
+                if (viewRole == ViewRole::Main) {
+                    double hudPlayerX = playerX;
+                    double hudPlayerY = playerY;
+                    double hudPlayerZ = playerZ;
                     bool hudTargetLocked = isTargetLocked;
                     const ShipAssemblyResult* hudAssemblyPtr = nullptr;
                     if (hudShipAssembly.hull || !hudShipAssembly.diagnostics.errors.empty() || !hudShipAssembly.diagnostics.warnings.empty()) {
                         hudAssemblyPtr = &hudShipAssembly;
                     }
                     viewport->DrawHUD(camera.get(), currentFPS, hudPlayerX, hudPlayerY, hudPlayerZ, hudTargetLocked, hudAssemblyPtr);
-                    // Render particle effects (sparks, explosions, shield impacts)
                     if (visualFeedbackSystem) {
                         viewport->RenderParticles(camera.get(), visualFeedbackSystem.get());
                     }
-                    // If STAR_CAPTURE env var is set, dump the renderer contents to BMP for inspection
                     const char* cap = std::getenv("STAR_CAPTURE");
                     if (cap && std::string(cap) == "1") {
                         viewport->CaptureToBMP("/workspaces/Nova-Engine/renderer_capture.bmp");
                     }
-                    // present the final frame (marker and HUD included)
-                    viewport->Present();
+                } else if (viewRole == ViewRole::Minimap) {
+                    viewport->DrawMinimapOverlay(playerX, playerY, playerZ);
                 }
             }
+
+            viewport->FinishFrame();
+            viewport->Present();
         }
         ++frames;
 
@@ -792,7 +792,12 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
         auto frameEnd = clock::now();
         auto frameTime = frameEnd - current;
-        if (frameTime < minFrameTime) std::this_thread::sleep_for(minFrameTime - frameTime);
+        auto desiredFrame = framePacingController.DesiredFrameDuration();
+        if (!framePacingController.IsVSyncEnabled() && desiredFrame.count() > 0.0) {
+            if (frameTime < desiredFrame) {
+                std::this_thread::sleep_for(desiredFrame - frameTime);
+            }
+        }
     }
 
     Input::Shutdown();
@@ -808,8 +813,7 @@ void MainLoop::ApplyCameraPreset(size_t index) {
     // Reset offsets and target lock smoothing so preset takes effect immediately
     mouseLookYawOffset = 0.0;
     mouseLookPitchOffset = 0.0;
-    cameraFollowState.targetLockTransition = 0.0;
-    cameraFollowState.wasTargetLocked = false;
+    cameraFollowController.ResetState();
 
     // Ensure target lock component is disabled when jumping to a preset
     if (entityManager && simulation) {
