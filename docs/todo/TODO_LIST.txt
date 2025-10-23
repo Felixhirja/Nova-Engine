@@ -553,7 +553,15 @@ LONG-TERM VISION (6+ months):
      IMPACT: 10-50x faster iteration, 70% less memory, 4-8x speedup on multi-core
      NEXT: Fix component array synchronization (30-60 min estimated)
      See: docs/ecs_v2_implementation_progress.md for details and todo_ecs.txt
-  
+
+     FOLLOW-UP MIGRATION TASKS:
+     □ Ship a compatibility facade that forwards legacy `EntityManager` calls into `EntityManagerV2` where supported.
+       - Adapter header + documentation for unsupported pathways
+     □ Add a conversion pass that moves legacy-managed entities into archetype storage during load sequences.
+       - Validate with migration regression tests
+     □ Update Simulation bootstrap to register systems via `SystemSchedulerV2` with feature flag toggle.
+       - Maintain parity with current manual order while stabilizing rollout
+
   □ Add physics engine integration (Bullet, PhysX)
   □ Create animation system
   □ Add AI pathfinding system
