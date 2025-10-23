@@ -172,6 +172,33 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 - **Industrial Gameplay:** Players can operate refineries, fabricate modules in blueprint-driven factories, and auction finished goods via station marketplaces.
 - **Risk vs. Reward:** Deep-space mining zones yield rare resources but feature environmental hazards and pirate activity; escort contracts and corporation security provide counterplay.
 
+### Resource & Manufacturing System
+
+#### Resource Types
+
+##### Raw Materials
+1. **Common Metals:** Iron, Aluminum, Titanium
+2. **Precious Metals:** Gold, Platinum, Iridium
+3. **Rare Elements:** Tritium, Antimatter, Quantum Crystals
+4. **Organic Resources:** Biomass, Fuel compounds
+
+##### Refined Materials
+- **Alloys:** Durasteel, Ceramsteel, Carbon Composite
+- **Electronics:** Circuitry, Processors, Sensors
+- **Energy:** Power Cells, Fusion Cores, Shield Matrices
+
+#### Crafting Tiers
+1. **Tier 1:** Basic repairs and ammunition
+2. **Tier 2:** Component upgrades and modifications
+3. **Tier 3:** Ship modules and weapons
+4. **Tier 4:** Small ship construction
+5. **Tier 5:** Capital ship components
+
+#### Manufacturing Locations
+- **Personal Workshop:** Basic crafting on ships
+- **Station Facilities:** Advanced crafting with access to blueprints
+- **Industrial Complexes:** Mass production and capital ship construction
+
 ### Exploration & Missions
 
 #### Exploration Mechanics
