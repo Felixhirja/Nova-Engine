@@ -82,6 +82,7 @@ struct ShipAssemblyDiagnostics {
     void AddSuggestion(const std::string& slotId,
                        const std::string& reason,
                        std::vector<std::string> suggestedComponentIds);
+    std::vector<std::string> BuildUserFacingMessages(const ShipHullBlueprint* hull = nullptr) const;
     bool HasErrors() const { return !errors.empty(); }
 };
 
