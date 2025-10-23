@@ -16,6 +16,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "SystemEventBus.h"
+
 namespace ecs {
 
 // Component access pattern for dependency analysis
@@ -70,17 +72,17 @@ struct SystemDependency {
 
 // Update phase for system ordering
 enum class UpdatePhase {
-    Input,          // Input handling
-    PreUpdate,      // Before main simulation
-    Update,         // Main simulation logic
-    PostUpdate,     // After simulation, before rendering
+    Input,          // Input handling and preprocessing
+    Simulation,     // Simulation and gameplay logic
     RenderPrep      // Prepare data for rendering
 };
 
 // Base class for systems in V2 architecture
 class SystemV2 {
 public:
-    virtual ~SystemV2() = default;
+    virtual ~SystemV2() {
+        ClearEventSubscriptions();
+    }
 
     // Update function with delta time
     virtual void Update(EntityManagerV2& entityManager, double dt) = 0;
@@ -92,7 +94,7 @@ public:
     virtual std::vector<SystemDependency> GetSystemDependencies() const { return {}; }
 
     // Declare update phase (override in derived classes)
-    virtual UpdatePhase GetUpdatePhase() const { return UpdatePhase::Update; }
+    virtual UpdatePhase GetUpdatePhase() const { return UpdatePhase::Simulation; }
 
     // Declare supported execution stages
     virtual bool SupportsStage(UpdateStage stage) const {
@@ -119,33 +121,94 @@ public:
 
     // System name for debugging/profiling
     virtual const char* GetName() const { return "SystemV2"; }
-    
+
+    // Event bus callback when configured
+    virtual void OnEventBusConfigured(SystemEventBus&) {}
+
     // Profiling data
     struct ProfileData {
         double lastUpdateTime = 0.0;  // Milliseconds
+        double totalUpdateTime = 0.0;
         size_t entitiesProcessed = 0;
+        size_t totalEntitiesProcessed = 0;
+        size_t cacheMisses = 0;
+        size_t totalCacheMisses = 0;
         size_t updateCount = 0;
     };
     
     const ProfileData& GetProfileData() const { return profileData_; }
     
 protected:
+    template<typename Event>
+    void PublishEvent(const Event& event) {
+        EnsureEventBus();
+        eventBus_->Publish(event);
+    }
+
+    template<typename Event, typename Func>
+    void SubscribeEvent(Func&& callback) {
+        EnsureEventBus();
+        auto token = eventBus_->Subscribe<Event>(std::forward<Func>(callback));
+        eventSubscriptions_.push_back(token);
+    }
+
     void RecordUpdateStart() {
         updateStartTime_ = std::chrono::high_resolution_clock::now();
     }
-    
-    void RecordUpdateEnd(size_t entitiesProcessed) {
+
+    void RecordUpdateEnd(size_t entitiesProcessed, size_t cacheMisses = 0) {
         auto endTime = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> duration = endTime - updateStartTime_;
-        
+
         profileData_.lastUpdateTime = duration.count();
+        profileData_.totalUpdateTime += profileData_.lastUpdateTime;
         profileData_.entitiesProcessed = entitiesProcessed;
+        profileData_.totalEntitiesProcessed += entitiesProcessed;
+        profileData_.cacheMisses = cacheMisses;
+        profileData_.totalCacheMisses += cacheMisses;
         profileData_.updateCount++;
     }
-    
+
 private:
+    friend class SystemSchedulerV2;
+
+    void SetEventBus(SystemEventBus* bus) {
+        if (eventBus_ == bus) {
+            return;
+        }
+
+        if (eventBus_) {
+            ClearEventSubscriptions();
+        }
+
+        eventBus_ = bus;
+        if (eventBus_) {
+            OnEventBusConfigured(*eventBus_);
+        }
+    }
+
+    void EnsureEventBus() const {
+        if (!eventBus_) {
+            throw std::runtime_error("SystemEventBus not configured for system");
+        }
+    }
+
+    void ClearEventSubscriptions() {
+        if (!eventBus_) {
+            eventSubscriptions_.clear();
+            return;
+        }
+
+        for (const auto& token : eventSubscriptions_) {
+            eventBus_->Unsubscribe(token);
+        }
+        eventSubscriptions_.clear();
+    }
+
     ProfileData profileData_;
     std::chrono::high_resolution_clock::time_point updateStartTime_;
+    SystemEventBus* eventBus_ = nullptr;
+    std::vector<SystemEventBus::SubscriptionToken> eventSubscriptions_;
 };
 
 // Thread pool for parallel system execution
@@ -245,6 +308,7 @@ public:
         
         auto system = std::make_unique<T>(std::forward<Args>(args)...);
         T& ref = *system;
+        system->SetEventBus(&eventBus_);
         systems_.emplace_back(std::move(system));
         
         // Rebuild schedule after adding system
@@ -270,11 +334,15 @@ public:
     struct SystemProfile {
         const char* name;
         UpdatePhase phase;
-        double updateTime;
-        size_t entitiesProcessed;
+        double lastUpdateTime;
+        double totalUpdateTime;
+        size_t lastEntitiesProcessed;
+        size_t totalEntitiesProcessed;
+        size_t lastCacheMisses;
+        size_t totalCacheMisses;
         size_t updateCount;
     };
-    
+
     std::vector<SystemProfile> GetSystemProfiles() const {
         std::vector<SystemProfile> profiles;
         profiles.reserve(systems_.size());
@@ -285,7 +353,11 @@ public:
                 system->GetName(),
                 system->GetUpdatePhase(),
                 data.lastUpdateTime,
+                data.totalUpdateTime,
                 data.entitiesProcessed,
+                data.totalEntitiesProcessed,
+                data.cacheMisses,
+                data.totalCacheMisses,
                 data.updateCount
             });
         }
@@ -303,6 +375,7 @@ public:
     
     void Clear() {
         systems_.clear();
+        eventBus_.Clear();
         for (auto& phase : phaseSchedules_) {
             phase.order.clear();
             phase.dependencies.clear();
@@ -661,6 +734,7 @@ private:
         graph.Execute(threadPool_);
     }
 
+    SystemEventBus eventBus_;
     std::vector<std::unique_ptr<SystemV2>> systems_;
     std::array<PhaseScheduleData, static_cast<size_t>(UpdatePhase::RenderPrep) + 1> phaseSchedules_{};
     ThreadPool threadPool_;

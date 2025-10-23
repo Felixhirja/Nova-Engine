@@ -158,10 +158,10 @@ Your spaceship system has **substantial infrastructure** already built!
 **Priority:** HIGH (blocks other UI work)
 
 #### Task 3.2: Cockpit/Bridge UI
-**Status:** Design exists, implementation needed  
+**Status:** Comprehensive layout design documented; rendering implementation pending
 **Remaining:**
 - [ ] Energy Management HUD (`docs/energy_management_hud.md`)
-- [ ] Ship status displays per class
+- [ ] Ship status displays per class (see `docs/controls_and_ux_plan.md` §1)
 - [ ] Targeting reticle and info panels
 - [ ] Component health indicators
 
@@ -169,21 +169,21 @@ Your spaceship system has **substantial infrastructure** already built!
 **Dependency:** Text rendering system
 
 #### Task 3.3: Flight Assist & Controls
-**Status:** Not started  
+**Status:** Interaction model and input profile design captured in `docs/controls_and_ux_plan.md`; gameplay integration outstanding
 **Remaining:**
-- [ ] Auto-level toggle
-- [ ] Inertia dampening mode
+- [ ] Auto-level toggle (implementation per `docs/controls_and_ux_plan.md` §2)
+- [ ] Inertia dampening mode (implementation per `docs/controls_and_ux_plan.md` §2)
 - [ ] Flight mode switching (SCM/Cruise/Landing)
-- [ ] Input remapping specific to flight
+- [ ] Input remapping specific to flight (API design in `docs/controls_and_ux_plan.md` §3)
 
 **Estimated Time:** 10-16 hours
 
 #### Task 3.4: Tutorial & Telemetry
-**Status:** Not started  
+**Status:** Tutorial ladder and telemetry HUD plan authored in `docs/controls_and_ux_plan.md`; tooling not yet implemented
 **Remaining:**
-- [ ] Flight school tutorial missions
-- [ ] Simulator scenarios for practice
-- [ ] Real-time telemetry display (G-force, acceleration)
+- [ ] Flight school tutorial missions (scenario structure in `docs/controls_and_ux_plan.md` §4)
+- [ ] Simulator scenarios for practice (sandbox flow in `docs/controls_and_ux_plan.md` §4)
+- [ ] Real-time telemetry display (G-force, acceleration) (HUD concept in `docs/controls_and_ux_plan.md` §5)
 - [ ] Performance coaching/hints
 
 **Estimated Time:** 16-24 hours
