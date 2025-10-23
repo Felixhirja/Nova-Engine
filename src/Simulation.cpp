@@ -4,6 +4,7 @@
 #include "ecs/MovementSystem.h"
 #include "ecs/PhysicsSystem.h"
 #include "ecs/PlayerControlSystem.h"
+#include "ecs/SpaceshipPhysicsSystem.h"
 #include "TargetingSystem.h"
 #include "WeaponSystem.h"
 #include "ShieldSystem.h"
@@ -540,6 +541,7 @@ void Simulation::Init(EntityManager* externalEm) {
 
     systemManager.Clear();
     systemManager.RegisterSystem<PlayerControlSystem>();
+    systemManager.RegisterSystem<SpaceshipPhysicsSystem>();
     systemManager.RegisterSystem<MovementSystem>();
     systemManager.RegisterSystem<LocomotionSystem>();
     systemManager.RegisterSystem<AnimationSystem>();

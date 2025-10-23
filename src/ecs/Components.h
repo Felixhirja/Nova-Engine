@@ -380,12 +380,81 @@ struct ConstantForce : public Component {
     double forceX = 0.0;
     double forceY = 0.0;
     double forceZ = 0.0;
-    
+
     double torqueX = 0.0;  // Rotational force
     double torqueY = 0.0;
     double torqueZ = 0.0;
-    
+
     bool isLocalSpace = false;  // If true, force is in object's local space
+};
+
+/**
+ * SpaceshipFlightModel: Detailed flight dynamics model for spacecraft.
+ * Stores thrust capabilities, atmospheric coefficients, and orientation state
+ * so that advanced physics systems can simulate realistic behaviour.
+ */
+struct SpaceshipFlightModel : public Component {
+    // Mass and thrust configuration
+    double massKg = 25000.0;             // Vehicle mass in kilograms
+    double maxMainThrustN = 400000.0;    // Forward thrust capability (Newtons)
+    double maxReverseThrustN = 250000.0; // Reverse thrust capability (Newtons)
+    double maxLateralThrustN = 120000.0; // Lateral/side thrust (Newtons)
+    double maxVerticalThrustN = 150000.0;// Vertical thrust (Newtons)
+    double maxLinearSpeed = 0.0;         // Optional linear speed cap (m/s, 0 = unlimited)
+    double linearDamping = 0.25;         // Linear damping constant (N per m/s)
+
+    // Control inputs (-1..1 range expected)
+    double throttle = 0.0;               // Forward/backward throttle input
+    double strafeInput = 0.0;            // Lateral thruster input
+    double verticalInput = 0.0;          // Vertical thruster input
+    double pitchInput = 0.0;             // Pitch control input
+    double yawInput = 0.0;               // Yaw control input
+    double rollInput = 0.0;              // Roll control input
+
+    // Orientation state (Euler angles in radians)
+    double pitch = 0.0;
+    double yaw = 0.0;
+    double roll = 0.0;
+
+    // Angular velocity state (radians per second)
+    double angularVelocityX = 0.0;
+    double angularVelocityY = 0.0;
+    double angularVelocityZ = 0.0;
+
+    // Rotational characteristics
+    double maxPitchTorque = 350000.0;    // Maximum pitch torque (N*m)
+    double maxYawTorque = 350000.0;      // Maximum yaw torque (N*m)
+    double maxRollTorque = 250000.0;     // Maximum roll torque (N*m)
+    double inertiaTensorX = 120000.0;    // Moment of inertia around X axis
+    double inertiaTensorY = 160000.0;    // Moment of inertia around Y axis
+    double inertiaTensorZ = 100000.0;    // Moment of inertia around Z axis
+    double angularDamping = 0.3;         // Base angular damping coefficient
+
+    // Atmospheric flight configuration
+    bool atmosphericFlightEnabled = true;
+    double seaLevelAtmosphericDensity = 1.225; // kg/m^3 at sea level
+    double atmosphereScaleHeight = 8000.0;     // Density falloff height (meters)
+    double atmosphereBaseAltitude = 0.0;       // Altitude where atmosphere begins (meters)
+    double dragCoefficient = 0.25;             // Aerodynamic drag coefficient
+    double liftCoefficient = 0.7;              // Lift coefficient for wings/control surfaces
+    double referenceArea = 20.0;               // Effective reference area (m^2)
+    double atmosphericAngularDrag = 6000.0;    // Additional angular damping from atmosphere
+    double gravity = -9.81;                    // Local gravitational acceleration (m/s^2)
+
+    // Telemetry values updated by the physics system
+    double currentAtmosphericDensity = 0.0;
+    double lastAppliedForceX = 0.0;
+    double lastAppliedForceY = 0.0;
+    double lastAppliedForceZ = 0.0;
+    double lastAppliedTorqueX = 0.0;
+    double lastAppliedTorqueY = 0.0;
+    double lastAppliedTorqueZ = 0.0;
+    double lastLinearAccelerationX = 0.0;
+    double lastLinearAccelerationY = 0.0;
+    double lastLinearAccelerationZ = 0.0;
+    double lastAngularAccelerationX = 0.0;
+    double lastAngularAccelerationY = 0.0;
+    double lastAngularAccelerationZ = 0.0;
 };
 
 /**
