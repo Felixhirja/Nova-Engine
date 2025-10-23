@@ -62,6 +62,9 @@ PHASE 1: FOUNDATION (Next 1-2 months)
   □ Ship progression/unlock system (research trees, reputation gates)
   □ Cockpit/bridge UI (requires text rendering first)
   □ Flight assist controls (auto-level, dampening, modes)
+  □ Fuel management loops (propellant tracking, refueling gameplay, mission range tools)
+  □ Docking and hangar interactions (alignment guidance, airlocks, cargo transfer)
+  □ Life support management (environmental controls, consumables, failure responses)
   
   See todo_spaceship.txt for complete detailed task list
   See docs/spaceship_implementation_status.md for comprehensive assessment
