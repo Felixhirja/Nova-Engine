@@ -21,15 +21,15 @@ namespace {
 
 MovementBounds CreateDefaultMovementBounds() {
     MovementBounds bounds;
-    bounds.minX = -std::numeric_limits<double>::infinity();
-    bounds.maxX = std::numeric_limits<double>::infinity();
-    bounds.clampX = false;
-    bounds.minY = -std::numeric_limits<double>::infinity();
-    bounds.maxY = std::numeric_limits<double>::infinity();
-    bounds.clampY = false;
-    bounds.minZ = -std::numeric_limits<double>::infinity();
-    bounds.maxZ = std::numeric_limits<double>::infinity();
-    bounds.clampZ = false;
+    bounds.minX = -5.0;
+    bounds.maxX = 5.0;
+    bounds.clampX = true;
+    bounds.minY = -5.0;
+    bounds.maxY = 5.0;
+    bounds.clampY = true;
+    bounds.minZ = 0.0;
+    bounds.maxZ = 5.0;
+    bounds.clampZ = true;
     return bounds;
 }
 
@@ -189,6 +189,79 @@ bool ParseMovementBoundsStream(std::istream& input, std::unordered_map<std::stri
     return !outProfiles.empty();
 }
 
+bool ParseMovementParametersStream(std::istream& input, std::unordered_map<std::string, MovementParameters>& outProfiles) {
+    std::string line;
+    std::string currentProfile;
+    MovementParameters currentParams;
+    bool inProfile = false;
+
+    auto commitProfile = [&]() {
+        if (!currentProfile.empty()) {
+            outProfiles[currentProfile] = currentParams;
+        }
+    };
+
+    while (std::getline(input, line)) {
+        std::string trimmed = Trim(line);
+        if (trimmed.empty() || trimmed[0] == '#' || trimmed[0] == ';') {
+            continue;
+        }
+
+        if (trimmed.front() == '[' && trimmed.back() == ']') {
+            if (inProfile) {
+                commitProfile();
+            }
+            currentProfile = Trim(trimmed.substr(1, trimmed.size() - 2));
+            currentParams = MovementParameters();
+            inProfile = true;
+            continue;
+        }
+
+        auto equalsPos = trimmed.find('=');
+        if (equalsPos == std::string::npos || !inProfile) {
+            continue;
+        }
+
+        std::string key = Trim(trimmed.substr(0, equalsPos));
+        std::string value = Trim(trimmed.substr(equalsPos + 1));
+
+        if (key.empty()) {
+            continue;
+        }
+
+        double numericValue = 0.0;
+        if (ParseDouble(value, numericValue)) {
+            if (key == "strafeAcceleration") {
+                currentParams.strafeAcceleration = numericValue;
+            } else if (key == "forwardAcceleration") {
+                currentParams.forwardAcceleration = numericValue;
+            } else if (key == "backwardAcceleration") {
+                currentParams.backwardAcceleration = numericValue;
+            } else if (key == "strafeDeceleration") {
+                currentParams.strafeDeceleration = numericValue;
+            } else if (key == "forwardDeceleration") {
+                currentParams.forwardDeceleration = numericValue;
+            } else if (key == "backwardDeceleration") {
+                currentParams.backwardDeceleration = numericValue;
+            } else if (key == "strafeMaxSpeed") {
+                currentParams.strafeMaxSpeed = numericValue;
+            } else if (key == "forwardMaxSpeed") {
+                currentParams.forwardMaxSpeed = numericValue;
+            } else if (key == "backwardMaxSpeed") {
+                currentParams.backwardMaxSpeed = numericValue;
+            } else if (key == "friction") {
+                currentParams.friction = numericValue;
+            }
+        }
+    }
+
+    if (inProfile) {
+        commitProfile();
+    }
+
+    return !outProfiles.empty();
+}
+
 bool IsRelativePath(const std::string& path) {
     if (path.empty()) {
         return false;
@@ -230,6 +303,55 @@ std::unordered_map<std::string, MovementBounds> LoadMovementBoundsProfiles(const
     return profiles;
 }
 
+std::unordered_map<std::string, MovementParameters> LoadMovementParametersProfiles(const std::string& path) {
+    std::unordered_map<std::string, MovementParameters> profiles;
+    if (path.empty()) {
+        return profiles;
+    }
+
+    std::vector<std::string> candidates;
+    candidates.push_back(path);
+    if (IsRelativePath(path)) {
+        candidates.push_back("../" + path);
+        candidates.push_back("../../" + path);
+    }
+
+    for (const auto& candidate : candidates) {
+        std::ifstream file(candidate);
+        if (!file.is_open()) {
+            continue;
+        }
+
+        std::unordered_map<std::string, MovementParameters> parsedProfiles;
+        if (ParseMovementParametersStream(file, parsedProfiles)) {
+            return parsedProfiles;
+        }
+    }
+
+    return profiles;
+}
+
+MovementParameters ResolveMovementParameters(const MovementParameters& fallback, const std::string& path, const std::string& profile) {
+    auto profiles = LoadMovementParametersProfiles(path);
+    if (profiles.empty()) {
+        return fallback;
+    }
+
+    if (!profile.empty()) {
+        auto it = profiles.find(profile);
+        if (it != profiles.end()) {
+            return it->second;
+        }
+    }
+
+    auto defaultIt = profiles.find("default");
+    if (defaultIt != profiles.end()) {
+        return defaultIt->second;
+    }
+
+    return profiles.begin()->second;
+}
+
 MovementBounds ResolveMovementBounds(const MovementBounds& fallback, const std::string& path, const std::string& profile) {
     auto profiles = LoadMovementBoundsProfiles(path);
     if (profiles.empty()) {
@@ -266,6 +388,9 @@ Simulation::Simulation()
       inputLeft(false),
       inputRight(false),
       movementBoundsConfig(CreateDefaultMovementBounds()),
+      movementParametersConfigPath("assets/config/player_movement.ini"),
+      movementParametersProfile("default"),
+      useMovementParametersFile(true),
       movementBoundsConfigPath("assets/config/movement_bounds.ini"),
       movementBoundsProfile("default"),
       useMovementBoundsFile(true) {
@@ -337,6 +462,12 @@ void Simulation::Init(EntityManager* externalEm) {
     physics->enableGravity = true;
     physics->isGrounded = true;
     useEm->AddComponent<PlayerPhysics>(playerEntity, physics);
+
+    MovementParameters resolvedParams = movementConfig;
+    if (useMovementParametersFile) {
+        resolvedParams = ResolveMovementParameters(movementConfig, movementParametersConfigPath, movementParametersProfile);
+    }
+    movementConfig = resolvedParams;
 
     auto movementParams = std::make_shared<MovementParameters>(movementConfig);
     useEm->AddComponent<MovementParameters>(playerEntity, movementParams);
@@ -443,6 +574,7 @@ void Simulation::SetUseThrustMode(bool thrustMode) {
 
 void Simulation::ConfigureMovementParameters(const MovementParameters& params) {
     movementConfig = params;
+    useMovementParametersFile = false;
     EntityManager* useEm = activeEm ? activeEm : &em;
     if (!useEm->IsAlive(playerEntity)) {
         return;
@@ -454,6 +586,15 @@ void Simulation::ConfigureMovementParameters(const MovementParameters& params) {
         auto movementParams = std::make_shared<MovementParameters>(movementConfig);
         useEm->AddComponent<MovementParameters>(playerEntity, movementParams);
     }
+}
+
+void Simulation::SetMovementParametersConfigPath(const std::string& path) {
+    movementParametersConfigPath = path;
+    useMovementParametersFile = !movementParametersConfigPath.empty();
+}
+
+void Simulation::SetMovementParametersProfile(const std::string& profile) {
+    movementParametersProfile = profile;
 }
 
 void Simulation::ConfigureMovementBounds(const MovementBounds& bounds) {

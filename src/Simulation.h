@@ -26,6 +26,10 @@ public:
     void SetUseThrustMode(bool thrustMode);
     void ConfigureMovementParameters(const MovementParameters& params);
     const MovementParameters& GetMovementParameters() const { return movementConfig; }
+    void SetMovementParametersConfigPath(const std::string& path);
+    void SetMovementParametersProfile(const std::string& profile);
+    const std::string& GetMovementParametersConfigPath() const { return movementParametersConfigPath; }
+    const std::string& GetMovementParametersProfile() const { return movementParametersProfile; }
     void ConfigureMovementBounds(const MovementBounds& bounds);
     const MovementBounds& GetMovementBounds() const { return movementBoundsConfig; }
     void SetMovementBoundsConfigPath(const std::string& path);
@@ -54,6 +58,9 @@ private:
     SystemManager systemManager;
     MovementParameters movementConfig;
     MovementBounds movementBoundsConfig;
+    std::string movementParametersConfigPath;
+    std::string movementParametersProfile;
+    bool useMovementParametersFile;
     std::string movementBoundsConfigPath;
     std::string movementBoundsProfile;
     bool useMovementBoundsFile;
