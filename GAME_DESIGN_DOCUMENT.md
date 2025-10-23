@@ -72,6 +72,33 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 - **Resource Deposits:** Mining opportunities for various materials
 - **Environmental Hazards:** Radiation zones, magnetic storms, asteroid fields
 
+### Lore & Backstory
+- **Universe History:** The Orion Expanse was settled after humanity's 24th-century Exodus, when failed terraforming campaigns drove megacorps and dissident nations to fund deep-space arkships. Their arrival fractured into three super-factions—The Ascendant Combine (corporate technocracy), The Concord of Free Systems (democratic frontier coalition), and The Veiled Assembly (clandestine psionic order).
+- **Major Events & Conflicts:**
+  - **The Sundering (2334):** A catastrophic quantum relay collapse that stranded millions and seeded derelict megastructures rich with salvage.
+  - **The Siege of Helios Gate (2357):** Combine fleets attempted to monopolize the primary jump nexus, spurring guerilla tactics that shaped modern boarding combat.
+  - **The Silent Accord (2365):** A ceasefire forged by the Assembly that introduced sanctioned dueling protocols and bounty contracts.
+- **Species & Cultures:** Humanity splintered into bio-adapted lineages—voidborn spacer guilds with low-gravity physiology, gene-forged colonists tailored to high-radiation worlds, and baseline settlers who rely on exosuits. Alien contact rumors persist around quantum anomalies but remain unproven, serving as high-tier exploration arcs.
+- **Technology Origins:** Quantum drives derive from pre-Exodus dark energy research. Shield lattices evolved from solar sail experiments, while modular ship frames repurpose arkship scaffolding. Psionic augmentations employ Assembly-grown lattice crystals, fueling black-market demand and faction-specific tech trees.
+
+### Environmental Hazards
+- **Radiation Zones:** Generated near magnetar remnants and failed terraforming reactors. Ships require hardened shielding or consumable rad-gel; prolonged exposure causes component degradation and temporary HUD distortions.
+- **Magnetic Storms:** Dynamic events triggered by stellar flares. They disrupt targeting locks, jam communications, and can reboot avionics unless players vent excess charge via dedicated systems.
+- **Asteroid Fields:** Navigation relies on predictive telemetry mini-games. Collision avoidance boosts piloting skill progression, while mining lasers can carve temporary safe corridors.
+- **Black Hole Mechanics:** Optional endgame regions feature tidal stress gauges, frame-dragging navigation arcs, and time dilation that affects mission timers and projectile trajectories. Specialized gravity anchors allow limited approach windows for high-reward salvage.
+
+### Death & Respawn Mechanics
+- **Ship Loss Consequences:** Destroyed hulls spawn salvageable wrecks with persistent timers. Players lose uninsured cargo and must pay repair fees or source parts via crafting to restore their vessel.
+- **Escape Pod Systems:** Auto-eject triggers when core integrity reaches 5%. Pods support short-range thrusters, distress beacons, and mini-games for managing oxygen or deterring pirates until rescue.
+- **Insurance & Claims:** Stations host insurers offering tiered policies. Basic coverage respawns starter ships with cooldowns; premium plans reimburse loadouts and grant temporary loaner craft. Fraudulent claims trigger dynamic bounty missions.
+- **Permadeath Options:** Hardcore mode flags a character for permanent loss upon pod destruction. Rewards include exclusive cosmetic lineage badges, accelerated reputation gain, and leaderboard placement for seasonal events.
+
+### Tutorial & Onboarding
+- **New Player Experience:** Begins aboard a civilian transport attacked during The Sundering anniversary. Players learn zero-G movement while reaching the hangar and claiming a loaner scout ship.
+- **Training Missions:** Guided contracts teach docking, quantum travel, combat drills, and resource scanning. Completion unlocks insurance discounts and faction introductions.
+- **Difficulty Curve:** Adaptive AI monitors mission success; failure triggers optional assistance modules (auto-stabilizers, enhanced radar cues) that fade as mastery increases.
+- **Tooltips & Help Systems:** Contextual overlays highlight key ship subsystems, while the Codex logs lore, hazard warnings, and faction reputations. Voice-assisted AI companions offer hints based on player history.
+
 ## Core Gameplay Systems
 
 ### Spaceship Mechanics
