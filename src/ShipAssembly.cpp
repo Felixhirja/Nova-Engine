@@ -61,6 +61,39 @@ void EnsureHullDefaultsInitialized() {
     });
 }
 
+std::string DescribeSlot(const HullSlot& slot) {
+    std::ostringstream oss;
+    oss << "slot '" << slot.slotId << "' (" << ToString(slot.category)
+        << ", size " << ToString(slot.size) << ")";
+    return oss.str();
+}
+
+std::string DescribeComponent(const ShipComponentBlueprint& component) {
+    std::ostringstream oss;
+    oss << "component '" << component.displayName << "' (" << component.id
+        << ", size " << ToString(component.size) << ")";
+    return oss.str();
+}
+
+std::vector<std::string> FindCompatibleComponentIds(const HullSlot& slot, std::size_t limit = 5) {
+    std::vector<std::string> result;
+    result.reserve(limit);
+    const auto& allComponents = ShipComponentCatalog::All();
+    for (const auto& component : allComponents) {
+        if (component.category != slot.category) {
+            continue;
+        }
+        if (!SlotSizeFits(slot.size, component.size)) {
+            continue;
+        }
+        result.push_back(component.id);
+        if (result.size() >= limit) {
+            break;
+        }
+    }
+    return result;
+}
+
 ShipHullBlueprint ExpandDefinition(const SpaceshipClassDefinition& def, const std::string& idSuffix) {
     ShipHullBlueprint blueprint;
     blueprint.id = idSuffix;
@@ -139,6 +172,16 @@ void ShipAssemblyDiagnostics::AddError(const std::string& msg) {
 
 void ShipAssemblyDiagnostics::AddWarning(const std::string& msg) {
     warnings.push_back(msg);
+}
+
+void ShipAssemblyDiagnostics::AddSuggestion(const std::string& slotId,
+                                            const std::string& reason,
+                                            std::vector<std::string> suggestedComponentIds) {
+    ComponentSuggestion suggestion;
+    suggestion.slotId = slotId;
+    suggestion.reason = reason;
+    suggestion.suggestedComponentIds = std::move(suggestedComponentIds);
+    suggestions.push_back(std::move(suggestion));
 }
 
 const ShipComponentBlueprint* ShipComponentCatalog::Find(const std::string& id) {
@@ -257,23 +300,33 @@ ShipAssemblyResult ShipAssembler::Assemble(const ShipAssemblyRequest& request) {
         auto it = request.slotAssignments.find(slot.slotId);
         if (it == request.slotAssignments.end()) {
             if (slot.required) {
-                result.diagnostics.AddError("Missing component for slot " + slot.slotId);
+                result.diagnostics.AddError("Required " + DescribeSlot(slot) + " has no assigned component.");
+                result.diagnostics.AddSuggestion(slot.slotId, "Required slot empty", FindCompatibleComponentIds(slot));
             } else {
-                result.diagnostics.AddWarning("Optional slot " + slot.slotId + " left unfilled");
+                result.diagnostics.AddWarning("Optional " + DescribeSlot(slot) + " left unfilled.");
             }
             continue;
         }
         const auto* blueprint = ShipComponentCatalog::Find(it->second);
         if (!blueprint) {
-            result.diagnostics.AddError("Unknown component id " + it->second + " for slot " + slot.slotId);
+            result.diagnostics.AddError("Unknown component id '" + it->second + "' assigned to " + DescribeSlot(slot) + ".");
+            result.diagnostics.AddSuggestion(slot.slotId, "Component id not found", FindCompatibleComponentIds(slot));
             continue;
         }
         if (blueprint->category != slot.category) {
-            result.diagnostics.AddError("Component " + blueprint->id + " incompatible with slot " + slot.slotId + " (category mismatch)");
+            std::ostringstream oss;
+            oss << "Category mismatch: " << DescribeComponent(*blueprint)
+                << " cannot occupy " << DescribeSlot(slot) << ".";
+            result.diagnostics.AddError(oss.str());
+            result.diagnostics.AddSuggestion(slot.slotId, "Category mismatch", FindCompatibleComponentIds(slot));
             continue;
         }
         if (!SlotSizeFits(slot.size, blueprint->size)) {
-            result.diagnostics.AddError("Component " + blueprint->id + " too large for slot " + slot.slotId);
+            std::ostringstream oss;
+            oss << "Size mismatch: " << DescribeComponent(*blueprint)
+                << " does not fit within " << DescribeSlot(slot) << ".";
+            result.diagnostics.AddError(oss.str());
+            result.diagnostics.AddSuggestion(slot.slotId, "Size mismatch", FindCompatibleComponentIds(slot));
             continue;
         }
         resolvedComponents[slot.slotId] = blueprint;
@@ -441,7 +494,7 @@ std::string ShipAssemblyResult::Serialize() const {
         }
         oss << "}";
     }
-    if (!diagnostics.errors.empty() || !diagnostics.warnings.empty()) {
+    if (!diagnostics.errors.empty() || !diagnostics.warnings.empty() || !diagnostics.suggestions.empty()) {
         oss << ",\"diagnostics\":{";
         oss << "\"errors\":[";
         for (std::size_t i = 0; i < diagnostics.errors.size(); ++i) {
@@ -454,7 +507,27 @@ std::string ShipAssemblyResult::Serialize() const {
             oss << "\"" << diagnostics.warnings[i] << "\"";
             if (i + 1 < diagnostics.warnings.size()) oss << ",";
         }
-        oss << "]}";
+        oss << "]";
+        if (!diagnostics.suggestions.empty()) {
+            oss << ",\"suggestions\":[";
+            for (std::size_t i = 0; i < diagnostics.suggestions.size(); ++i) {
+                const auto& suggestion = diagnostics.suggestions[i];
+                oss << "{\"slot\":\"" << suggestion.slotId
+                    << "\",\"reason\":\"" << suggestion.reason << "\",\"components\":[";
+                for (std::size_t j = 0; j < suggestion.suggestedComponentIds.size(); ++j) {
+                    oss << "\"" << suggestion.suggestedComponentIds[j] << "\"";
+                    if (j + 1 < suggestion.suggestedComponentIds.size()) {
+                        oss << ",";
+                    }
+                }
+                oss << "]";
+                if (i + 1 < diagnostics.suggestions.size()) {
+                    oss << ",";
+                }
+            }
+            oss << "]";
+        }
+        oss << "}";
     }
     oss << "}";
     return oss.str();
