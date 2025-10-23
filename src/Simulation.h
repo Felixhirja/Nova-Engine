@@ -28,11 +28,12 @@ public:
     LocomotionStateMachine::Weights GetLocomotionBlendWeights() const;
     Entity GetPlayerEntity() const { return playerEntity; }
     // Set player input state
-    void SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw);
+    void SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw,
+                        bool sprint = false, bool crouch = false, bool slide = false, bool boost = false);
     void SetUseThrustMode(bool thrustMode);
     void ConfigureMovementParameters(const MovementParameters& params);
     const MovementParameters& GetMovementParameters() const { return movementConfig; }
-    void SetUseSchedulerV2(bool enabled) { useSchedulerV2_ = enabled; }
+    void SetUseSchedulerV2(bool enabled);
     bool IsUsingSchedulerV2() const { return useSchedulerV2_; }
     void SetMovementParametersConfigPath(const std::string& path);
     void SetMovementParametersProfile(const std::string& profile);
@@ -59,6 +60,10 @@ private:
     bool inputStrafeLeft;
     bool inputStrafeRight;
     double inputCameraYaw;
+    bool inputSprint;
+    bool inputCrouch;
+    bool inputSlide;
+    bool inputBoost;
     bool prevJumpHeld;
     bool useThrustMode;
     bool inputLeft;
@@ -66,6 +71,7 @@ private:
     SystemManager systemManager;
     ecs::SystemSchedulerV2 schedulerV2_;
     bool useSchedulerV2_ = false;
+    bool schedulerConfigured_ = false;
     MovementParameters movementConfig;
     MovementBounds movementBoundsConfig;
     std::string movementParametersConfigPath;
@@ -81,6 +87,8 @@ private:
     void DestroyEnvironmentColliders(EntityManager& entityManager);
     void RebuildEnvironmentColliders(EntityManager& entityManager);
     void CreatePlayerPhysicsComponents(EntityManager& entityManager, PlayerPhysics& playerPhysics);
+    void EnsureSchedulerV2Configured(EntityManager& entityManager);
+    void ConfigureSchedulerV2(EntityManager& entityManager);
 };
 
 #endif // SIMULATION_H

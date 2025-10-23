@@ -49,6 +49,24 @@ void PlayerControlSystem::Update(EntityManager& entityManager, double dt) {
             friction = std::max(0.0, sanitize(movement->friction, kDefaultFriction));
         }
 
+        if (const auto* locomotion = entityManager.GetComponent<LocomotionStateMachine>(entity)) {
+            auto applyScale = [](double& value, double scale) {
+                if (scale > 0.0 && std::fabs(scale - 1.0) > 1e-6) {
+                    value *= scale;
+                }
+            };
+            applyScale(strafeAcceleration, locomotion->runtimeAccelerationMultiplier);
+            applyScale(forwardAcceleration, locomotion->runtimeAccelerationMultiplier);
+            applyScale(backwardAcceleration, locomotion->runtimeAccelerationMultiplier);
+            applyScale(strafeDeceleration, locomotion->runtimeDecelerationMultiplier);
+            applyScale(forwardDeceleration, locomotion->runtimeDecelerationMultiplier);
+            applyScale(backwardDeceleration, locomotion->runtimeDecelerationMultiplier);
+            applyScale(strafeMaxSpeed, locomotion->runtimeMaxSpeedMultiplier);
+            applyScale(forwardMaxSpeed, locomotion->runtimeMaxSpeedMultiplier);
+            applyScale(backwardMaxSpeed, locomotion->runtimeMaxSpeedMultiplier);
+            applyScale(friction, locomotion->runtimeFrictionMultiplier);
+        }
+
         double accelX = 0.0;
         double accelY = 0.0;
         if (controller.strafeLeft) accelX -= strafeAcceleration;

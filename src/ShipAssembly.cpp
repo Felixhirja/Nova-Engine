@@ -75,6 +75,60 @@ std::string DescribeComponent(const ShipComponentBlueprint& component) {
     return oss.str();
 }
 
+std::string FormatSlotLabel(const ShipHullBlueprint* hull, const std::string& slotId) {
+    if (!hull) {
+        return "slot '" + slotId + "'";
+    }
+    auto it = std::find_if(hull->slots.begin(), hull->slots.end(), [&](const HullSlot& slot) {
+        return slot.slotId == slotId;
+    });
+    if (it == hull->slots.end()) {
+        return "slot '" + slotId + "'";
+    }
+    std::ostringstream oss;
+    oss << ToString(it->category) << " slot '" << slotId << "'";
+    oss << " (" << ToString(it->size);
+    if (!it->notes.empty()) {
+        oss << ", " << it->notes;
+    }
+    oss << ")";
+    return oss.str();
+}
+
+std::string FormatComponentLabel(const std::string& componentId) {
+    const auto* blueprint = ShipComponentCatalog::Find(componentId);
+    if (!blueprint) {
+        return componentId;
+    }
+    std::ostringstream oss;
+    oss << blueprint->displayName << " [" << blueprint->id << "]";
+    return oss.str();
+}
+
+std::string JoinComponentLabels(const std::vector<std::string>& componentIds) {
+    if (componentIds.empty()) {
+        return {};
+    }
+    if (componentIds.size() == 1) {
+        return FormatComponentLabel(componentIds.front());
+    }
+    std::ostringstream oss;
+    for (std::size_t i = 0; i < componentIds.size(); ++i) {
+        if (i > 0) {
+            if (componentIds.size() > 2) {
+                oss << ", ";
+            } else {
+                oss << " ";
+            }
+        }
+        if (i + 1 == componentIds.size()) {
+            oss << "or ";
+        }
+        oss << FormatComponentLabel(componentIds[i]);
+    }
+    return oss.str();
+}
+
 std::vector<std::string> FindCompatibleComponentIds(const HullSlot& slot, std::size_t limit = 5) {
     std::vector<std::string> result;
     result.reserve(limit);
@@ -182,6 +236,27 @@ void ShipAssemblyDiagnostics::AddSuggestion(const std::string& slotId,
     suggestion.reason = reason;
     suggestion.suggestedComponentIds = std::move(suggestedComponentIds);
     suggestions.push_back(std::move(suggestion));
+}
+
+std::vector<std::string> ShipAssemblyDiagnostics::BuildUserFacingMessages(const ShipHullBlueprint* hull) const {
+    std::vector<std::string> messages;
+    messages.reserve(errors.size() + warnings.size() + suggestions.size());
+
+    for (const auto& error : errors) {
+        messages.push_back("Error: " + error);
+    }
+    for (const auto& warning : warnings) {
+        messages.push_back("Warning: " + warning);
+    }
+    for (const auto& suggestion : suggestions) {
+        std::ostringstream oss;
+        oss << "Suggestion for " << FormatSlotLabel(hull, suggestion.slotId) << ": " << suggestion.reason;
+        if (!suggestion.suggestedComponentIds.empty()) {
+            oss << ". Try installing " << JoinComponentLabels(suggestion.suggestedComponentIds);
+        }
+        messages.push_back(oss.str());
+    }
+    return messages;
 }
 
 const ShipComponentBlueprint* ShipComponentCatalog::Find(const std::string& id) {

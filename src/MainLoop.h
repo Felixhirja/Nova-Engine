@@ -7,6 +7,7 @@
 
 #include "CameraFollowController.h"
 #include "CameraPresets.h"
+#include "EngineStateMachine.h"
 #include "ShipAssembly.h"
 #include "FramePacingController.h"
 
@@ -17,6 +18,7 @@ class EntityManager;
 class VisualFeedbackSystem;
 class AudioFeedbackSystem;
 class HUDAlertSystem;
+class ECSInspector;
 
 class Camera;
 
@@ -45,11 +47,14 @@ private:
     std::unique_ptr<Camera> camera;
     // Canonical ECS entity manager
     std::unique_ptr<EntityManager> entityManager;
+    std::unique_ptr<ECSInspector> ecsInspector;
     // Feedback systems
     std::unique_ptr<VisualFeedbackSystem> visualFeedbackSystem;
     std::unique_ptr<AudioFeedbackSystem> audioFeedbackSystem;
     std::unique_ptr<HUDAlertSystem> hudAlertSystem;
     ShipAssemblyResult hudShipAssembly;
+    EngineStateMachine stateMachine;
+    bool thrustModeEnabled;
     
     // Mouse look offsets for target lock mode
     double mouseLookYawOffset;

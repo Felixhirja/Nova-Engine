@@ -125,12 +125,8 @@ public:
     void Clear() override;
     void Present() override;
 
-    void ConfigureLayouts(std::vector<ViewportLayout> layouts);
-    void CycleLayout();
-    void SetActiveLayout(size_t index);
-    const ViewportLayout& GetActiveLayout() const;
-    std::string GetActiveLayoutName() const;
-    static std::vector<ViewportLayout> CreateDefaultLayouts();
+    int GetWidth() const { return width; }
+    int GetHeight() const { return height; }
 
 private:
     int width;
