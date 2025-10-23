@@ -35,25 +35,25 @@ int main() {
 
         const double dt = 1.0 / 60.0;
 
-        // Move player to the positive boundary using strafe right input
+        // Move player far in the positive direction using strafe right input
         sim.SetPlayerInput(false, false, false, false, false, true, 0.0);
         for (int i = 0; i < 600; ++i) {
             sim.Update(dt);
         }
         double xPos = sim.GetPlayerX();
-        if (!approxLE(xPos, 5.0)) {
-            std::cerr << "Boundary test failed: expected x <= 5.0, got " << xPos << std::endl;
+        if (!approxGE(xPos, 5.0)) {
+            std::cerr << "Unbounded movement test failed: expected x >= 5.0, got " << xPos << std::endl;
             allPassed = false;
         }
 
-        // Move to the negative boundary using strafe left input
+        // Move to the negative direction using strafe left input
         sim.SetPlayerInput(false, false, false, false, true, false, 0.0);
         for (int i = 0; i < 1200; ++i) {
             sim.Update(dt);
         }
         double xNeg = sim.GetPlayerX();
-        if (!approxGE(xNeg, -5.0)) {
-            std::cerr << "Boundary test failed: expected x >= -5.0, got " << xNeg << std::endl;
+        if (!approxLE(xNeg, -5.0)) {
+            std::cerr << "Unbounded movement test failed: expected x <= -5.0, got " << xNeg << std::endl;
             allPassed = false;
         }
     }

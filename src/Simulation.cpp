@@ -15,20 +15,21 @@
 #include <sstream>
 #include <unordered_map>
 #include <vector>
+#include <limits>
 
 namespace {
 
 MovementBounds CreateDefaultMovementBounds() {
     MovementBounds bounds;
-    bounds.minX = -5.0;
-    bounds.maxX = 5.0;
-    bounds.clampX = true;
-    bounds.minY = -5.0;
-    bounds.maxY = 5.0;
-    bounds.clampY = true;
-    bounds.minZ = 0.0;
-    bounds.maxZ = 5.0;
-    bounds.clampZ = true;
+    bounds.minX = -std::numeric_limits<double>::infinity();
+    bounds.maxX = std::numeric_limits<double>::infinity();
+    bounds.clampX = false;
+    bounds.minY = -std::numeric_limits<double>::infinity();
+    bounds.maxY = std::numeric_limits<double>::infinity();
+    bounds.clampY = false;
+    bounds.minZ = -std::numeric_limits<double>::infinity();
+    bounds.maxZ = std::numeric_limits<double>::infinity();
+    bounds.clampZ = false;
     return bounds;
 }
 
