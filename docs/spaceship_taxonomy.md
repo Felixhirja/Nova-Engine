@@ -154,10 +154,26 @@ When proposing new hulls or component families, verify that slot counts and size
 
 ---
 
+## Balancing Considerations
+
+Designers iterating on new hulls or revising faction variants should evaluate proposed changes against three primary balance axes:
+
+1. **Power-to-Mass Ratio** – Adjusting `PowerPlant` or thruster slot sizes should maintain class identity. For example, light hulls
+   typically sustain a thrust-to-mass target of 0.32–0.40 (see tuning helpers in `src/simulation/FlightModel.cpp`) while capital
+   frames rarely exceed 0.12 to preserve inertia-driven gameplay.
+2. **Hardpoint Opportunity Cost** – When swapping utility or module sockets, validate that the resulting loadout does not exceed
+   the aggregate threat envelope defined in `Balance/WeaponArchetypes.json`. Any variant that adds a primary hardpoint should
+   either sacrifice module space or increase heat/power consumption to keep time-to-kill comparable within its tier.
+3. **Economy & Progression Hooks** – Credit cost, maintenance overhead, and unlock milestones must track with the `Progression Tier`
+   guidance above. Cross-check updates with campaign scripting tables in `assets/campaign/progression/` to avoid progression skips
+   or reward inflation.
+
 ## Implementation Notes
 
 - Baseline stats should feed directly into data tables consumed by the simulation and balance tools.
 - Faction variants inherit from the base class archetype using additive modifiers (JSON or Lua descriptors TBD).
+- Slot and hardpoint edits require synchronized updates in `ShipAssembly.cpp`, `Spaceship.cpp`, and any authored prefab data under
+  `assets/ships/` to guarantee consistency between editor tooling and runtime builds.
 - Progression tiers map to milestone IDs in the mission and economy systems; unlocking a hull automatically exposes associated component blueprints.
 - Coordination required with art, audio, and UI teams to ensure consistent visual language and telemetry exposure.
 - The runtime taxonomy is currently implemented in-code via `SpaceshipCatalog` (`src/Spaceship.cpp`) exposing the structures defined in this document.
