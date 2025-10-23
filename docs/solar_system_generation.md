@@ -125,6 +125,22 @@ struct SpaceStationComponent : public Component {
 };
 ```
 
+### Implementation Parity Snapshot (October 2025)
+
+The design below mirrors the live generator in `src/SolarSystemGenerator.cpp` and the data surfaces declared in `src/CelestialBody.h`.
+
+- **Seed Derivation:** `SolarSystemGenerator::SetSeed` fans out the base seed into deterministic category seeds (`GenerationSeeds`) for stars, planets, moons, asteroid belts, stations, and naming. Every helper (`CreateRng`, `GetSeed`) resolves back to these derived values, so consuming RNG in one subsystem cannot desynchronise the others. When documenting balancing changes, reference the category salts in code (`'STAR'`, `'PLAN'`, `'MOON'`, `'ASTR'`, `'STAT'`, `'NAME'`) to keep telemetry tooling aligned.
+- **Generation Parameters:** Tunables live in `GenerationParameters` (declared in `src/CelestialBody.h`). They gate planet counts, moon likelihoods, belt probability, and station density (`minStations`/`maxStations`, `stationNearHabitableProbability`). Any new rule described here should call out the corresponding field so gameplay engineers know which knob to expose.
+- **Entity Surfaces:** Each celestial entity carries the component set shown above plus the shared ECS components (`Faction`, `Name`, `Transform`). Runtime systems (navigation, missions, economy) must consume these rather than introducing parallel metadata.
+
+#### Generation Flow Overview
+
+1. **System Naming** – `GenerateSystem` uses the dedicated name seed to pick a prefix (`"Kepler"`, `"Nova"`, etc.) and a three-digit suffix. Subsequent body names are derived via `SolarSystemGenerator::GenerateName`, which applies Roman numerals for planet order and alphabetical suffixes for moons, ensuring reproducible localisation keys.
+2. **Star Creation** – `GenerateStar` samples spectral type, luminosity, and colour from the star RNG. The resulting `StarComponent` feeds habitable zone bounds via `CalculateHabitableZone` and drives later placement heuristics.
+3. **Planet Pass** – `GeneratePlanets` iterates between `minPlanets`/`maxPlanets`, spacing orbits using the default inner orbit (0.35 AU) and spacing coefficient (1.65). Planet composition choices (rocky, gas, ice) influence follow-up component flags (`hasAtmosphere`, `PlanetComponent` resource fields) and moon quotas.
+4. **Satellite Pass** – When `GenerationParameters::generateMoons` is true, the moon RNG spawns child entities through `GenerateMoons`, using the parent mass and hill sphere checks in `SolarSystemGenerator.cpp` to clamp orbital radii. Resulting moons inherit naming from their parent planet.
+5. **Belts and Stations** – Asteroid belts derive their radial placement from gaps in planet orbits and update the owning planet's `SatelliteSystemComponent`. Stations are then seeded with the station RNG, respecting `minStations`/`maxStations` and the habitable zone weighting slider. Each station copies faction ownership, service flags, and `SpaceStationComponent` metadata into the ECS so downstream systems (missions, economy) can query them directly.
+
 #### Component Implementation Reference
 
 To keep the design document aligned with the live implementation (`src/CelestialBody.h`), this section captures the exact data surfaces available to systems that consume solar-system entities.

@@ -9,6 +9,36 @@ This document defines the baseline taxonomy for player-flyable and AI-controlled
 - **Power Budget** – Baseline power plant output in megawatts used for balance and subsystem sizing.
 - **Hardpoint Layout** – Count of primary/secondary weapon mounts, utility pylons, and module sockets.
 - **Progression Tier** – The typical character or faction milestone where the hull unlocks in the campaign.
+- **Component Slot** – Installation point defined by `ComponentSlotCategory`/`SlotSize` enums in `src/Spaceship.h`. Slots dictate which subsystems the hull can accept and are consumed by the ship assembly tool (`ShipAssembly.cpp`).
+
+### Component & Hardpoint Specification Reference
+
+The runtime catalog in `src/Spaceship.cpp` exposes deterministic component layouts per class. Designers should use the matrix below when planning blueprints, balance passes, or UI slices.
+
+| Category (`ComponentSlotCategory`) | Typical Size | Fighter | Freighter | Explorer | Industrial | Capital | Notes |
+|------------------------------------|--------------|---------|-----------|----------|------------|---------|-------|
+| PowerPlant                         | Small–XL     | Small ×1 | Medium ×1 | Medium ×1 | Large ×1 | XL ×2 | Reactor cores drive available MW; capital hulls reserve redundant reactors. |
+| MainThruster                       | Small–XL     | Small ×1 | Medium ×2 | Medium ×1 | Large ×2 | XL ×4 | Primary propulsion blocks consumed by the flight model. |
+| ManeuverThruster                   | XS–Large     | XS ×4    | Small ×6  | Small ×6  | Medium ×8 | Large ×12 | RCS clusters for translation/rotation; counts map to gimbal ports. |
+| Shield                              | Small–XL     | Small ×1 | Medium ×1 | Medium ×1 | Large ×1 | XL ×2 | Shield emitters or plating controllers. |
+| Weapon                              | Small–XL     | Small ×2 | —         | —         | —         | — | Non-hardpoint subsystems (targeting, cooling) tied to weapon groups. |
+| Cargo                               | Small–XL     | —        | Large ×3  | Medium ×1 | Large ×2 | — | Storage modules (containers, sample holds, hangars). |
+| CrewQuarters                        | Small–Large  | —        | Small ×1  | Small ×1  | Medium ×1 | Large ×3 | Determines onboard crew cap and morale modifiers. |
+| Sensor                              | Small–XL     | Small ×1 | Medium ×1 | Large ×2 | Medium ×1 | Large ×2 | Links to scanning ranges and targeting fidelity. |
+| Support                             | XS–Large     | XS ×1    | Medium ×1 | Medium ×2 | Medium ×2 | Large ×4 | Catch-all for docking collars, drone bays, med modules. |
+| Industrial                          | Large        | —        | —         | —         | Large ×4 | Large ×1 | Mining lasers, fabrication rigs, repair gantries. |
+| Hangar                              | Large–XL     | —        | —         | —         | —         | XL ×2 | Fighter bays and shuttle docks. |
+| Computer                            | Small–Large  | —        | —         | —         | —         | — | Reserved for future flagship command cores. |
+
+Hardpoint allocations are codified via `HardpointSpec` entries:
+
+| Hardpoint (`HardpointCategory`) | Slot Size Range | Fighter | Freighter | Explorer | Industrial | Capital | Implementation Notes |
+|---------------------------------|-----------------|---------|-----------|----------|------------|---------|----------------------|
+| PrimaryWeapon                   | Small–XL        | Small ×2 | Medium ×1 | Medium ×1 | Medium ×2 | XL ×6  | Drives forward-facing or turreted offensive capability. |
+| Utility                         | XS–Large        | XS ×1   | Small ×2  | Small ×3  | Medium ×2 | Large ×4 | Countermeasures, tractor beams, shield projectors. |
+| Module                          | Small–XL        | Small ×1 | Medium ×3 | Medium ×3 | Large ×4 | XL ×6  | Flexible sockets for mission-specific payloads. |
+
+When proposing new hulls or component families, verify that slot counts and sizes stay compatible with the assembler validation rules (`SlotSizeFits` in `ShipAssembly.cpp`). Deviations should be mirrored in both this document and the runtime catalog to avoid desync between documentation, tooling, and data.
 
 ## Summary Matrix
 
