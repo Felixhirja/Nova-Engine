@@ -8,6 +8,7 @@
 #include "Camera.h"
 #include "CameraPresets.h"
 #include "CameraFollow.h"
+#include "GamepadManager.h"
 #include "ecs/EntityManager.h"
 #include "ecs/Components.h"
 #include "VisualFeedbackSystem.h"
@@ -115,6 +116,36 @@ void MainLoop::Init() {
     log.close();
     running = true;
     Input::Init();
+
+    {
+        auto& gamepadManager = GamepadManager::Instance();
+        bool xinputReady = gamepadManager.EnsureInitialized();
+
+        std::ofstream diagLog("sdl_diag.log", std::ios::app);
+        if (diagLog) {
+            diagLog << "GamepadManager: attempt="
+                    << (gamepadManager.HasAttemptedInitialization() ? "true" : "false")
+                    << ", available=" << (xinputReady ? "true" : "false");
+            if (xinputReady) {
+                diagLog << ", library=" << gamepadManager.ActiveLibraryNameUtf8();
+            } else if (!gamepadManager.LastError().empty()) {
+                diagLog << ", error=" << gamepadManager.LastError();
+            }
+            diagLog << std::endl;
+        }
+
+        if (xinputReady) {
+            std::cout << "GamepadManager: XInput available via "
+                      << gamepadManager.ActiveLibraryNameUtf8() << std::endl;
+        } else {
+            const std::string errorDescription = gamepadManager.LastError();
+            if (!errorDescription.empty()) {
+                std::cout << "GamepadManager: XInput unavailable (" << errorDescription << ")" << std::endl;
+            } else {
+                std::cout << "GamepadManager: XInput unavailable" << std::endl;
+            }
+        }
+    }
 
     viewport = std::make_unique<Viewport3D>();
     viewport->Init();
