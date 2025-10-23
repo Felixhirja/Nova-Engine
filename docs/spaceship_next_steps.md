@@ -1,5 +1,23 @@
 # Spaceship Systems - Quick Start Guide for Next Tasks
 
+## 🚀 Executive Summary
+
+- **Immediate focus:** Stand up the text rendering system so HUD/UI work can finally unblock downstream features.
+- **Parallel prep:** Document component validation copy so designers can plug in better error messaging while engineering finalizes suggestions.
+- **Upcoming deep work:** Begin modelling power, heat, and crew loops once rendering + validation are stable; these systems feed directly into combat + economy milestones.
+- **Risks to track:** Font library integration time, availability of component catalog data for suggestions, and balancing parameters for the performance simulator.
+
+## ✅ TODO Checklist
+
+- [ ] Wire `TextRenderer` initialization into the main engine bootstrap sequence.
+- [ ] Capture font asset pipeline steps in `docs/fonts_pipeline.md` so art can supply new glyph sets quickly.
+- [ ] Surface `ShipAssemblyDiagnostics` suggestions inside the build UI overlay with severity coloring.
+- [ ] Author regression tests for component suggestion fallbacks using `tests/test_validation.cpp` fixtures.
+- [ ] Model heat dissipation curves against environmental modifiers (nebulae, vacuum, atmosphere) before shipping the simulator.
+- [ ] Define cascading failure events for critical reactors and document alert flow for the damage model.
+- [ ] Connect crew workload metrics to morale modifiers in the simulation loop.
+- [ ] Extend cargo manifest serialization to sync with save-game schema updates in `assets/saves/`.
+
 ## 🎯 Recommended Implementation Order
 
 Based on dependencies and priority, here's the optimal order to tackle remaining work:
