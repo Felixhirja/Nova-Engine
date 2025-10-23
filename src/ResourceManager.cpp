@@ -8,11 +8,13 @@
 #include <SDL.h>
 #endif
 #include "sdl_compat.h"
+#include "SVGSurfaceLoader.h"
 #endif
 #ifdef USE_GLFW
 #include "graphics/SpriteMetadataBuffer.h"
 #endif
 #include <algorithm>
+#include <cctype>
 #include <mutex>
 
 ResourceManager::ResourceManager() {
@@ -60,7 +62,26 @@ void* ResourceManager::GetSurface(int handle) const {
     if (sit != surfaces_.end()) return sit->second;
     // not found: load now (const_cast for simplicity since surfaces_ is mutable cache)
     const std::string &path = it->second;
-    SDL_Surface* s = compat_LoadBMP(path.c_str());
+    auto hasExtension = [](const std::string& str, const std::string& ext) {
+        if (str.size() < ext.size()) return false;
+        auto it1 = str.end();
+        auto it2 = ext.end();
+        while (it2 != ext.begin()) {
+            --it1; --it2;
+            if (std::tolower(static_cast<unsigned char>(*it1)) != std::tolower(static_cast<unsigned char>(*it2))) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    SDL_Surface* s = nullptr;
+    if (hasExtension(path, ".svg")) {
+        s = LoadSVGSurface(path);
+    }
+    if (!s) {
+        s = compat_LoadBMP(path.c_str());
+    }
     if (!s) return nullptr;
     // Store in non-const map via const_cast (ok for this simple demo)
     const_cast<std::unordered_map<int, void*>&>(surfaces_)[handle] = static_cast<void*>(s);
