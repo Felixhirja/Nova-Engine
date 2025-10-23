@@ -924,37 +924,37 @@ void Simulation::ConfigureSchedulerV2(EntityManager& entityManager) {
     schedulerV2_.RegisterSystem<PlayerAdapter>(entityManager, playerConfig);
 
     ecs::LegacySystemAdapterConfig spaceshipConfig;
-    spaceshipConfig.phase = ecs::UpdatePhase::PreUpdate;
+    spaceshipConfig.phase = ecs::UpdatePhase::Input;
     spaceshipConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<PlayerAdapter>());
     schedulerV2_.RegisterSystem<SpaceshipAdapter>(entityManager, spaceshipConfig);
 
     ecs::LegacySystemAdapterConfig movementConfig;
-    movementConfig.phase = ecs::UpdatePhase::Update;
+    movementConfig.phase = ecs::UpdatePhase::Simulation;
     movementConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<SpaceshipAdapter>());
     schedulerV2_.RegisterSystem<MovementAdapter>(entityManager, movementConfig);
 
     ecs::LegacySystemAdapterConfig locomotionConfig;
-    locomotionConfig.phase = ecs::UpdatePhase::Update;
+    locomotionConfig.phase = ecs::UpdatePhase::Simulation;
     locomotionConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<MovementAdapter>());
     schedulerV2_.RegisterSystem<LocomotionAdapter>(entityManager, locomotionConfig);
 
     ecs::LegacySystemAdapterConfig animationConfig;
-    animationConfig.phase = ecs::UpdatePhase::Update;
+    animationConfig.phase = ecs::UpdatePhase::Simulation;
     animationConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<LocomotionAdapter>());
     schedulerV2_.RegisterSystem<AnimationAdapter>(entityManager, animationConfig);
 
     ecs::LegacySystemAdapterConfig targetingConfig;
-    targetingConfig.phase = ecs::UpdatePhase::Update;
+    targetingConfig.phase = ecs::UpdatePhase::Simulation;
     targetingConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<AnimationAdapter>());
     schedulerV2_.RegisterSystem<TargetingAdapter>(entityManager, targetingConfig);
 
     ecs::LegacySystemAdapterConfig weaponConfig;
-    weaponConfig.phase = ecs::UpdatePhase::PostUpdate;
+    weaponConfig.phase = ecs::UpdatePhase::RenderPrep;
     weaponConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<TargetingAdapter>());
     schedulerV2_.RegisterSystem<WeaponAdapter>(entityManager, weaponConfig);
 
     ecs::LegacySystemAdapterConfig shieldConfig;
-    shieldConfig.phase = ecs::UpdatePhase::PostUpdate;
+    shieldConfig.phase = ecs::UpdatePhase::RenderPrep;
     shieldConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<WeaponAdapter>());
     schedulerV2_.RegisterSystem<ShieldAdapter>(entityManager, shieldConfig);
 

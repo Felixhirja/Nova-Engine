@@ -11,6 +11,7 @@
 #include "GamepadManager.h"
 #include "ecs/EntityManager.h"
 #include "ecs/Components.h"
+#include "ecs/ECSInspector.h"
 #include "VisualFeedbackSystem.h"
 #include "AudioFeedbackSystem.h"
 #include "HUDAlertSystem.h"
