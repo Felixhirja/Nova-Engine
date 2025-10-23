@@ -105,6 +105,10 @@ PHASE 1: FOUNDATION (Next 1-2 months)
   □ Add particle renderer hooks to engine loop (docs/particle_rendering_integration.md)
   □ Build automated screenshot harness for regression testing (scripts/, docs/postprocess_usage_examples.md)
   □ Document asset authoring workflow updates (docs/ship_art_pipeline.md)
+  □ Establish SVG asset workflow for HUD and UI elements
+    - Hook ResourceManager SVG ingestion to tessellate icons or bake SDF atlases
+    - Update Viewport3D HUD pipeline to load vector icons at runtime
+    - Provide SVG layout exports for designers to review HUD alignments
 
   See docs/solar_system_tasks.md for complete roadmap (275-377 hours estimated)
   Current Phase: Phase 1 - Core Framework (22-32 hours)

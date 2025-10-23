@@ -10,6 +10,8 @@
 - [ ] Replace BMP-only loading with stb_image or SDL_image for PNG/JPEG/TGA support and alpha handling.
 - [ ] Allow asset packages/virtual file systems so resources can be shipped in archives.
 - [ ] Introduce platform abstraction so non-SDL builds can still load textures/meshes (e.g., raw pixel buffers).
+- [ ] Add SVG ingestion path that tessellates vector paths into renderable meshes or signed-distance textures for HUD usage.
+- [ ] Provide configurable rasterization of SVG icons for fallback bitmap atlases (export multiple DPI targets automatically).
 
 ## Metadata & Sprites
 - [ ] Persist sprite metadata to external JSON/YAML so artists can tweak frame sizes/fps without recompiles.

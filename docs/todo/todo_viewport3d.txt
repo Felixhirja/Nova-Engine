@@ -21,6 +21,8 @@
 - [ ] Add proportional layout that adapts to aspect-ratio changes and ultrawide monitors.
 - [ ] Swap remaining diagnostic overlays to TextRenderer widgets and remove legacy GLUT helpers.
 - [ ] Provide fallback font pack detection and hot-reload toggle for HUD text assets.
+- [ ] Build SVG-driven icon workflow so vector HUD assets stay crisp at any resolution (tessellate paths or generate SDFs at load time).
+- [ ] Export current HUD layout to SVG for design review (include alignment guides, safe zones, and key coordinate annotations).
 
 ## Capture & Diagnostics
 - [ ] Modernize `CaptureToBMP` to stream to RAM and permit user-selected output paths.
