@@ -12,7 +12,28 @@
 #include <utility>
 #include <vector>
 #include "Component.h"
+#include "Components.h"
 #include "EntityManagerV2.h"
+#include "../CelestialBody.h"
+
+namespace entity_manager_detail {
+
+template<typename T, typename Tuple>
+struct TupleContains;
+
+template<typename T>
+struct TupleContains<T, std::tuple<>> : std::false_type {};
+
+template<typename T, typename U, typename... Rest>
+struct TupleContains<T, std::tuple<U, Rest...>> : TupleContains<T, std::tuple<Rest...>> {};
+
+template<typename T, typename... Rest>
+struct TupleContains<T, std::tuple<T, Rest...>> : std::true_type {};
+
+template<typename T, typename Tuple>
+constexpr bool IsTypeInTuple = TupleContains<T, Tuple>::value;
+
+} // namespace entity_manager_detail
 
 using Entity = int;
 
@@ -31,6 +52,50 @@ public:
 
     ecs::EntityManagerV2& GetArchetypeManager() { return archetypeManager_; }
     const ecs::EntityManagerV2& GetArchetypeManager() const { return archetypeManager_; }
+
+    using FacadeComponentTypes = std::tuple<
+        Position,
+        Velocity,
+        Acceleration,
+        PhysicsBody,
+        Transform2D,
+        Sprite,
+        Hitbox,
+        AnimationState,
+        Name,
+        PlayerController,
+        MovementParameters,
+        MovementBounds,
+        PlayerPhysics,
+        LocomotionStateMachine,
+        TargetLock,
+        RigidBody,
+        Force,
+        Collider,
+        CollisionInfo,
+        GravitySource,
+        ConstantForce,
+        CharacterController,
+        Joint,
+        CelestialBodyComponent,
+        OrbitalComponent,
+        VisualCelestialComponent,
+        AtmosphereComponent,
+        SpaceStationComponent,
+        SatelliteSystemComponent,
+        StarComponent,
+        AsteroidBeltComponent,
+        PlanetComponent>;
+
+    template<typename T>
+    static constexpr bool IsArchetypeFacadeCompatible() {
+        return entity_manager_detail::IsTypeInTuple<std::decay_t<T>, FacadeComponentTypes>;
+    }
+
+    void MigrateToArchetypeManager(ecs::EntityManagerV2& target,
+                                   std::unordered_map<Entity, ecs::EntityHandle>& legacyToModernOut,
+                                   std::unordered_map<uint32_t, Entity>& modernToLegacyOut,
+                                   std::unordered_set<std::type_index>& unsupportedTypesOut) const;
 
     const std::unordered_set<std::type_index>& GetUnsupportedComponentTypes() const {
         return unsupportedComponentTypes_;
