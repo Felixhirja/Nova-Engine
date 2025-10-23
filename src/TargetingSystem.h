@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ecs/System.h"
+#include <functional>
 #include <unordered_map>
 #include <vector>
 
@@ -26,11 +27,15 @@ public:
     // Get current target for shooter
     int GetTarget(int shooterEntity) const;
 
+    bool AcquireTarget(EntityManager& entityManager, int shooterEntity, int targetEntity) const;
+
     // Check if target is in range and valid
     bool IsValidTarget(EntityManager& entityManager, int shooterEntity, int targetEntity) const;
 
     // Calculate lead position for projectile
     Vec3 CalculateLeadPosition(EntityManager& entityManager, int shooterEntity, int targetEntity, float projectileSpeed) const;
+
+    void SetLineOfSightValidator(std::function<bool(const Vec3&, const Vec3&)> validator);
 
 private:
     // Map shooter entity to target entity
@@ -44,4 +49,8 @@ private:
 
     // Current lock progress
     std::unordered_map<int, float> lockProgress_;
+
+    std::function<bool(const Vec3&, const Vec3&)> lineOfSightValidator_;
+
+    bool ExtractPosition(EntityManager& entityManager, int entity, Vec3& outPosition) const;
 };
