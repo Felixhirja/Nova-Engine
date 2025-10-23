@@ -3,6 +3,7 @@
 #include "../src/ecs/Components.h"
 #include <cassert>
 #include <cmath>
+#include <atomic>
 #include <iostream>
 #include <mutex>
 #include <stdexcept>
@@ -35,10 +36,8 @@ public:
         };
     }
     
-    UpdatePhase GetUpdatePhase() const override {
-        return UpdatePhase::Update;
-    }
-    
+    UpdatePhase GetUpdatePhase() const override { return UpdatePhase::Simulation; }
+
     const char* GetName() const override {
         return "PhysicsSystemV2";
     }
@@ -68,9 +67,7 @@ public:
         };
     }
     
-    UpdatePhase GetUpdatePhase() const override {
-        return UpdatePhase::PreUpdate;  // Run before physics
-    }
+    UpdatePhase GetUpdatePhase() const override { return UpdatePhase::Input; }
     
     const char* GetName() const override {
         return "AccelerationSystemV2";
@@ -129,6 +126,61 @@ public:
 
 private:
     ExecutionRecorder& recorder_;
+};
+
+struct DamageEvent {
+    EntityHandle entity;
+    int amount;
+};
+
+class DamageEmitterSystem : public SystemV2 {
+public:
+    explicit DamageEmitterSystem(const std::vector<EntityHandle>& targets)
+        : targets_(targets) {}
+
+    UpdatePhase GetUpdatePhase() const override { return UpdatePhase::Input; }
+
+    void Update(EntityManagerV2&, double) override {
+        RecordUpdateStart();
+        for (const auto& entity : targets_) {
+            PublishEvent(DamageEvent{entity, 10});
+        }
+        RecordUpdateEnd(targets_.size());
+    }
+
+    const char* GetName() const override { return "DamageEmitterSystem"; }
+
+private:
+    const std::vector<EntityHandle>& targets_;
+};
+
+class DamageReceiverSystem : public SystemV2 {
+public:
+    explicit DamageReceiverSystem(std::vector<DamageEvent>& outEvents)
+        : events_(outEvents) {}
+
+    UpdatePhase GetUpdatePhase() const override { return UpdatePhase::Simulation; }
+
+    void Update(EntityManagerV2&, double) override {
+        RecordUpdateStart();
+        size_t processed = eventsProcessed_.exchange(0);
+        RecordUpdateEnd(processed);
+    }
+
+    const char* GetName() const override { return "DamageReceiverSystem"; }
+
+    void OnEventBusConfigured(SystemEventBus&) override {
+        SubscribeEvent<DamageEvent>([this](const DamageEvent& event) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            events_.push_back(event);
+            eventsProcessed_++;
+        });
+    }
+
+private:
+    std::vector<DamageEvent>& events_;
+    std::mutex mutex_;
+    std::atomic<size_t> eventsProcessed_{0};
 };
 
 class CycleSystemB;
@@ -270,7 +322,7 @@ void TestCacheFriendlyIteration() {
 
 void TestParallelSystemExecution() {
     std::cout << "\nTesting Parallel System Execution..." << std::endl;
-    
+
     EntityManagerV2 em;
     SystemSchedulerV2 scheduler;
     
@@ -321,11 +373,50 @@ void TestParallelSystemExecution() {
     auto profiles = scheduler.GetSystemProfiles();
     std::cout << "\n  System Profiling:" << std::endl;
     for (const auto& profile : profiles) {
-        std::cout << "    " << profile.name << ": " 
-                  << profile.updateTime << "ms ("
-                  << profile.entitiesProcessed << " entities)" << std::endl;
+        std::cout << "    " << profile.name << ": "
+                  << profile.lastUpdateTime << "ms ("
+                  << profile.lastEntitiesProcessed << " entities, total "
+                  << profile.totalEntitiesProcessed << ", cache misses "
+                  << profile.lastCacheMisses << ")" << std::endl;
     }
-    std::cout << "  Total update time: " << scheduler.GetTotalUpdateTime() << "ms" << std::endl;
+    std::cout << "  Total update time (last frame): " << scheduler.GetTotalUpdateTime() << "ms" << std::endl;
+}
+
+void TestSystemMessaging() {
+    std::cout << "\nTesting System Messaging..." << std::endl;
+
+    EntityManagerV2 em;
+    SystemSchedulerV2 scheduler;
+
+    std::vector<EntityHandle> targets;
+    for (int i = 0; i < 5; ++i) {
+        targets.push_back(em.CreateEntity());
+    }
+
+    std::vector<DamageEvent> received;
+    scheduler.RegisterSystem<DamageEmitterSystem>(targets);
+    scheduler.RegisterSystem<DamageReceiverSystem>(received);
+
+    scheduler.UpdateAll(em, 0.016);
+
+    assert(received.size() == targets.size());
+    int totalDamage = 0;
+    for (const auto& evt : received) {
+        totalDamage += evt.amount;
+    }
+    assert(totalDamage == static_cast<int>(targets.size() * 10));
+
+    auto profiles = scheduler.GetSystemProfiles();
+    bool receiverProfileFound = false;
+    for (const auto& profile : profiles) {
+        if (std::string(profile.name) == "DamageReceiverSystem") {
+            receiverProfileFound = true;
+            assert(profile.totalEntitiesProcessed >= received.size());
+        }
+    }
+    assert(receiverProfileFound);
+
+    std::cout << "  ✅ Events delivered between systems (" << received.size() << " events)" << std::endl;
 }
 
 void TestMultiPhaseOrdering() {
@@ -430,6 +521,7 @@ int main() {
         TestArchetypeTransitions();
         TestCacheFriendlyIteration();
         TestParallelSystemExecution();
+        TestSystemMessaging();
         TestStressTest();
         TestMultiPhaseOrdering();
         TestDependencyCycleDetection();

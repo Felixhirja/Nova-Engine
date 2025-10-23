@@ -88,6 +88,24 @@ void SolarSystem::SetStarEntity(Entity starEntity) {
     starEntity_ = starEntity;
     orbitalVisualizationDirty_ = true;
     AssignDefaultShaders(starEntity_);
+    if (!entityManager_) {
+        return;
+    }
+    InitializeOrbitState(starEntity_);
+    for (Entity planet : planets_) {
+        InitializeOrbitState(planet);
+    }
+    for (const auto& entry : planetMoons_) {
+        for (Entity moon : entry.second) {
+            InitializeOrbitState(moon);
+        }
+    }
+    for (Entity belt : asteroidBelts_) {
+        InitializeOrbitState(belt);
+    }
+    for (Entity station : spaceStations_) {
+        InitializeOrbitState(station);
+    }
 }
 
 void SolarSystem::Update(double dt, double timeAcceleration) {
@@ -143,6 +161,7 @@ void SolarSystem::AddPlanet(Entity planetEntity) {
         planetMoons_.emplace_back(planetEntity, std::vector<Entity>());
         orbitalVisualizationDirty_ = true;
         AssignDefaultShaders(planetEntity);
+        InitializeOrbitState(planetEntity);
     }
 }
 
@@ -156,6 +175,7 @@ void SolarSystem::AddMoon(Entity planetEntity, Entity moonEntity) {
         planetMoons_.emplace_back(planetEntity, std::vector<Entity>{moonEntity});
         orbitalVisualizationDirty_ = true;
         AssignDefaultShaders(moonEntity);
+        InitializeOrbitState(moonEntity);
         return;
     }
     auto& moonList = it->second;
@@ -163,6 +183,7 @@ void SolarSystem::AddMoon(Entity planetEntity, Entity moonEntity) {
         moonList.push_back(moonEntity);
         orbitalVisualizationDirty_ = true;
         AssignDefaultShaders(moonEntity);
+        InitializeOrbitState(moonEntity);
     }
 }
 
@@ -183,6 +204,7 @@ void SolarSystem::AddAsteroidBelt(Entity beltEntity) {
         asteroidBelts_.push_back(beltEntity);
         orbitalVisualizationDirty_ = true;
         AssignDefaultShaders(beltEntity);
+        InitializeOrbitState(beltEntity);
     }
 }
 
@@ -194,6 +216,7 @@ void SolarSystem::AddSpaceStation(Entity stationEntity) {
         spaceStations_.push_back(stationEntity);
         orbitalVisualizationDirty_ = true;
         AssignDefaultShaders(stationEntity);
+        InitializeOrbitState(stationEntity);
     }
 }
 
@@ -400,7 +423,9 @@ void SolarSystem::UpdateOrbit(Entity entity, OrbitalComponent* orbit, const Vect
         return;
     }
 
-    double elapsed = simulationTime_ - orbit->lastUpdateTime;
+    double previousUpdateTime = orbit->lastUpdateTime;
+    bool firstUpdate = (previousUpdateTime <= 0.0);
+    double elapsed = simulationTime_ - previousUpdateTime;
     if (elapsed < 0.0) {
         elapsed = 0.0;
     }
@@ -424,7 +449,7 @@ void SolarSystem::UpdateOrbit(Entity entity, OrbitalComponent* orbit, const Vect
 
     Vector3 previousPosition = orbit->cachedPosition;
     orbit->cachedPosition = pos.position;
-    if (elapsed > 0.0) {
+    if (!firstUpdate && elapsed > 0.0) {
         orbit->cachedVelocity = (pos.position - previousPosition) * (1.0 / elapsed);
     } else {
         orbit->cachedVelocity = pos.velocity;
@@ -658,5 +683,39 @@ void SolarSystem::AssignDefaultShaders(Entity entity) {
     }
     if (visual->orbitFragmentShader.empty()) {
         visual->orbitFragmentShader = orbitFragmentShaderPath_;
+    }
+}
+
+void SolarSystem::InitializeOrbitState(Entity entity) {
+    if (!entityManager_ || !entityManager_->IsAlive(entity)) {
+        return;
+    }
+
+    auto* orbit = entityManager_->GetComponent<OrbitalComponent>(entity);
+    if (!orbit) {
+        return;
+    }
+
+    Vector3 parentPosition;
+    Entity parentEntity = static_cast<Entity>(orbit->parentEntity);
+    if (parentEntity != 0 && entityManager_->IsAlive(parentEntity)) {
+        parentPosition = GetEntityPosition(parentEntity);
+    } else {
+        parentPosition = GetEntityPosition(starEntity_);
+    }
+
+    OrbitalPosition state = CalculateOrbitalPosition(*orbit, parentPosition);
+    if (state.isValid) {
+        orbit->cachedPosition = state.position;
+        orbit->cachedVelocity = state.velocity;
+        orbit->lastUpdateTime = simulationTime_;
+        if (auto* position = entityManager_->GetComponent<Position>(entity)) {
+            position->x = state.position.x;
+            position->y = state.position.y;
+            position->z = state.position.z;
+        } else if (auto* transform = entityManager_->GetComponent<Transform2D>(entity)) {
+            transform->x = state.position.x;
+            transform->y = state.position.y;
+        }
     }
 }

@@ -45,9 +45,9 @@
       - Expose feature flags to toggle between legacy and V2 execution paths while stabilizing the rollout.
 
 ## System Pipeline
-- [ ] Allow systems to declare update order dependencies and phases (input, simulation, render prep).
-- [ ] Expose event/messaging system between systems to avoid tight coupling (e.g., damage, collisions).
-- [ ] Add system profiling instrumentation (update time, entities processed, cache misses if available).
+- [x] Allow systems to declare update order dependencies and phases (input, simulation, render prep).
+- [x] Expose event/messaging system between systems to avoid tight coupling (e.g., damage, collisions).
+- [x] Add system profiling instrumentation (update time, entities processed, cache misses if available).
 
 ## Debugging & Tooling
 - [ ] Build an in-engine ECS inspector to view entities/components in real time with filtering.

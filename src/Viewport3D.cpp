@@ -773,6 +773,7 @@ void Viewport3D::DrawCoordinateSystem() {
 }
 
 void Viewport3D::DrawCameraVisual(const class Camera* camera) {
+#if defined(USE_GLFW) || defined(USE_SDL)
     if (!camera) return;
 
     auto drawCameraDebug = [&]() {
@@ -1012,6 +1013,9 @@ void Viewport3D::DrawCameraVisual(const class Camera* camera) {
         }
 #endif
     }
+#else
+    (void)camera;
+#endif
 }
 
 void Viewport3D::DrawCameraMarker(const class Camera* camera) {
