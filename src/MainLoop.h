@@ -7,6 +7,7 @@
 
 #include "CameraFollow.h"
 #include "CameraPresets.h"
+#include "EngineStateMachine.h"
 #include "ShipAssembly.h"
 
 class Viewport3D;
@@ -51,6 +52,8 @@ private:
     std::unique_ptr<AudioFeedbackSystem> audioFeedbackSystem;
     std::unique_ptr<HUDAlertSystem> hudAlertSystem;
     ShipAssemblyResult hudShipAssembly;
+    EngineStateMachine stateMachine;
+    bool thrustModeEnabled;
     
     // Mouse look offsets for target lock mode
     double mouseLookYawOffset;
