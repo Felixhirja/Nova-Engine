@@ -30,6 +30,20 @@
 - [ ] Support component construction arguments and late binding through factory/registry helpers.
 - [ ] Implement serialization/deserialization for components to enable save/load and hot-reload scenarios.
 
+## Migration & Integration
+- [ ] Implement a compatibility facade so legacy systems using `EntityManager` can opt into `EntityManagerV2` without a
+      wholesale rewrite.
+      - Add an adapter header that forwards the existing API to the archetype-backed manager where feasible.
+      - Document unsupported calls and provide compile-time asserts for unported features.
+- [ ] Provide a one-shot conversion routine that migrates entities/components created through the old manager into
+      archetype storage during level load.
+      - Reuse the typed copy helpers from the transition fix to move component data safely.
+      - Add regression tests that spawn a mixed set of entities, run the migration, and validate component counts.
+- [ ] Update `Simulation` and gameplay bootstrap code to register systems through `SystemSchedulerV2` once migration is
+      enabled.
+      - Ensure scheduling metadata mirrors the current manual order.
+      - Expose feature flags to toggle between legacy and V2 execution paths while stabilizing the rollout.
+
 ## System Pipeline
 - [ ] Allow systems to declare update order dependencies and phases (input, simulation, render prep).
 - [ ] Expose event/messaging system between systems to avoid tight coupling (e.g., damage, collisions).
