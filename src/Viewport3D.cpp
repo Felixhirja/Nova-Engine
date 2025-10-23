@@ -775,6 +775,7 @@ void Viewport3D::DrawCoordinateSystem() {
 void Viewport3D::DrawCameraVisual(const class Camera* camera) {
     if (!camera) return;
 
+#if defined(USE_GLFW) || defined(USE_SDL)
     auto drawCameraDebug = [&]() {
         glDisable(GL_DEPTH_TEST); // Draw on top
         glPushMatrix();
@@ -1012,6 +1013,13 @@ void Viewport3D::DrawCameraVisual(const class Camera* camera) {
         }
 #endif
     }
+#else
+    static bool warned = false;
+    if (!warned) {
+        std::cout << "Camera visualization unavailable without OpenGL; skipping debug draw." << std::endl;
+        warned = true;
+    }
+#endif
 }
 
 void Viewport3D::DrawCameraMarker(const class Camera* camera) {
