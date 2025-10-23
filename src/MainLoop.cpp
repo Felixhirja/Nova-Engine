@@ -65,6 +65,9 @@ MainLoop::MainLoop()
     , mouseLookPitchOffset(0.0)
     , cameraPresets(GetDefaultCameraPresets()) {
     ecsInspector = std::make_unique<ECSInspector>();
+    currentState_ = GameState::MAIN_MENU;
+    mainMenu_.SetActive(true);
+    mainMenu_.ClearLastAction();
 }
 
 MainLoop::~MainLoop() {
@@ -129,7 +132,7 @@ void MainLoop::Init() {
     std::cout << "Setting up GLFW window resize callback" << std::endl;
 #ifdef USE_GLFW
     if (viewport->GetGLFWWindow()) {
-        glfwSetWindowSizeCallback(static_cast<GLFWwindow*>(viewport->GetGLFWWindow()), 
+        glfwSetWindowSizeCallback(static_cast<GLFWwindow*>(viewport->GetGLFWWindow()),
             [](GLFWwindow* window, int width, int height) {
                 // Get the viewport instance from the MainLoop (stored in user pointer)
                 MainLoop* mainLoop = static_cast<MainLoop*>(glfwGetWindowUserPointer(window));
@@ -141,7 +144,32 @@ void MainLoop::Init() {
                 }
             });
         // Store a pointer to this MainLoop instance in the GLFW window for the callback
-        glfwSetWindowUserPointer(static_cast<GLFWwindow*>(viewport->GetGLFWWindow()), this);
+        GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
+        glfwSetWindowUserPointer(glfwWindow, this);
+
+        glfwSetKeyCallback(glfwWindow,
+            [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+                MainLoop* mainLoop = static_cast<MainLoop*>(glfwGetWindowUserPointer(window));
+                if (mainLoop) {
+                    mainLoop->HandleKeyEvent(key, scancode, action, mods);
+                }
+            });
+
+        glfwSetMouseButtonCallback(glfwWindow,
+            [](GLFWwindow* window, int button, int action, int mods) {
+                MainLoop* mainLoop = static_cast<MainLoop*>(glfwGetWindowUserPointer(window));
+                if (mainLoop) {
+                    mainLoop->HandleMouseButtonEvent(button, action, mods);
+                }
+            });
+
+        glfwSetCursorPosCallback(glfwWindow,
+            [](GLFWwindow* window, double xpos, double ypos) {
+                MainLoop* mainLoop = static_cast<MainLoop*>(glfwGetWindowUserPointer(window));
+                if (mainLoop) {
+                    mainLoop->HandleCursorPosEvent(xpos, ypos);
+                }
+            });
     }
 #endif
 
@@ -246,6 +274,47 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     callbacks.onFrameStart = [&](double deltaSeconds) {
         runtime.mouseDeltaX = 0.0;
         runtime.mouseDeltaY = 0.0;
+
+        auto requestShutdown = [&]() {
+            if (!runtime.requestExit) {
+                runtime.requestExit = true;
+                stateMachine.TransitionTo(EngineState::ShuttingDown);
+            }
+        };
+
+        Input::UpdateKeyState();
+
+        if (currentState_ == GameState::MAIN_MENU) {
+            int menuKey = Input::PollKey();
+            if (menuKey != -1) {
+                mainMenu_.HandleKeyPress(menuKey);
+            }
+
+            mainMenu_.Update(deltaSeconds);
+
+            MainMenu::Action action = mainMenu_.GetLastAction();
+            if (action == MainMenu::Action::NewGame) {
+                currentState_ = GameState::PLAYING;
+                StartNewGame();
+            } else if (action == MainMenu::Action::Continue) {
+                currentState_ = GameState::PLAYING;
+                LoadSavedGame();
+            } else if (action == MainMenu::Action::Settings) {
+                std::cout << "Settings menu not implemented yet." << std::endl;
+                mainMenu_.ClearLastAction();
+            } else if (action == MainMenu::Action::Quit) {
+#ifdef USE_GLFW
+                if (viewport && viewport->GetGLFWWindow()) {
+                    glfwSetWindowShouldClose(static_cast<GLFWwindow*>(viewport->GetGLFWWindow()), GLFW_TRUE);
+                }
+#endif
+                requestShutdown();
+                mainMenu_.ClearLastAction();
+            }
+
+            return;
+        }
+
 #ifdef USE_GLFW
         if (viewport && viewport->GetGLFWWindow()) {
             GLFWwindow* window = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
@@ -276,19 +345,11 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
         UpdateEnergyTelemetry(deltaSeconds);
 
-        Input::UpdateKeyState();
         int key = Input::PollKey();
         runtime.lastKey = key;
         if (key != -1) {
             std::cout << "Key pressed: " << key << " ('" << static_cast<char>(key) << "')" << std::endl;
         }
-
-        auto requestShutdown = [&]() {
-            if (!runtime.requestExit) {
-                runtime.requestExit = true;
-                stateMachine.TransitionTo(EngineState::ShuttingDown);
-            }
-        };
 
         if (key == 'q' || key == 'Q' || Input::IsKeyHeld('q') || Input::IsKeyHeld('Q') || key == 27) {
             std::cout << "Quit key detected, exiting..." << std::endl;
@@ -430,7 +491,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     };
 
     callbacks.onFixedUpdate = [&](double step) {
-        if (!stateMachine.Is(EngineState::Running)) {
+        if (currentState_ != GameState::PLAYING || !stateMachine.Is(EngineState::Running)) {
             return;
         }
         if (simulation) {
@@ -443,6 +504,13 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
     callbacks.onRender = [&](double /*interpolation*/) {
         if (!viewport) {
+            return;
+        }
+
+        if (currentState_ == GameState::MAIN_MENU) {
+            viewport->Clear();
+            auto renderData = mainMenu_.GetRenderData();
+            viewport->RenderMenuOverlay(renderData);
             return;
         }
 
@@ -836,6 +904,79 @@ void MainLoop::UpdateEnergyTelemetry(double deltaSeconds) {
         appendWarning("\u26A0 Overload Risk");
     }
 }
+
+bool MainLoop::IsInMainMenu() const {
+    return currentState_ == GameState::MAIN_MENU;
+}
+
+void MainLoop::StartNewGame() {
+    mainMenu_.SetActive(false);
+    mainMenu_.ClearLastAction();
+    stateMachine.TransitionTo(EngineState::Running);
+    std::cout << "Starting new game from main menu." << std::endl;
+}
+
+void MainLoop::LoadSavedGame() {
+    mainMenu_.SetActive(false);
+    mainMenu_.ClearLastAction();
+    stateMachine.TransitionTo(EngineState::Running);
+    std::cout << "Continuing game from main menu." << std::endl;
+}
+
+#ifdef USE_GLFW
+void MainLoop::HandleKeyEvent(int key, int /*scancode*/, int action, int mods) {
+    (void)mods;
+    if (action != GLFW_PRESS && action != GLFW_REPEAT) {
+        return;
+    }
+
+    if (IsInMainMenu()) {
+        mainMenu_.HandleKeyPress(key);
+        return;
+    }
+}
+
+void MainLoop::HandleMouseButtonEvent(int button, int action, int /*mods*/) {
+    if (!IsInMainMenu()) {
+        return;
+    }
+
+    if (action != GLFW_PRESS || button != GLFW_MOUSE_BUTTON_LEFT) {
+        return;
+    }
+
+    if (!viewport) {
+        return;
+    }
+
+    double xpos = 0.0;
+    double ypos = 0.0;
+    GLFWwindow* window = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
+    if (!window) {
+        return;
+    }
+
+    glfwGetCursorPos(window, &xpos, &ypos);
+
+    mainMenu_.HandleMouseClick(
+        static_cast<int>(xpos),
+        static_cast<int>(ypos),
+        viewport->GetWidth(),
+        viewport->GetHeight());
+}
+
+void MainLoop::HandleCursorPosEvent(double xpos, double ypos) {
+    if (!IsInMainMenu() || !viewport) {
+        return;
+    }
+
+    mainMenu_.HandleMouseMove(
+        static_cast<int>(xpos),
+        static_cast<int>(ypos),
+        viewport->GetWidth(),
+        viewport->GetHeight());
+}
+#endif
 
 void MainLoop::ApplyCameraPreset(size_t index) {
     if (!camera || index >= cameraPresets.size()) {
