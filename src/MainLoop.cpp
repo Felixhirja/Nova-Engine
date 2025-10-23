@@ -53,24 +53,17 @@ struct FrameRuntimeContext {
 } // namespace
 
 MainLoop::MainLoop()
-    : running(false),
-      version("1.0.0"),
-      viewport(nullptr),
-      simulation(nullptr),
-      resourceManager(nullptr),
-      camera(nullptr),
-      entityManager(nullptr),
-      visualFeedbackSystem(nullptr),
-      audioFeedbackSystem(nullptr),
-      hudAlertSystem(nullptr),
-      hudShipAssembly(),
-      stateMachine(),
-      thrustModeEnabled(false),
-      mouseLookYawOffset(0.0),
-      mouseLookPitchOffset(0.0),
-      cameraFollowConfig(),
-      cameraFollowState(),
-      cameraPresets(GetDefaultCameraPresets()) {}
+    : running(false)
+    , version("1.0.0")
+    , viewport(nullptr)
+    , simulation(nullptr)
+    , mouseLookYawOffset(0.0)
+    , mouseLookPitchOffset(0.0)
+    , cameraFollowConfig()
+    , cameraFollowState()
+    , cameraPresets(GetDefaultCameraPresets()) {
+    ecsInspector = std::make_unique<ECSInspector>();
+}
 
 MainLoop::~MainLoop() {
     Shutdown();
@@ -169,6 +162,10 @@ void MainLoop::Init() {
     std::cout << "About to create entity manager" << std::endl;
     // Create canonical ECS manager and initialize simulation with it
     entityManager = std::make_unique<EntityManager>();
+    if (!ecsInspector) {
+        ecsInspector = std::make_unique<ECSInspector>();
+    }
+    ecsInspector->SetEntityManager(entityManager.get());
     simulation = std::make_unique<Simulation>();
     std::cout << "About to call simulation->Init()" << std::endl;
     simulation->Init(entityManager.get());
@@ -342,6 +339,22 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             std::cout << "Letterbox overlay: " << (!letterboxEnabled ? "ENABLED" : "DISABLED") << std::endl;
         }
 
+        if ((key == 'i' || key == 'I') && ecsInspector) {
+            ecsInspector->Toggle();
+            std::cout << "ECS inspector: " << (ecsInspector->IsEnabled() ? "ENABLED" : "DISABLED") << std::endl;
+        }
+
+        if (ecsInspector && ecsInspector->IsEnabled()) {
+            if (key == '[' || key == '{') {
+                ecsInspector->PreviousFilter();
+            } else if (key == ']' || key == '}') {
+                ecsInspector->NextFilter();
+            } else if (key == '0' || key == ')') {
+                ecsInspector->ClearFilter();
+            }
+        }
+
+        // Set player input based on held keys using Input class
         bool strafeLeft = Input::IsKeyHeld('a') || Input::IsKeyHeld('A');
         bool strafeRight = Input::IsKeyHeld('d') || Input::IsKeyHeld('D');
         bool forward = Input::IsKeyHeld('w') || Input::IsKeyHeld('W');
@@ -497,69 +510,33 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                 if (mouseLookYawOffset > maxYawOffset) {
                     mouseLookYawOffset = maxYawOffset + (mouseLookYawOffset - maxYawOffset) * (1.0 - clampFactor);
                 }
-                if (mouseLookYawOffset < -maxYawOffset) {
-                    mouseLookYawOffset = -maxYawOffset + (mouseLookYawOffset + maxYawOffset) * (1.0 - clampFactor);
-                }
-                if (mouseLookPitchOffset > maxPitchOffset) {
-                    mouseLookPitchOffset = maxPitchOffset + (mouseLookPitchOffset - maxPitchOffset) * (1.0 - clampFactor);
-                }
-                if (mouseLookPitchOffset < minPitchOffset) {
-                    mouseLookPitchOffset = minPitchOffset + (mouseLookPitchOffset - minPitchOffset) * (1.0 - clampFactor);
-                }
-            } else {
-                double currentYaw = camera->yaw();
-                double currentPitch = camera->pitch();
-
-                double freeCameraSensitivity = mouseSensitivity * 1.2;
-                double freeAccelerationFactor = 1.0;
-
-                double mouseSpeed = sqrt(runtime.mouseDeltaX * runtime.mouseDeltaX + runtime.mouseDeltaY * runtime.mouseDeltaY);
-                if (mouseSpeed > 3.0) {
-                    freeAccelerationFactor = 1.0 + (mouseSpeed - 3.0) * 0.015;
-                }
-
-                currentYaw += runtime.mouseDeltaX * freeCameraSensitivity * freeAccelerationFactor;
-                currentPitch += runtime.mouseDeltaY * freeCameraSensitivity * freeAccelerationFactor;
-
-                const double PI = acos(-1.0);
-                double maxPitch = PI / 2 - 0.1;
-                double minPitch = -PI / 2 + 0.1;
-
-                if (currentPitch > maxPitch) currentPitch = maxPitch;
-                if (currentPitch < minPitch) currentPitch = minPitch;
-
-                camera->SetOrientation(currentPitch, currentYaw);
-
-                mouseLookYawOffset *= 0.95;
-                mouseLookPitchOffset *= 0.95;
-            }
-        }
-
-#ifdef USE_GLFW
-        if (resourceManager) {
-            resourceManager->SyncSpriteMetadataGPU();
-        }
-#endif
-
-        if (entityManager) {
-            auto sprites = entityManager->GetAllWith<Sprite>();
-            for (auto& kv : sprites) {
-                Entity ent = kv.first;
-                Sprite* spr = kv.second;
-                if (!spr) continue;
-                Position* pos = entityManager->GetComponent<Position>(ent);
-                if (!pos) continue;
-                int th = spr->textureHandle;
-                if (th != 0 && resourceManager) {
-                    ResourceManager::SpriteInfo info;
-                    if (resourceManager->GetSpriteInfo(th, info)) {
-                        spr->frame = (spr->frame + 1) % std::max(1, info.frames);
-                        Transform t;
-                        t.x = pos->x;
-                        t.y = pos->y;
-                        t.z = 0.0;
-                        viewport->DrawEntity(t, th, resourceManager.get(), camera.get(), spr->frame);
-                        continue;
+                // Draw camera debug marker on top and HUD
+                if (viewport && camera) {
+                    // Ensure smooth zoom is updated each frame
+                    camera->UpdateZoom(fixedDt.count());
+                    viewport->DrawCameraMarker(camera.get());
+                    // Draw HUD with currentFPS - RE-ENABLED
+                    double hudPlayerX = simulation ? simulation->GetPlayerX() : 0.0;
+                    double hudPlayerY = simulation ? simulation->GetPlayerY() : 0.0;
+                    double hudPlayerZ = simulation ? simulation->GetPlayerZ() : 0.0;
+                    // Get target lock state from player component
+                    bool hudTargetLocked = isTargetLocked;
+                    const ShipAssemblyResult* hudAssemblyPtr = nullptr;
+                    if (hudShipAssembly.hull || !hudShipAssembly.diagnostics.errors.empty() || !hudShipAssembly.diagnostics.warnings.empty()) {
+                        hudAssemblyPtr = &hudShipAssembly;
+                    }
+                    viewport->DrawHUD(camera.get(), currentFPS, hudPlayerX, hudPlayerY, hudPlayerZ, hudTargetLocked, hudAssemblyPtr);
+                    // Render particle effects (sparks, explosions, shield impacts)
+                    if (visualFeedbackSystem) {
+                        viewport->RenderParticles(camera.get(), visualFeedbackSystem.get());
+                    }
+                    if (ecsInspector) {
+                        ecsInspector->Render(*viewport);
+                    }
+                    // If STAR_CAPTURE env var is set, dump the renderer contents to BMP for inspection
+                    const char* cap = std::getenv("STAR_CAPTURE");
+                    if (cap && std::string(cap) == "1") {
+                        viewport->CaptureToBMP("/workspaces/Nova-Engine/renderer_capture.bmp");
                     }
                 }
                 Transform t;
@@ -661,6 +638,9 @@ void MainLoop::Shutdown() {
     }
     if (running) { std::cout << "Nova Engine Shutting down..." << std::endl; running = false; }
     if (viewport) { viewport->Shutdown(); }
+    if (ecsInspector) {
+        ecsInspector->SetEntityManager(nullptr);
+    }
     // unique_ptr will free sceneManager
 }
 

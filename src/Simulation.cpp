@@ -1,5 +1,6 @@
 #include "Simulation.h"
 #include "ecs/AnimationSystem.h"
+#include "ecs/LegacySystemAdapter.h"
 #include "ecs/LocomotionSystem.h"
 #include "ecs/MovementSystem.h"
 #include "ecs/PhysicsSystem.h"
@@ -528,12 +529,27 @@ Simulation::Simulation()
 
 Simulation::~Simulation() {}
 
+void Simulation::SetUseSchedulerV2(bool enabled) {
+    if (useSchedulerV2_ == enabled) {
+        return;
+    }
+
+    useSchedulerV2_ = enabled;
+    schedulerConfigured_ = false;
+
+    if (!useSchedulerV2_) {
+        schedulerV2_.Clear();
+    }
+}
+
 void Simulation::Init(EntityManager* externalEm) {
     position = 0.0;
     std::cout << "Simulation initialized. position=" << position << std::endl;
 
     activeEm = externalEm ? externalEm : &em;
     EntityManager* useEm = activeEm;
+
+    schedulerConfigured_ = false;
 
     DestroyEnvironmentColliders(*useEm);
 
@@ -643,6 +659,12 @@ void Simulation::Init(EntityManager* externalEm) {
     prevJumpHeld = false;
 
     std::cout << "Simulation: created player entity id=" << playerEntity << std::endl;
+
+    if (useSchedulerV2_) {
+        EnsureSchedulerV2Configured(*useEm);
+    } else {
+        schedulerV2_.Clear();
+    }
 }
 
 void Simulation::Update(double dt) {
@@ -672,9 +694,7 @@ void Simulation::Update(double dt) {
     }
 
     if (useSchedulerV2_) {
-        if (!useEm->UsingArchetypeStorage()) {
-            useEm->EnableArchetypeFacade();
-        }
+        EnsureSchedulerV2Configured(*useEm);
         schedulerV2_.UpdateAll(useEm->GetArchetypeManager(), dt);
     } else {
         systemManager.UpdateAll(*useEm, dt);
@@ -874,6 +894,71 @@ void Simulation::CreatePlayerPhysicsComponents(EntityManager& entityManager, Pla
     if (!entityManager.GetComponent<CollisionInfo>(playerEntity)) {
         entityManager.EmplaceComponent<CollisionInfo>(playerEntity);
     }
+}
+
+void Simulation::EnsureSchedulerV2Configured(EntityManager& entityManager) {
+    if (!useSchedulerV2_) {
+        return;
+    }
+
+    if (!schedulerConfigured_) {
+        ConfigureSchedulerV2(entityManager);
+    }
+}
+
+void Simulation::ConfigureSchedulerV2(EntityManager& entityManager) {
+    entityManager.EnableArchetypeFacade();
+    schedulerV2_.Clear();
+
+    using PlayerAdapter = ecs::LegacySystemAdapter<PlayerControlSystem>;
+    using SpaceshipAdapter = ecs::LegacySystemAdapter<SpaceshipPhysicsSystem>;
+    using MovementAdapter = ecs::LegacySystemAdapter<MovementSystem>;
+    using LocomotionAdapter = ecs::LegacySystemAdapter<LocomotionSystem>;
+    using AnimationAdapter = ecs::LegacySystemAdapter<AnimationSystem>;
+    using TargetingAdapter = ecs::LegacySystemAdapter<TargetingSystem>;
+    using WeaponAdapter = ecs::LegacySystemAdapter<WeaponSystem>;
+    using ShieldAdapter = ecs::LegacySystemAdapter<ShieldSystem>;
+
+    ecs::LegacySystemAdapterConfig playerConfig;
+    playerConfig.phase = ecs::UpdatePhase::Input;
+    schedulerV2_.RegisterSystem<PlayerAdapter>(entityManager, playerConfig);
+
+    ecs::LegacySystemAdapterConfig spaceshipConfig;
+    spaceshipConfig.phase = ecs::UpdatePhase::PreUpdate;
+    spaceshipConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<PlayerAdapter>());
+    schedulerV2_.RegisterSystem<SpaceshipAdapter>(entityManager, spaceshipConfig);
+
+    ecs::LegacySystemAdapterConfig movementConfig;
+    movementConfig.phase = ecs::UpdatePhase::Update;
+    movementConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<SpaceshipAdapter>());
+    schedulerV2_.RegisterSystem<MovementAdapter>(entityManager, movementConfig);
+
+    ecs::LegacySystemAdapterConfig locomotionConfig;
+    locomotionConfig.phase = ecs::UpdatePhase::Update;
+    locomotionConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<MovementAdapter>());
+    schedulerV2_.RegisterSystem<LocomotionAdapter>(entityManager, locomotionConfig);
+
+    ecs::LegacySystemAdapterConfig animationConfig;
+    animationConfig.phase = ecs::UpdatePhase::Update;
+    animationConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<LocomotionAdapter>());
+    schedulerV2_.RegisterSystem<AnimationAdapter>(entityManager, animationConfig);
+
+    ecs::LegacySystemAdapterConfig targetingConfig;
+    targetingConfig.phase = ecs::UpdatePhase::Update;
+    targetingConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<AnimationAdapter>());
+    schedulerV2_.RegisterSystem<TargetingAdapter>(entityManager, targetingConfig);
+
+    ecs::LegacySystemAdapterConfig weaponConfig;
+    weaponConfig.phase = ecs::UpdatePhase::PostUpdate;
+    weaponConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<TargetingAdapter>());
+    schedulerV2_.RegisterSystem<WeaponAdapter>(entityManager, weaponConfig);
+
+    ecs::LegacySystemAdapterConfig shieldConfig;
+    shieldConfig.phase = ecs::UpdatePhase::PostUpdate;
+    shieldConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<WeaponAdapter>());
+    schedulerV2_.RegisterSystem<ShieldAdapter>(entityManager, shieldConfig);
+
+    schedulerConfigured_ = true;
 }
 
 

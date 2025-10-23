@@ -776,6 +776,7 @@ void Viewport3D::DrawCameraVisual(const class Camera* camera) {
 #if defined(USE_GLFW) || defined(USE_SDL)
     if (!camera) return;
 
+#if defined(USE_GLFW) || defined(USE_SDL)
     auto drawCameraDebug = [&]() {
         glDisable(GL_DEPTH_TEST); // Draw on top
         glPushMatrix();

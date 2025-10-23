@@ -105,7 +105,7 @@
 - [ ] Offer example mods demonstrating new ship classes
 
 ### Testing & QA
-- [ ] Create automated performance benchmarks for large-scale ship battles
-- [ ] Write unit/integration tests for ship assembly validation and physics behaviors
-- [ ] Develop stress tests for subsystem damage and repair loops
+- [x] Create automated performance benchmarks for large-scale ship battles
+- [x] Write unit/integration tests for ship assembly validation and physics behaviors
+- [x] Develop stress tests for subsystem damage and repair loops
 - [ ] Build QA checklist covering solo, coop, and PvP ship scenarios
