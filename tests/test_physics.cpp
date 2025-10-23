@@ -4,9 +4,12 @@
 #include "../src/ecs/EntityManager.h"
 #include "../src/ecs/PhysicsSystem.h"
 #include "../src/ecs/Components.h"
+#include "../src/physics/BulletPhysicsEngine.h"
+#include "../src/physics/PhysXPhysicsEngine.h"
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <memory>
 
 void TestRigidBodyComponent() {
     std::cout << "Testing RigidBody component..." << std::endl;
@@ -268,6 +271,76 @@ void TestGravitySource() {
     std::cout << "  Gravity source tests passed" << std::endl;
 }
 
+void TestBulletPhysicsEngineIntegration() {
+    std::cout << "Testing Bullet physics engine integration..." << std::endl;
+
+    EntityManager em;
+    PhysicsSystem physics(&em);
+    physics.SetGlobalDamping(0.0, 0.0);
+
+    auto bullet = std::make_shared<physics::BulletPhysicsEngine>();
+    physics.UseExternalEngine(bullet);
+
+    physics::PhysicsEngineInitParams params;
+    params.fixedTimeStep = 1.0 / 120.0;
+    params.maxSubSteps = 240;
+    bullet->Initialize(params);
+
+    auto entity = em.CreateEntity();
+    em.EmplaceComponent<RigidBody>(entity);
+    auto& pos = em.EmplaceComponent<Position>(entity);
+    pos.x = 0.0; pos.y = 0.0; pos.z = 5.0;
+    em.EmplaceComponent<Velocity>(entity);
+
+    physics.SetGravity(0.0, 0.0, -9.8);
+    physics.Update(em, 1.0);
+
+    auto* vel = em.GetComponent<Velocity>(entity);
+    assert(physics.GetActiveBackendType() == physics::PhysicsBackendType::Bullet);
+    assert(vel != nullptr);
+    assert(vel->vz < 0.0);
+
+    physics.ResetToBuiltin();
+    assert(physics.GetActiveBackendType() == physics::PhysicsBackendType::BuiltIn);
+
+    std::cout << "  Bullet integration tests passed" << std::endl;
+}
+
+void TestPhysXPhysicsEngineIntegration() {
+    std::cout << "Testing PhysX physics engine integration..." << std::endl;
+
+    EntityManager em;
+    PhysicsSystem physics(&em);
+    physics.SetGlobalDamping(0.0, 0.0);
+
+    auto physx = std::make_shared<physics::PhysXPhysicsEngine>();
+    physics.UseExternalEngine(physx);
+
+    physics::PhysicsEngineInitParams params;
+    params.fixedTimeStep = 1.0 / 90.0;
+    params.maxSubSteps = 180;
+    physx->Initialize(params);
+
+    auto entity = em.CreateEntity();
+    em.EmplaceComponent<RigidBody>(entity);
+    auto& pos = em.EmplaceComponent<Position>(entity);
+    pos.x = 0.0; pos.y = 0.0; pos.z = 8.0;
+    em.EmplaceComponent<Velocity>(entity);
+
+    physics.SetGravity(0.0, 0.0, -9.8);
+    physics.Update(em, 1.0);
+
+    auto* vel = em.GetComponent<Velocity>(entity);
+    assert(physics.GetActiveBackendType() == physics::PhysicsBackendType::PhysX);
+    assert(vel != nullptr);
+    assert(vel->vz < 0.0);
+
+    physics.ResetToBuiltin();
+    assert(physics.GetActiveBackendType() == physics::PhysicsBackendType::BuiltIn);
+
+    std::cout << "  PhysX integration tests passed" << std::endl;
+}
+
 int main() {
     std::cout << "Running Physics System Tests" << std::endl;
     std::cout << "=============================" << std::endl;
@@ -281,6 +354,8 @@ int main() {
     TestForceApplication();
     TestKinematicBodies();
     TestGravitySource();
+    TestBulletPhysicsEngineIntegration();
+    TestPhysXPhysicsEngineIntegration();
     
     std::cout << "=============================" << std::endl;
     std::cout << "All physics tests passed!" << std::endl;

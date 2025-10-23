@@ -39,7 +39,7 @@ $(info GLFW not found; building ASCII fallback)
 endif
 
 # Include graphics subsystem and GLAD loader
-SRC := $(wildcard src/*.cpp) $(wildcard src/ecs/*.cpp)
+SRC := $(wildcard src/*.cpp) $(wildcard src/ecs/*.cpp) $(wildcard src/physics/*.cpp)
 GLAD_SRC :=
 GLAD_OBJ :=
 

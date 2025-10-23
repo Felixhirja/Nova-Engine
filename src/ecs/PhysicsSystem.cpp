@@ -9,21 +9,48 @@ PhysicsSystem::PhysicsSystem(EntityManager* em)
 {
 }
 
+void PhysicsSystem::UseExternalEngine(std::shared_ptr<physics::IPhysicsEngine> engine) {
+    externalEngine_ = std::move(engine);
+    if (externalEngine_) {
+        activeBackend_ = externalEngine_->GetBackendType();
+    } else {
+        activeBackend_ = physics::PhysicsBackendType::BuiltIn;
+    }
+}
+
+void PhysicsSystem::ResetToBuiltin() {
+    externalEngine_.reset();
+    activeBackend_ = physics::PhysicsBackendType::BuiltIn;
+}
+
+void PhysicsSystem::StepWithBuiltin(EntityManager& entityManager, double dt) {
+    entityManager_ = &entityManager;
+    RunBuiltinSimulation(dt);
+}
+
 void PhysicsSystem::Update(EntityManager& entityManager, double dt) {
     // Update the stored pointer to match the passed reference
     entityManager_ = &entityManager;
-    
+
+    if (externalEngine_) {
+        externalEngine_->StepSimulation(*this, entityManager, dt);
+    } else {
+        RunBuiltinSimulation(dt);
+    }
+}
+
+void PhysicsSystem::RunBuiltinSimulation(double dt) {
     // Physics pipeline
     ApplyGravity(dt);
     ApplyConstantForces(dt);
     ApplyForces(dt);
     IntegrateVelocities(dt);
-    
+
     if (collisionEnabled_) {
         DetectCollisions();
         ResolveCollisions(dt);
     }
-    
+
     UpdateCharacterControllers(dt);
     UpdateJoints(dt);
     ClearFrameForces();
