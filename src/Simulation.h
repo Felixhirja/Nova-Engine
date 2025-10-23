@@ -20,6 +20,8 @@ public:
     double GetPlayerX() const;
     double GetPlayerY() const;
     double GetPlayerZ() const;
+    LocomotionStateMachine::State GetLocomotionState() const;
+    LocomotionStateMachine::Weights GetLocomotionBlendWeights() const;
     Entity GetPlayerEntity() const { return playerEntity; }
     // Set player input state
     void SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw);

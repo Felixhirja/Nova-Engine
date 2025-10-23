@@ -32,6 +32,8 @@ void ArchetypeManager::RegisterComponentArrayForType(Archetype* archetype, const
         archetype->RegisterComponentType<MovementBounds>();
     } else if (typeIndex == std::type_index(typeid(PlayerPhysics))) {
         archetype->RegisterComponentType<PlayerPhysics>();
+    } else if (typeIndex == std::type_index(typeid(LocomotionStateMachine))) {
+        archetype->RegisterComponentType<LocomotionStateMachine>();
     } else if (typeIndex == std::type_index(typeid(TargetLock))) {
         archetype->RegisterComponentType<TargetLock>();
     }
