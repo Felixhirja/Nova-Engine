@@ -5,6 +5,9 @@
 #include <cmath>
 #include <fstream>
 #include <memory>
+#include <algorithm>
+#include <utility>
+#include <cstdio>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -35,6 +38,90 @@
 #include "graphics/ParticleRenderer.h"
 #endif
 
+static const uint8_t tinyFont[][5] = {
+    {0x1F,0x11,0x11,0x11,0x1F}, // 0
+    {0x04,0x06,0x04,0x04,0x07}, // 1
+    {0x1F,0x01,0x1F,0x10,0x1F}, // 2
+    {0x1F,0x01,0x1F,0x01,0x1F}, // 3
+    {0x11,0x11,0x1F,0x01,0x01}, // 4
+    {0x1F,0x10,0x1F,0x01,0x1F}, // 5
+    {0x1F,0x10,0x1F,0x11,0x1F}, // 6
+    {0x1F,0x01,0x02,0x04,0x04}, // 7
+    {0x1F,0x11,0x1F,0x11,0x1F}, // 8
+    {0x1F,0x11,0x1F,0x01,0x1F}, // 9
+};
+
+static const uint8_t glyphV[5] = {0x11, 0x11, 0x0A, 0x0A, 0x04};
+static const uint8_t glyphY[5] = {0x11, 0x0A, 0x04, 0x04, 0x04};
+static const uint8_t glyphN[5] = {0x11, 0x19, 0x15, 0x13, 0x11};
+static const uint8_t glyphC[5] = {0x0E, 0x10, 0x10, 0x10, 0x0E};
+static const uint8_t glyphO[5] = {0x0E, 0x11, 0x11, 0x11, 0x0E};
+static const uint8_t glyphF[5] = {0x1F, 0x10, 0x1E, 0x10, 0x10};
+static const uint8_t glyphA[5] = {0x0E, 0x11, 0x1F, 0x11, 0x11};
+static const uint8_t glyphP[5] = {0x1E, 0x11, 0x1E, 0x10, 0x10};
+static const uint8_t glyphT[5] = {0x1F, 0x04, 0x04, 0x04, 0x04};
+static const uint8_t glyphG[5] = {0x0E, 0x10, 0x17, 0x11, 0x0E};
+static const uint8_t glyphLtrS[5] = {0x1F, 0x10, 0x1F, 0x01, 0x1F};
+
+#if defined(USE_GLFW) || defined(USE_SDL)
+static void drawTinyCharGL(float x, float y, char c, float scale, float r, float g, float b) {
+    glColor3f(r, g, b);
+    glBegin(GL_QUADS);
+    auto drawPixel = [&](float px, float py) {
+        glVertex2f(x + px * scale, y + py * scale);
+        glVertex2f(x + (px + 1.0f) * scale, y + py * scale);
+        glVertex2f(x + (px + 1.0f) * scale, y + (py + 1.0f) * scale);
+        glVertex2f(x + px * scale, y + (py + 1.0f) * scale);
+    };
+
+    auto drawGlyph = [&](const uint8_t* glyph) {
+        for (int col = 0; col < 5; ++col) {
+            uint8_t bits = glyph[col];
+            for (int row = 0; row < 5; ++row) {
+                if (bits & (1 << (4 - row))) {
+                    drawPixel(static_cast<float>(col), static_cast<float>(row));
+                }
+            }
+        }
+    };
+
+    if (c >= '0' && c <= '9') {
+        drawGlyph(tinyFont[c - '0']);
+    } else if (c == '-') {
+        drawPixel(0.0f, 2.0f);
+        drawPixel(1.0f, 2.0f);
+        drawPixel(2.0f, 2.0f);
+        drawPixel(3.0f, 2.0f);
+        drawPixel(4.0f, 2.0f);
+    } else if (c == '.') {
+        drawPixel(4.0f, 4.0f);
+    } else if (c == 'V') {
+        drawGlyph(glyphV);
+    } else if (c == 'Y') {
+        drawGlyph(glyphY);
+    } else if (c == 'N') {
+        drawGlyph(glyphN);
+    } else if (c == 'C') {
+        drawGlyph(glyphC);
+    } else if (c == 'O') {
+        drawGlyph(glyphO);
+    } else if (c == 'F') {
+        drawGlyph(glyphF);
+    } else if (c == 'A') {
+        drawGlyph(glyphA);
+    } else if (c == 'P') {
+        drawGlyph(glyphP);
+    } else if (c == 'T') {
+        drawGlyph(glyphT);
+    } else if (c == 'G') {
+        drawGlyph(glyphG);
+    } else if (c == 'S') {
+        drawGlyph(glyphLtrS);
+    }
+    glEnd();
+}
+#endif
+
 void ParticleRendererDeleter::operator()(ParticleRenderer* ptr) const {
 #if defined(USE_GLFW) || defined(USE_SDL)
     delete ptr;
@@ -48,6 +135,8 @@ Viewport3D::Viewport3D()
     , height(600)
     , usingSDL(false)
     , useGL(false)
+    , vsyncEnabled_(false)
+    , frameRateLimitHint_(144.0)
 #ifdef USE_SDL
     , sdlWindow(nullptr)
     , sdlRenderer(nullptr)
@@ -56,10 +145,300 @@ Viewport3D::Viewport3D()
 #ifdef USE_GLFW
     , glfwWindow(nullptr)
 #endif
+    , activeLayoutIndex_(0)
 {
 }
 
 Viewport3D::~Viewport3D() {}
+
+void Viewport3D::EnsureLayoutConfiguration() {
+    if (layouts_.empty()) {
+        layouts_ = CreateDefaultLayouts();
+    }
+    layouts_.erase(std::remove_if(layouts_.begin(), layouts_.end(), [](const ViewportLayout& layout) {
+        return layout.views.empty();
+    }), layouts_.end());
+    if (layouts_.empty()) {
+        ViewportLayout fallback;
+        fallback.name = "Single View";
+        fallback.views.push_back({"Primary", 0.0, 0.0, 1.0, 1.0, ViewRole::Main, false});
+        layouts_.push_back(fallback);
+    }
+    if (activeLayoutIndex_ >= layouts_.size()) {
+        activeLayoutIndex_ = 0;
+    }
+}
+
+void Viewport3D::ConfigureLayouts(std::vector<ViewportLayout> layouts) {
+    layouts_ = std::move(layouts);
+    activeLayoutIndex_ = 0;
+    EnsureLayoutConfiguration();
+}
+
+void Viewport3D::CycleLayout() {
+    EnsureLayoutConfiguration();
+    if (!layouts_.empty()) {
+        activeLayoutIndex_ = (activeLayoutIndex_ + 1) % layouts_.size();
+    }
+}
+
+void Viewport3D::SetActiveLayout(size_t index) {
+    EnsureLayoutConfiguration();
+    if (layouts_.empty()) {
+        activeLayoutIndex_ = 0;
+        return;
+    }
+    activeLayoutIndex_ = std::min(index, layouts_.size() - 1);
+}
+
+const ViewportLayout& Viewport3D::GetActiveLayout() const {
+    return layouts_[activeLayoutIndex_];
+}
+
+std::string Viewport3D::GetActiveLayoutName() const {
+    if (layouts_.empty()) {
+        return std::string("Single View");
+    }
+    return layouts_[activeLayoutIndex_].name;
+}
+
+std::vector<ViewportLayout> Viewport3D::CreateDefaultLayouts() {
+    std::vector<ViewportLayout> defaults;
+
+    ViewportLayout single;
+    single.name = "Single View";
+    single.views.push_back({"Primary", 0.0, 0.0, 1.0, 1.0, ViewRole::Main, false});
+    defaults.push_back(single);
+
+    ViewportLayout verticalSplit;
+    verticalSplit.name = "Split Vertical";
+    verticalSplit.views.push_back({"Left", 0.0, 0.0, 0.5, 1.0, ViewRole::Main, false});
+    verticalSplit.views.push_back({"Right", 0.5, 0.0, 0.5, 1.0, ViewRole::Secondary, false});
+    defaults.push_back(verticalSplit);
+
+    ViewportLayout minimap;
+    minimap.name = "Main + Minimap";
+    minimap.views.push_back({"Main", 0.0, 0.0, 1.0, 1.0, ViewRole::Main, false});
+    minimap.views.push_back({"Minimap", 0.7, 0.05, 0.28, 0.28, ViewRole::Minimap, true});
+    defaults.push_back(minimap);
+
+    return defaults;
+}
+
+size_t Viewport3D::GetActiveViewCount() const {
+    if (layouts_.empty()) {
+        return 0;
+    }
+    return layouts_[activeLayoutIndex_].views.size();
+}
+
+ViewRole Viewport3D::GetViewRole(size_t viewIndex) const {
+    if (layouts_.empty() || viewIndex >= layouts_[activeLayoutIndex_].views.size()) {
+        return ViewRole::Main;
+    }
+    return layouts_[activeLayoutIndex_].views[viewIndex].role;
+}
+
+bool Viewport3D::IsOverlayView(size_t viewIndex) const {
+    if (layouts_.empty() || viewIndex >= layouts_[activeLayoutIndex_].views.size()) {
+        return false;
+    }
+    return layouts_[activeLayoutIndex_].views[viewIndex].overlay;
+}
+
+void Viewport3D::SetFramePacingHint(bool vsyncEnabled, double fps) {
+    vsyncEnabled_ = vsyncEnabled;
+    frameRateLimitHint_ = fps;
+}
+
+void Viewport3D::SetVSyncEnabled(bool enabled) {
+    vsyncEnabled_ = enabled;
+#if defined(USE_SDL)
+    if (usingSDL && useGL && sdlWindow) {
+        SDL_GL_MakeCurrent(sdlWindow, sdlGLContext);
+        SDL_GL_SetSwapInterval(enabled ? 1 : 0);
+    }
+#endif
+#if defined(USE_GLFW)
+    if (!usingSDL && useGL && glfwWindow) {
+        glfwMakeContextCurrent(glfwWindow);
+        glfwSwapInterval(enabled ? 1 : 0);
+    }
+#endif
+}
+
+void Viewport3D::BeginFrame() {
+    EnsureLayoutConfiguration();
+#if defined(USE_SDL)
+    if (usingSDL && useGL && sdlWindow) {
+        SDL_GL_MakeCurrent(sdlWindow, sdlGLContext);
+    }
+#endif
+#if defined(USE_GLFW)
+    if (!usingSDL && useGL && glfwWindow) {
+        glfwMakeContextCurrent(glfwWindow);
+    }
+#endif
+    Clear();
+}
+
+void Viewport3D::FinishFrame() {
+    ResetViewport();
+}
+
+void Viewport3D::ActivateView(const Camera* camera, double playerX, double playerY, double playerZ, size_t viewIndex) {
+    EnsureLayoutConfiguration();
+    if (layouts_.empty() || viewIndex >= layouts_[activeLayoutIndex_].views.size()) {
+        return;
+    }
+
+    const ViewportView& view = layouts_[activeLayoutIndex_].views[viewIndex];
+
+#if defined(USE_SDL)
+    if (usingSDL && useGL && sdlWindow) {
+        SDL_GL_MakeCurrent(sdlWindow, sdlGLContext);
+    }
+#endif
+#if defined(USE_GLFW)
+    if (!usingSDL && useGL && glfwWindow) {
+        glfwMakeContextCurrent(glfwWindow);
+    }
+#endif
+
+    if (useGL) {
+        ActivateOpenGLView(view, camera, playerX, playerY, playerZ);
+    } else if (usingSDL) {
+        ActivateSDLView(view);
+    }
+}
+
+void Viewport3D::ApplyViewportView(const ViewportView& view) {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    int viewportWidth = std::max(1, static_cast<int>(view.normalizedWidth * static_cast<double>(width)));
+    int viewportHeight = std::max(1, static_cast<int>(view.normalizedHeight * static_cast<double>(height)));
+    int viewportX = static_cast<int>(view.normalizedX * static_cast<double>(width));
+    int viewportY = static_cast<int>(view.normalizedY * static_cast<double>(height));
+
+    if (useGL) {
+        int glViewportY = height - viewportY - viewportHeight;
+        if (glViewportY < 0) {
+            glViewportY = 0;
+        }
+        glViewport(viewportX, glViewportY, viewportWidth, viewportHeight);
+    }
+#if defined(USE_SDL)
+    if (usingSDL && !useGL && sdlRenderer) {
+        SDL_Rect rect{viewportX, viewportY, viewportWidth, viewportHeight};
+        SDL_RenderSetViewport(sdlRenderer, &rect);
+    }
+#endif
+#else
+    (void)view;
+#endif
+}
+
+void Viewport3D::ResetViewport() {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (useGL) {
+        glViewport(0, 0, width, height);
+    }
+#endif
+#if defined(USE_SDL)
+    if (usingSDL && !useGL && sdlRenderer) {
+        SDL_RenderSetViewport(sdlRenderer, nullptr);
+    }
+#endif
+}
+
+void Viewport3D::ActivateOpenGLView(const ViewportView& view, const Camera* camera, double playerX, double playerY, double playerZ) {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    ApplyViewportView(view);
+    if (view.overlay) {
+        glClear(GL_DEPTH_BUFFER_BIT);
+    }
+    glEnable(GL_DEPTH_TEST);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    int viewportWidth = std::max(1, static_cast<int>(view.normalizedWidth * static_cast<double>(width)));
+    int viewportHeight = std::max(1, static_cast<int>(view.normalizedHeight * static_cast<double>(height)));
+    double aspect = static_cast<double>(viewportWidth) / static_cast<double>(viewportHeight);
+    gluPerspective(45.0, aspect, 0.1, 100.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    if (!camera) {
+        return;
+    }
+
+    if (view.role == ViewRole::Minimap) {
+        gluLookAt(playerX, playerY, playerZ + 25.0,
+                  playerX, playerY, playerZ,
+                  0.0, 1.0, 0.0);
+    } else {
+        double yaw = camera->yaw();
+        double offsetX = 5.0 * sin(yaw);
+        double offsetY = -5.0 * cos(yaw);
+        gluLookAt(camera->x() + offsetX, camera->y() + offsetY, camera->z() + 5.0,
+                  playerX, playerY, playerZ,
+                  0.0, 0.0, 1.0);
+    }
+#else
+    (void)view;
+    (void)camera;
+    (void)playerX;
+    (void)playerY;
+    (void)playerZ;
+#endif
+}
+
+void Viewport3D::ActivateSDLView(const ViewportView& view) {
+#ifdef USE_SDL
+    ApplyViewportView(view);
+#else
+    (void)view;
+#endif
+}
+
+void Viewport3D::DrawMinimapOverlay(double playerX, double playerY, double playerZ) {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (useGL) {
+        const float extent = 8.0f;
+        glDisable(GL_LIGHTING);
+        glLineWidth(2.0f);
+        glBegin(GL_LINES);
+        glColor3f(0.2f, 0.9f, 0.2f);
+        glVertex3f(static_cast<float>(playerX - extent), static_cast<float>(playerY), static_cast<float>(playerZ));
+        glVertex3f(static_cast<float>(playerX + extent), static_cast<float>(playerY), static_cast<float>(playerZ));
+        glVertex3f(static_cast<float>(playerX), static_cast<float>(playerY - extent), static_cast<float>(playerZ));
+        glVertex3f(static_cast<float>(playerX), static_cast<float>(playerY + extent), static_cast<float>(playerZ));
+        glEnd();
+        glPointSize(6.0f);
+        glBegin(GL_POINTS);
+        glColor3f(1.0f, 0.3f, 0.3f);
+        glVertex3f(static_cast<float>(playerX), static_cast<float>(playerY), static_cast<float>(playerZ));
+        glEnd();
+        glLineWidth(1.0f);
+    }
+#endif
+#ifdef USE_SDL
+    if (usingSDL && !useGL && sdlRenderer) {
+        SDL_SetRenderDrawColor(sdlRenderer, 40, 200, 40, 255);
+        const int extent = static_cast<int>(std::round(width * 0.05));
+        int cx = width / 2;
+        int cy = height / 2;
+        compat_RenderDrawLine(sdlRenderer, cx - extent, cy, cx + extent, cy);
+        compat_RenderDrawLine(sdlRenderer, cx, cy - extent, cx, cy + extent);
+        SDL_SetRenderDrawColor(sdlRenderer, 255, 60, 60, 255);
+        SDL_Rect dot{cx - 2, cy - 2, 4, 4};
+        compat_RenderFillRect(sdlRenderer, &dot);
+    }
+#endif
+#if !defined(USE_GLFW) && !defined(USE_SDL)
+    (void)playerX;
+    (void)playerY;
+#endif
+    (void)playerZ;
+}
 
 void Viewport3D::Init() {
     std::cout << "Viewport3D::Init() starting" << std::endl;
@@ -142,8 +521,8 @@ void Viewport3D::Init() {
         glfwTerminate();
         return;
     }
-    // Disable VSync to allow higher FPS
-    glfwSwapInterval(0);
+    // Disable VSync to allow higher FPS by default
+    SetVSyncEnabled(false);
     useGL = true;
 
     // Setup basic GL state
@@ -378,78 +757,27 @@ void Viewport3D::Init() {
 }
 
 void Viewport3D::Render(const class Camera* camera, double playerX, double playerY, double playerZ) {
-    if (usingSDL) {
-#ifdef USE_SDL
-        if (useGL) {
-            // 3D rendering: perspective projection
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glViewport(0, 0, width, height);
-            glEnable(GL_DEPTH_TEST);
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            // Simple perspective: 45 deg FOV, aspect, near 0.1, far 100
-            double aspect = (double)width / height;
-            gluPerspective(45.0, aspect, 0.1, 100.0);
-            glMatrixMode(GL_MODELVIEW);
-            glLoadIdentity();
-            // Camera: follow the camera object, look at camera position
-            double yaw = camera->yaw();
-            double offsetX = 5.0 * sin(yaw);
-            double offsetY = -5.0 * cos(yaw);
-            gluLookAt(camera->x() + offsetX, camera->y() + offsetY, camera->z() + 5.0, playerX, playerY, playerZ, 0.0, 0.0, 1.0);
-            // Draw coordinate system at fixed world position (10,0,0) so it's always visible
-            glPushMatrix();
-            glTranslatef(10.0f - camera->x(), -camera->y(), -camera->z());
-            DrawCoordinateSystem();
-            glPopMatrix();
-            // Draw camera visual (only if not too close to player)
-            double camDistToPlayer = sqrt((camera->x() - playerX)*(camera->x() - playerX) + 
-                                        (camera->y() - playerY)*(camera->y() - playerY) + 
-                                        (camera->z() - playerZ)*(camera->z() - playerZ));
-            if (camDistToPlayer > 3.0) { // Only draw if camera is more than 3 units from player
-                DrawCameraVisual(camera);
-            }
-        } else {
-            Clear();
-            Present();
-        }
-#endif
-    } else {
-#ifdef USE_GLFW
-        if (useGL && glfwWindow) {
-            glfwMakeContextCurrent(glfwWindow);
-            // 3D rendering: perspective projection
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glViewport(0, 0, width, height);
-            glEnable(GL_DEPTH_TEST);
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            // Simple perspective: 45 deg FOV, aspect, near 0.1, far 100
-            double aspect = (double)width / height;
-            gluPerspective(45.0, aspect, 0.1, 100.0);
-            glMatrixMode(GL_MODELVIEW);
-            glLoadIdentity();
-            // Camera: follow the camera object, look at camera position
-            double yaw = camera->yaw();
-            double offsetX = 5.0 * sin(yaw);
-            double offsetY = -5.0 * cos(yaw);
-            gluLookAt(camera->x() + offsetX, camera->y() + offsetY, camera->z() + 5.0, playerX, playerY, playerZ, 0.0, 0.0, 1.0);
-            // Draw coordinate system at fixed world position (10,0,0) so it's always visible
-            glPushMatrix();
-            glTranslatef(10.0f - camera->x(), -camera->y(), -camera->z());
-            DrawCoordinateSystem();
-            glPopMatrix();
-            // Draw camera visual (only if not too close to player)
-            double camDistToPlayer = sqrt((camera->x() - playerX)*(camera->x() - playerX) + 
-                                        (camera->y() - playerY)*(camera->y() - playerY) + 
-                                        (camera->z() - playerZ)*(camera->z() - playerZ));
-            if (camDistToPlayer > 3.0) { // Only draw if camera is more than 3 units from player
-                DrawCameraVisual(camera);
-            }
-        }
-#endif
-        // ASCII fallback: nothing to do here
+    EnsureLayoutConfiguration();
+    BeginFrame();
+
+    if (GetActiveViewCount() == 0) {
+        return;
     }
+
+    ActivateView(camera, playerX, playerY, playerZ, 0);
+
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (useGL && camera) {
+        DrawCameraDebug(camera, playerX, playerY, playerZ, ViewRole::Main);
+    } else if (usingSDL && !useGL) {
+        // 2D fallback: nothing additional required here
+    }
+#else
+    (void)camera;
+    (void)playerX;
+    (void)playerY;
+    (void)playerZ;
+#endif
 }
 
 void Viewport3D::Clear() {
@@ -1032,21 +1360,37 @@ void Viewport3D::DrawCameraMarker(const class Camera* camera) {
 #endif
 }
 
-#ifdef USE_SDL
-// Simple 3x5 pixel font for ASCII 0-9, '-', '.' (monochrome) drawn as small rectangles
-static const uint8_t tinyFont[][5] = {
-    {0x1F,0x11,0x11,0x11,0x1F}, // 0
-    {0x04,0x06,0x04,0x04,0x07}, // 1
-    {0x1F,0x01,0x1F,0x10,0x1F}, // 2
-    {0x1F,0x01,0x1F,0x01,0x1F}, // 3
-    {0x11,0x11,0x1F,0x01,0x01}, // 4
-    {0x1F,0x10,0x1F,0x01,0x1F}, // 5
-    {0x1F,0x10,0x1F,0x11,0x1F}, // 6
-    {0x1F,0x01,0x02,0x04,0x04}, // 7
-    {0x1F,0x11,0x1F,0x11,0x1F}, // 8
-    {0x1F,0x11,0x1F,0x01,0x1F}, // 9
-};
+void Viewport3D::DrawCameraDebug(const class Camera* camera, double playerX, double playerY, double playerZ, ViewRole role) {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (!camera || role == ViewRole::Minimap) {
+        return;
+    }
 
+    if (useGL) {
+        glPushMatrix();
+        glTranslatef(10.0f - static_cast<float>(camera->x()),
+                     -static_cast<float>(camera->y()),
+                     -static_cast<float>(camera->z()));
+        DrawCoordinateSystem();
+        glPopMatrix();
+
+        double camDistToPlayer = std::sqrt((camera->x() - playerX) * (camera->x() - playerX) +
+                                           (camera->y() - playerY) * (camera->y() - playerY) +
+                                           (camera->z() - playerZ) * (camera->z() - playerZ));
+        if (camDistToPlayer > 3.0) {
+            DrawCameraVisual(camera);
+        }
+    }
+#else
+    (void)camera;
+    (void)playerX;
+    (void)playerY;
+    (void)playerZ;
+    (void)role;
+#endif
+}
+
+#ifdef USE_SDL
 // Larger tiny font renderer with a few extra glyphs (Z, F, X, =)
 static void drawTinyCharSDL(SDL_Renderer* r, int x, int y, char c) {
     if (!r) return;
@@ -1082,14 +1426,11 @@ static void drawTinyCharSDL(SDL_Renderer* r, int x, int y, char c) {
         const uint8_t glyphZ[5] = {0x1F, 0x02, 0x04, 0x08, 0x1F};
         drawGlyph(glyphZ);
     } else if (c == 'F') {
-        const uint8_t glyphF[5] = {0x1F, 0x10, 0x1E, 0x10, 0x10};
         drawGlyph(glyphF);
     } else if (c == 'P') {
-        const uint8_t glyphP[5] = {0x1F, 0x11, 0x1F, 0x10, 0x10};
         drawGlyph(glyphP);
     } else if (c == 'S') {
-        const uint8_t glyphS[5] = {0x1F, 0x10, 0x1F, 0x01, 0x1F};
-        drawGlyph(glyphS);
+        drawGlyph(glyphLtrS);
     } else if (c == 'X') {
         const uint8_t glyphX[5] = {0x11, 0x0A, 0x04, 0x0A, 0x11};
         drawGlyph(glyphX);
@@ -1099,6 +1440,22 @@ static void drawTinyCharSDL(SDL_Renderer* r, int x, int y, char c) {
         SDL_Rect d2{ x + 2 * (scale + 1), y + 3 * (scale + 1), scale / 2, scale / 2 };
         compat_RenderFillRect(r, &d1);
         compat_RenderFillRect(r, &d2);
+    } else if (c == 'V') {
+        drawGlyph(glyphV);
+    } else if (c == 'Y') {
+        drawGlyph(glyphY);
+    } else if (c == 'N') {
+        drawGlyph(glyphN);
+    } else if (c == 'C') {
+        drawGlyph(glyphC);
+    } else if (c == 'O') {
+        drawGlyph(glyphO);
+    } else if (c == 'A') {
+        drawGlyph(glyphA);
+    } else if (c == 'T') {
+        drawGlyph(glyphT);
+    } else if (c == 'G') {
+        drawGlyph(glyphG);
     } else if (c == ' ' || c == ':') {
         // leave blank for space/colon (handled below if needed)
     } else {
@@ -1183,8 +1540,8 @@ void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX,
             glColor4f(0.0f, 0.0f, 0.0f, 0.8f);
             glBegin(GL_QUADS);
             glVertex2f(10, 10);
-            glVertex2f(10+300, 10);  // REDUCED width from 700 to 300
-            glVertex2f(10+300, 10+80);  // REDUCED height from 200 to 80
+            glVertex2f(10+340, 10);  // HUD width adjusted for frame pacing info
+            glVertex2f(10+340, 10+120);  // HUD height adjusted for additional rows
             glVertex2f(10, 10+80);
             glEnd();
 
@@ -1192,8 +1549,8 @@ void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX,
             glColor4f(1.0f, 1.0f, 1.0f, 0.8f);
             glBegin(GL_LINE_LOOP);
             glVertex2f(10, 10);
-            glVertex2f(10+300, 10);  // REDUCED width from 700 to 300
-            glVertex2f(10+300, 10+80);  // REDUCED height from 200 to 80
+            glVertex2f(10+340, 10);  // HUD width adjusted for frame pacing info
+            glVertex2f(10+340, 10+120);  // HUD height adjusted for additional rows
             glVertex2f(10, 10+80);
             glEnd();
 
@@ -1297,6 +1654,45 @@ void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX,
                     drawSevenSegDigitGL(x, y, segLen, segThick, '.');
                     x += spacing / 2;
                 }
+            }
+
+            float glyphScale = 4.0f;
+            float glyphAdvance = (5.0f + 1.0f) * glyphScale;
+            float vsyncX = static_cast<float>(x + 12);
+            float vsyncY = static_cast<float>(y);
+            const char* vsLabel = "VSYNC";
+            glColor3f(0.7f, 0.7f, 0.7f);
+            for (const char* p = vsLabel; *p; ++p) {
+                drawTinyCharGL(vsyncX, vsyncY, *p, glyphScale, 0.7f, 0.7f, 0.7f);
+                vsyncX += glyphAdvance;
+            }
+            vsyncX += glyphScale * 2.0f;
+            const char* vsValue = vsyncEnabled_ ? "ON" : "OFF";
+            glColor3f(1.0f, 0.9f, 0.5f);
+            for (const char* p = vsValue; *p; ++p) {
+                drawTinyCharGL(vsyncX, vsyncY, *p, glyphScale, 1.0f, 0.9f, 0.5f);
+                vsyncX += glyphAdvance;
+            }
+
+            vsyncX += glyphScale * 2.0f;
+            const char* capLabel = "CAP";
+            glColor3f(0.7f, 0.7f, 0.7f);
+            for (const char* p = capLabel; *p; ++p) {
+                drawTinyCharGL(vsyncX, vsyncY, *p, glyphScale, 0.7f, 0.7f, 0.7f);
+                vsyncX += glyphAdvance;
+            }
+
+            vsyncX += glyphScale * 2.0f;
+            char capBuf[16];
+            if (frameRateLimitHint_ <= 0.0) {
+                snprintf(capBuf, sizeof(capBuf), "INF");
+            } else {
+                snprintf(capBuf, sizeof(capBuf), "%.0f", frameRateLimitHint_);
+            }
+            glColor3f(1.0f, 0.9f, 0.5f);
+            for (char* p = capBuf; *p; ++p) {
+                drawTinyCharGL(vsyncX, vsyncY, *p, glyphScale, 1.0f, 0.9f, 0.5f);
+                vsyncX += glyphAdvance;
             }
 
             // Second row - Position
@@ -1488,6 +1884,45 @@ void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX,
         for (char* p = fbuf; *p; ++p) {
             drawSevenSegDigitGL(x, y, segLen, segThick, *p);
             x += spacing;
+        }
+
+        float glyphScale = 4.0f;
+        float glyphAdvance = (5.0f + 1.0f) * glyphScale;
+        float infoX = static_cast<float>(x + 12);
+        float infoY = static_cast<float>(y);
+        const char* vsLabel = "VSYNC";
+        glColor3f(0.7f, 0.7f, 0.7f);
+        for (const char* p = vsLabel; *p; ++p) {
+            drawTinyCharGL(infoX, infoY, *p, glyphScale, 0.7f, 0.7f, 0.7f);
+            infoX += glyphAdvance;
+        }
+        infoX += glyphScale * 2.0f;
+        const char* vsValue = vsyncEnabled_ ? "ON" : "OFF";
+        glColor3f(1.0f, 0.9f, 0.5f);
+        for (const char* p = vsValue; *p; ++p) {
+            drawTinyCharGL(infoX, infoY, *p, glyphScale, 1.0f, 0.9f, 0.5f);
+            infoX += glyphAdvance;
+        }
+
+        infoX += glyphScale * 2.0f;
+        const char* capLabel = "CAP";
+        glColor3f(0.7f, 0.7f, 0.7f);
+        for (const char* p = capLabel; *p; ++p) {
+            drawTinyCharGL(infoX, infoY, *p, glyphScale, 0.7f, 0.7f, 0.7f);
+            infoX += glyphAdvance;
+        }
+
+        infoX += glyphScale * 2.0f;
+        char capBuf[16];
+        if (frameRateLimitHint_ <= 0.0) {
+            snprintf(capBuf, sizeof(capBuf), "INF");
+        } else {
+            snprintf(capBuf, sizeof(capBuf), "%.0f", frameRateLimitHint_);
+        }
+        glColor3f(1.0f, 0.9f, 0.5f);
+        for (char* p = capBuf; *p; ++p) {
+            drawTinyCharGL(infoX, infoY, *p, glyphScale, 1.0f, 0.9f, 0.5f);
+            infoX += glyphAdvance;
         }
 
         x += 18;

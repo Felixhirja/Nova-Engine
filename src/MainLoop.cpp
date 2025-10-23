@@ -6,7 +6,6 @@
 #include "Spaceship.h"
 #include "Camera.h"
 #include "CameraPresets.h"
-#include "CameraFollow.h"
 #include "GamepadManager.h"
 #include "EngineBootstrap.h"
 #include "FrameScheduler.h"
@@ -19,6 +18,7 @@
 #include <iostream>
 #include <chrono>
 #include <algorithm>
+#include <vector>
 #include <fstream>
 #include <cmath>
 #include <iomanip>
@@ -115,6 +115,14 @@ void MainLoop::Init() {
     viewport = std::make_unique<Viewport3D>();
     viewport->Init();
     std::cout << "Viewport3D::Init() completed" << std::endl;
+
+    if (viewport) {
+        viewport->ConfigureLayouts(Viewport3D::CreateDefaultLayouts());
+        viewport->SetFramePacingHint(framePacingController.IsVSyncEnabled(), framePacingController.TargetFPS());
+    }
+
+    cameraFollowController.SetConfig(CameraFollowConfig{});
+    cameraFollowController.ResetState();
 
     // Set up GLFW window resize callback
     std::cout << "Setting up GLFW window resize callback" << std::endl;
@@ -511,23 +519,25 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                 if (mouseLookYawOffset > maxYawOffset) {
                     mouseLookYawOffset = maxYawOffset + (mouseLookYawOffset - maxYawOffset) * (1.0 - clampFactor);
                 }
-                // Draw camera debug marker on top and HUD
-                if (viewport && camera) {
-                    // Ensure smooth zoom is updated each frame
-                    camera->UpdateZoom(fixedDt.count());
+
+                const auto viewRole = viewport->GetViewRole(viewIndex);
+                if (camera) {
+                    viewport->DrawCameraDebug(camera.get(), playerX, playerY, playerZ, viewRole);
+                }
+                if (camera && viewRole != ViewRole::Minimap) {
                     viewport->DrawCameraMarker(camera.get());
-                    // Draw HUD with currentFPS - RE-ENABLED
-                    double hudPlayerX = simulation ? simulation->GetPlayerX() : 0.0;
-                    double hudPlayerY = simulation ? simulation->GetPlayerY() : 0.0;
-                    double hudPlayerZ = simulation ? simulation->GetPlayerZ() : 0.0;
-                    // Get target lock state from player component
+                }
+
+                if (viewRole == ViewRole::Main) {
+                    double hudPlayerX = playerX;
+                    double hudPlayerY = playerY;
+                    double hudPlayerZ = playerZ;
                     bool hudTargetLocked = isTargetLocked;
                     const ShipAssemblyResult* hudAssemblyPtr = nullptr;
                     if (hudShipAssembly.hull || !hudShipAssembly.diagnostics.errors.empty() || !hudShipAssembly.diagnostics.warnings.empty()) {
                         hudAssemblyPtr = &hudShipAssembly;
                     }
                     viewport->DrawHUD(camera.get(), currentFPS, hudPlayerX, hudPlayerY, hudPlayerZ, hudTargetLocked, hudAssemblyPtr);
-                    // Render particle effects (sparks, explosions, shield impacts)
                     if (visualFeedbackSystem) {
                         viewport->RenderParticles(camera.get(), visualFeedbackSystem.get());
                     }
@@ -546,6 +556,9 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                 t.z = pos->z;
                 viewport->DrawEntity(t, th, resourceManager.get(), camera.get(), spr->frame);
             }
+
+            viewport->FinishFrame();
+            viewport->Present();
         }
 
         if (viewport && camera) {
@@ -619,8 +632,7 @@ void MainLoop::ApplyCameraPreset(size_t index) {
     // Reset offsets and target lock smoothing so preset takes effect immediately
     mouseLookYawOffset = 0.0;
     mouseLookPitchOffset = 0.0;
-    cameraFollowState.targetLockTransition = 0.0;
-    cameraFollowState.wasTargetLocked = false;
+    cameraFollowController.ResetState();
 
     // Ensure target lock component is disabled when jumping to a preset
     if (entityManager && simulation) {
