@@ -902,7 +902,7 @@ void RasterizeShape(const Shape& shape, Uint8* pixels, int pitch, int width, int
 
 } // namespace
 
-SDL_Surface* LoadSVGSurface(const std::string& path) {
+SDL_Surface* LoadSVGSurface(const std::string& path, SvgRasterizationOptions options) {
     std::ifstream file(path, std::ios::binary);
     if (!file) {
         return nullptr;
@@ -923,6 +923,78 @@ SDL_Surface* LoadSVGSurface(const std::string& path) {
     SvgDocument doc;
     if (!ParseSVG(contents, doc)) {
         return nullptr;
+    }
+
+    if (doc.width <= 0 || doc.height <= 0) {
+        return nullptr;
+    }
+
+    const int originalWidth = doc.width;
+    const int originalHeight = doc.height;
+
+    int requestedWidth = options.targetWidth;
+    int requestedHeight = options.targetHeight;
+    if (requestedWidth < 0) requestedWidth = 0;
+    if (requestedHeight < 0) requestedHeight = 0;
+
+    float scaleX = (options.scale > 0.0f) ? options.scale : 1.0f;
+    float scaleY = scaleX;
+    bool widthSpecified = requestedWidth > 0;
+    bool heightSpecified = requestedHeight > 0;
+
+    if (widthSpecified && heightSpecified) {
+        float targetScaleX = static_cast<float>(requestedWidth) /
+                             static_cast<float>(originalWidth);
+        float targetScaleY = static_cast<float>(requestedHeight) /
+                             static_cast<float>(originalHeight);
+        if (options.preserveAspectRatio) {
+            float uniform = std::min(targetScaleX, targetScaleY);
+            scaleX = uniform;
+            scaleY = uniform;
+        } else {
+            scaleX = targetScaleX;
+            scaleY = targetScaleY;
+        }
+    } else if (widthSpecified) {
+        float targetScaleX = static_cast<float>(requestedWidth) /
+                             static_cast<float>(originalWidth);
+        if (options.preserveAspectRatio) {
+            scaleX = targetScaleX;
+            scaleY = targetScaleX;
+        } else {
+            scaleX = targetScaleX;
+        }
+    } else if (heightSpecified) {
+        float targetScaleY = static_cast<float>(requestedHeight) /
+                             static_cast<float>(originalHeight);
+        if (options.preserveAspectRatio) {
+            scaleX = targetScaleY;
+            scaleY = targetScaleY;
+        } else {
+            scaleY = targetScaleY;
+        }
+    }
+
+    if (scaleX <= 0.0f) scaleX = 1.0f;
+    if (scaleY <= 0.0f) scaleY = 1.0f;
+
+    int outputWidth = std::max(1, static_cast<int>(std::round(static_cast<float>(originalWidth) * scaleX)));
+    int outputHeight = std::max(1, static_cast<int>(std::round(static_cast<float>(originalHeight) * scaleY)));
+
+    float actualScaleX = static_cast<float>(outputWidth) / static_cast<float>(originalWidth);
+    float actualScaleY = static_cast<float>(outputHeight) / static_cast<float>(originalHeight);
+
+    if (outputWidth != originalWidth || outputHeight != originalHeight) {
+        for (auto& shape : doc.shapes) {
+            for (auto& path : shape.subpaths) {
+                for (auto& pt : path) {
+                    pt.x *= actualScaleX;
+                    pt.y *= actualScaleY;
+                }
+            }
+        }
+        doc.width = outputWidth;
+        doc.height = outputHeight;
     }
 
     SDL_Surface* surface = CreateSurface(doc.width, doc.height);
@@ -967,5 +1039,5 @@ SDL_Surface* LoadSVGSurface(const std::string& path) {
 }
 
 #else // USE_SDL
-SDL_Surface* LoadSVGSurface(const std::string&) { return nullptr; }
+SDL_Surface* LoadSVGSurface(const std::string&, SvgRasterizationOptions) { return nullptr; }
 #endif
