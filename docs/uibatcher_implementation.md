@@ -320,9 +320,16 @@ if (uiBatcher_) {
 - Post-process fullscreen quad (1 hour)
 - Text rendering modernization (optional, 4-6 hours)
 
+## TODO Checklist
+
+- [ ] Finish **Phase 4.5** by migrating the HUD `drawRect` lambda and seven-segment display to `UIBatcher` (log progress under "Phase 4" in `docs/todo/TODO_LIST.txt`).
+- [ ] Add `Begin()`/`Flush()` orchestration to `DrawHUD` and capture screenshots for documentation when the UI is fully batched.
+- [ ] Measure frame-time impact after full UI migration and record findings so QA/perf tasks can be reflected in the master TODO list.
+- [ ] Plan texture/atlas support for future UI themes and file a follow-up item once design requirements are available.
+
 ---
 
-**Status**: ✅ UIBatcher CLASS COMPLETE, ⏳ INTEGRATION PARTIAL  
+**Status**: ✅ UIBatcher CLASS COMPLETE, ⏳ INTEGRATION PARTIAL
 **Performance**: ✅ CLEAN BUILD (zero warnings)  
 **Quality**: ✅ PRODUCTION-READY CODE  
 **Estimated to Full Integration**: 2-3 hours
