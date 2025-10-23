@@ -24,6 +24,7 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 ## Game World
 
 ### Solar System Generation
+Nova-Engine's procedural pipeline is documented in detail within [docs/solar_system_generation.md](docs/solar_system_generation.md). The summary below highlights the gameplay-facing beats that stem from that design.
 - **Procedural Generation:** Each solar system is uniquely generated with realistic astronomical parameters
 - **Star Types:** Main sequence stars (O, B, A, F, G, K, M types) with appropriate planetary systems
 - **Planetary Systems:**
@@ -35,6 +36,13 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 - **Jump Gates:** Fast travel network connecting major systems
 
 ### Solar System Generation (Detailed)
+
+#### Generation Pipeline Overview
+- **Phase 1 – Star Creation:** Weighted spectral-class distribution determines luminosity, habitable zone boundaries, and flare frequency, grounding every system's difficulty curve.
+- **Phase 2 – Planetary Layout:** Distance bands (0.3–50 AU) map to terrestrial, transitional, and giant planet archetypes while enforcing near-circular Keplerian orbits for believable skyboxes.
+- **Phase 3 – Satellite Webs:** Gas giants roll 3–20 moons, rocky worlds up to two; Hill sphere checks prevent impossible pairings and inform mission navigation challenges.
+- **Phase 4 – Asteroid Belts:** Zero to two belts spawn between major orbital gaps with density tags (sparse/moderate/dense) that feed mining and ambush encounters.
+- **Phase 5 – Strategic Stations:** 2–8 orbital hubs appear near habitable worlds, resource hot-spots, or Lagrange points, seeding traders, research teams, or pirate enclaves.
 
 #### Procedural Generation System
 - **Seed-Based Generation:** Reproducible systems generated from integer seeds ensure synchronized experiences across missions, lore, and multiplayer sessions.
@@ -65,6 +73,12 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 - **Habitability Score:** Combines atmosphere, temperature, magnetic field, and gravity to classify landing requirements.
 - **Environmental Events:** Periodic solar flares, meteor storms, and aurora events influence mission availability and risk.
 - **Exploration Seeds:** Ancient ruins, derelict megastructures, and procedural story hooks spawn based on star age and faction presence.
+
+#### System Integration & Economy Hooks
+- **ECS Alignment:** Generated bodies populate `CelestialBodyComponent`, `OrbitalComponent`, and related ECS data, ensuring gameplay systems pull a single source of truth for physics, rendering, and mission scripting.
+- **Faction Footprints:** Faction heuristics tie space stations and habitable worlds to groups like the Auroran Combine or Voidbound Syndicate, unlocking bespoke contracts and influencing security levels.
+- **Resource Categories:** Metallic ores, volatiles, organics, and exotic reagents derive from planet and belt metadata, feeding crafting loops and dynamic pricing events.
+- **Event Triggers:** Stellar flare flags, radiation fields, and population values power timed missions, evacuation scenarios, and contraband opportunities that escalate as the procedural simulation evolves.
 
 ### Planetary Features
 - **Atmospheric Flight:** Different flight characteristics in planetary atmospheres

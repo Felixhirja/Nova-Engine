@@ -1,7 +1,7 @@
 # Solar System Generation Design Document
 
 ## Overview
-This document outlines the design and implementation of the procedural solar system generation system for Nova-Engine. The system will create realistic, varied solar systems with planets, moons, asteroids, and space stations using procedural generation techniques.
+This document outlines the design and implementation of the procedural solar system generation system for Nova-Engine. The system will create realistic, varied solar systems with planets, moons, asteroids, and space stations using procedural generation techniques. A high-level gameplay summary of these features lives in `GAME_DESIGN_DOCUMENT.md` under the **Solar System Generation** section to keep the narrative-facing documentation aligned with this technical plan.
 
 ## Architecture
 
