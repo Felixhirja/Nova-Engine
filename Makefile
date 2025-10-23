@@ -63,7 +63,8 @@ TEST_BINS := tests/test_simulation tests/test_camera tests/test_camera_follow \
         tests/test_animation_system tests/test_entity_migration \
         tests/test_simulation_scheduler tests/test_weapon_targeting \
         tests/test_ship_battle_benchmark tests/test_ship_assembly_validation \
-        tests/test_physics_behaviors tests/test_subsystem_damage_stress
+        tests/test_physics_behaviors tests/test_subsystem_damage_stress \
+        tests/test_frame_pacing_controller
 
 # Files and binaries that should be removed by "make clean" on every platform.
 CLEAN_TARGETS := $(OBJ) $(GLAD_OBJ) $(TARGET) $(TARGET).exe $(TEST_BINS) \
@@ -88,7 +89,7 @@ $(TARGET): $(GLAD_OBJ) $(OBJ)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-test: tests/test_simulation tests/test_camera tests/test_camera_follow tests/test_camera_edgecases tests/test_camera_presets tests/test_ship_assembly tests/test_shield_energy tests/test_feedback_systems tests/test_text_rendering tests/test_ecs_v2 tests/test_physics tests/test_solar_system tests/test_animation_system tests/test_weapon_targeting tests/test_ship_battle_benchmark tests/test_ship_assembly_validation tests/test_physics_behaviors tests/test_subsystem_damage_stress
+test: tests/test_simulation tests/test_camera tests/test_camera_follow tests/test_camera_edgecases tests/test_camera_presets tests/test_ship_assembly tests/test_shield_energy tests/test_feedback_systems tests/test_text_rendering tests/test_ecs_v2 tests/test_physics tests/test_solar_system tests/test_animation_system tests/test_weapon_targeting tests/test_ship_battle_benchmark tests/test_ship_assembly_validation tests/test_physics_behaviors tests/test_subsystem_damage_stress tests/test_frame_pacing_controller
 
 tests/test_simulation: tests/test_simulation.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./src -o $@ tests/test_simulation.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
@@ -144,6 +145,9 @@ tests/test_physics_behaviors: tests/test_physics_behaviors.cpp $(filter-out src/
 
 tests/test_subsystem_damage_stress: tests/test_subsystem_damage_stress.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./src -o $@ tests/test_subsystem_damage_stress.cpp $(filter-out src/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+
+tests/test_frame_pacing_controller: tests/test_frame_pacing_controller.cpp src/FramePacingController.cpp
+	$(CXX) $(CXXFLAGS) -I./src -o $@ tests/test_frame_pacing_controller.cpp src/FramePacingController.cpp $(LDLIBS)
 
 ifeq ($(OS),Windows_NT)
 clean:
