@@ -34,19 +34,32 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 - **Space Stations:** Orbital habitats, trading posts, and military installations
 - **Jump Gates:** Fast travel network connecting major systems
 
-#### Procedural Parameters
-- **Seed-Based Generation:** Integer seeds ensure reproducible systems for missions, lore, and multiplayer synchronization.
-- **Orbital Mechanics:** Keplerian ellipses with per-body eccentricity, inclination, and orbital period to support dynamic day/night cycles and patrol routes.
+### Solar System Generation (Detailed)
+
+#### Procedural Generation System
+- **Seed-Based Generation:** Reproducible systems generated from integer seeds ensure synchronized experiences across missions, lore, and multiplayer sessions.
+- **Keplerian Orbital Mechanics:** Elliptical orbits with individualized eccentricity, inclination, and orbital periods drive dynamic day/night cycles and patrol routes.
 - **Spectral Type Distribution:**
-  - O-type (<0.1%) and B-type (~0.1%) stars appear rarely but anchor high-reward regions.
-  - A-type (~0.6%) and F-type (~3%) stars provide mid-tier challenge systems.
-  - G-type (~7.6%) stars form the backbone of story-critical locations.
-  - K-type (~12%) and M-type (~76%) stars populate frontier space with varied gameplay opportunities.
-- **Planetary Zoning:**
-  - **Inner Band (0.3-2 AU):** High-density trade hubs and industrial colonies.
-  - **Mid Band (2-5 AU):** Mixed rocky worlds and gas giants supporting faction-controlled refineries.
-  - **Outer Band (5-30 AU):** Resource-rich gas/ice giants, pirate hideouts, and deep-space science stations.
-  - **Far Band (30-50 AU):** Dwarf planets and comets with rare crafting reagents.
+  - **O-type (Blue) <0.1%:** Massive, rare anchors for high-reward regions.
+  - **B-type (Blue-white) ~0.1%:** Hot, large stars hosting advanced encounters.
+  - **A-type (White) ~0.6%:** Medium-hot systems with mid-tier challenges.
+  - **F-type (Yellow-white) ~3%:** Moderate systems balancing risk and reward.
+  - **G-type (Yellow) ~7.6%:** Sun-like hubs forming core narrative locations.
+  - **K-type (Orange) ~12%:** Cool, stable stars supporting frontier settlements.
+  - **M-type (Red) ~76%:** Small, dim stars filling the frontier with numerous, often optional systems.
+
+#### Planet Distribution by Zone
+- **Inner System (0.3-2 AU):** Dense trade networks, rocky/terrestrial planets, and industrial colonies.
+- **Middle System (2-5 AU):** Mixed rocky worlds and emerging gas giants that fuel faction-controlled refineries.
+- **Outer System (5-30 AU):** Gas and ice giants rich in resources, pirate hideouts, and deep-space science stations.
+- **Far System (30-50 AU):** Ice worlds, dwarf planets, comets, and rare crafting reagents at the edge of exploration.
+
+#### Habitability Factors
+- **Distance from Star:** Habitable zone calculations determine preferred colony sites and mission targets.
+- **Atmospheric Composition & Density:** Defines landing requirements, survival gear, and long-term colonization prospects.
+- **Temperature Range:** Influences mission hazards, resource availability, and environmental storytelling.
+- **Magnetic Field Presence:** Protects against solar radiation, impacting colony sustainability and shield requirements.
+- **Geological Activity:** Drives resource regeneration, seismic events, and unique exploration encounters.
 
 #### Habitability & Points of Interest
 - **Habitability Score:** Combines atmosphere, temperature, magnetic field, and gravity to classify landing requirements.
@@ -95,28 +108,31 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 - **Internal Layout:** Crew positioning and module placement
 - **Performance Tuning:** Overclocking and efficiency modifications
 
+### Ship Component System (Technical)
+
 #### Component Slots & Hardpoints
-1. **Power Plant Slot:** One per ship, sized S–XL, drives the total power budget and dictates upgrade ceiling.
-2. **Thruster Network:**
-   - Main engines: 1-4 per hull, scaling thrust and fuel efficiency.
-   - Maneuvering thrusters: 8-32 directional ports tuned per mass class for precision control.
+1. **Power Plant Slot:** 1 per ship (sizes: S, M, L, XL) dictating the overall power budget and upgrade ceiling.
+2. **Thruster Hardpoints:**
+   - Main engines: 1-4 for large ships, scaling thrust and fuel efficiency.
+   - Maneuvering thrusters: 8-32 distributed ports tuned to hull mass for precision control.
 3. **Weapon Hardpoints:**
-   - Fighters: 2-4 light/mid mounts with gimbal or fixed options.
-   - Medium hulls: 4-8 modular pylons supporting turrets or missile racks.
-   - Capital ships: 20+ mixed-size emplacements with crew-operated batteries.
-4. **Shield Emitters:** 1-3 units providing coverage arcs; overlapping arcs enable reinforcement tactics.
-5. **Utility Bays:** Slots for scanners, tractor beams, repair drones, and specialized mission modules.
+   - Small fighters: 2-4 mounts supporting gimbal or fixed loadouts.
+   - Medium ships: 4-8 modular pylons for turrets, missile racks, or hybrid systems.
+   - Capital ships: 20+ mixed-size hardpoints requiring coordinated crew operation.
+4. **Shield Generators:** 1-3 emitters whose coverage arcs determine defensive layering.
+5. **Utility Slots:** Scanners, tractor beams, mining lasers, repair drones, and mission-specific modules.
 
-#### System Interdependencies
-- **Power vs. Consumption:** Overloading triggers heat spikes and temporary module shutdowns; efficient load balancing unlocks stealth and endurance builds.
-- **Mass vs. Thrust:** Heavier modules affect acceleration and drift, influencing fuel cost and combat agility.
-- **Heat vs. Cooling:** Each module lists BTU output; radiator placement and coolant upgrades mitigate overheating penalties.
-- **Compatibility Matrix:** Manufacturers impose loyalty bonuses/penalties, encouraging faction progression and economy interaction.
+#### Component Dependencies
+- **Power Consumption vs. Output:** Modules draw from the power plant; overloads induce heat spikes and temporary shutdowns, encouraging strategic load balancing.
+- **Weight vs. Thruster Performance:** Heavy installations reduce acceleration and maneuverability, influencing fuel cost and combat agility.
+- **Heat Generation vs. Cooling Capacity:** Every module lists BTU output; radiator placement and coolant upgrades mitigate overheating penalties.
+- **Module Compatibility Matrix:** Manufacturers impose loyalty bonuses/penalties, guiding faction progression and economic interplay.
 
-#### Upgrade Progression
-- **Tiers:** Civilian (T1-T2), Industrial (T3), Military (T4), Experimental (T5) with escalating power and maintenance needs.
-- **Quality Grades:** Rated A-D to represent durability and efficiency; higher grades reduce failure chance and upkeep cost.
-- **Specializations:** Combat modules emphasize burst damage and shield piercing; trading modules extend cargo and scanning; exploration kits add jump range and anomaly analyzers.
+#### Upgrade Paths
+- **Tier System (1-5):** Progresses from civilian to military-grade hardware, increasing performance and maintenance demands.
+- **Manufacturing Quality (A-D Grades):** Higher grades improve durability, efficiency, and reduce failure rates.
+- **Specialization Branches:** Combat kits focus on burst damage and shield piercing, trading modules expand cargo and scanning, and exploration packages extend jump range with anomaly analyzers.
+
 
 ### Combat System
 
