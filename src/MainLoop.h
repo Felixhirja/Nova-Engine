@@ -11,6 +11,7 @@
 #include "ShipAssembly.h"
 #include "FramePacingController.h"
 #include "EnergyHUDTelemetry.h"
+#include "EnergyManagementSystem.h"
 #include "MainMenu.h"
 
 class Viewport3D;
@@ -38,6 +39,9 @@ public:
 
     // Public getter for viewport (needed for GLFW callback)
     Viewport3D* GetViewport() { return viewport.get(); }
+
+    // Request shutdown (used by GLFW window close callback)
+    void RequestShutdown();
 
     bool IsInMainMenu() const;
     MainMenu& GetMainMenu() { return mainMenu_; }

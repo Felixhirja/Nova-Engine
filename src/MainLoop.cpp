@@ -65,8 +65,8 @@ MainLoop::MainLoop()
     , mouseLookPitchOffset(0.0)
     , cameraPresets(GetDefaultCameraPresets()) {
     ecsInspector = std::make_unique<ECSInspector>();
-    currentState_ = GameState::MAIN_MENU;
-    mainMenu_.SetActive(true);
+    currentState_ = GameState::PLAYING;  // Start directly in playing mode for debugging
+    mainMenu_.SetActive(false);  // Don't show main menu
     mainMenu_.ClearLastAction();
 }
 
@@ -170,6 +170,14 @@ void MainLoop::Init() {
                     mainLoop->HandleCursorPosEvent(xpos, ypos);
                 }
             });
+
+        glfwSetWindowCloseCallback(glfwWindow,
+            [](GLFWwindow* window) {
+                MainLoop* mainLoop = static_cast<MainLoop*>(glfwGetWindowUserPointer(window));
+                if (mainLoop) {
+                    mainLoop->RequestShutdown();
+                }
+            });
     }
 #endif
 
@@ -195,7 +203,7 @@ void MainLoop::Init() {
     // Camera
     // Position: behind player at (-8, 0, 6), looking toward origin (0,0,0)
     // Yaw of PI/2 (90 degrees) makes camera look in +X direction (toward player)
-    camera = std::make_unique<Camera>(-8.0, 0.0, 6.0, -0.1, 1.5708, 12.0); // yaw = π/2 to look toward player
+    camera = std::make_unique<Camera>(-8.0, 0.0, 6.0, -0.1, 1.5708, 45.0); // yaw = π/2 to look toward player
 
     std::cout << "About to create entity manager" << std::endl;
     // Create canonical ECS manager and initialize simulation with it
@@ -274,6 +282,13 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     callbacks.onFrameStart = [&](double deltaSeconds) {
         runtime.mouseDeltaX = 0.0;
         runtime.mouseDeltaY = 0.0;
+
+#ifdef USE_GLFW
+        // Poll GLFW events to process window input (mouse clicks, key presses, etc.)
+        if (viewport && viewport->GetGLFWWindow()) {
+            glfwPollEvents();
+        }
+#endif
 
         auto requestShutdown = [&]() {
             if (!runtime.requestExit) {
@@ -527,7 +542,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             if (wheelDelta != 0.0) {
                 double zoomFactor = 1.0 + (wheelDelta * 0.1);
                 double newZoom = camera->targetZoom() * zoomFactor;
-                newZoom = std::clamp(newZoom, 4.0, 128.0);
+                // Let Camera.cpp handle zoom clamping with its wider range (0.0001 to 10000.0)
                 camera->SetTargetZoom(newZoom);
                 Input::ResetMouseWheelDelta();
             }
@@ -545,25 +560,19 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                 if (std::abs(runtime.mouseDeltaX) > 0.1 || std::abs(runtime.mouseDeltaY) > 0.1) {
                     mouseLookYawOffset += runtime.mouseDeltaX * targetLockSensitivity * accelerationFactor;
                     mouseLookPitchOffset += runtime.mouseDeltaY * targetLockSensitivity * accelerationFactor;
+
+                    // Removed decay when mouse is actively moving for smoother camera control
+                    // mouseLookYawOffset *= mouseDecay;
+                    // mouseLookPitchOffset *= mouseDecay;
                 } else {
                     mouseLookYawOffset *= mouseDecay;
                     mouseLookPitchOffset *= mouseDecay;
                 }
-
-                const double PI = std::acos(-1.0);
-                const double maxYawOffset = PI * 2.0;
-                const double maxPitchOffset = PI / 3.0;
-                const double minPitchOffset = -PI / 2.5;
-
-                mouseLookYawOffset = std::clamp(mouseLookYawOffset, -maxYawOffset, maxYawOffset);
-                mouseLookPitchOffset = std::clamp(mouseLookPitchOffset, minPitchOffset, maxPitchOffset);
             } else {
                 mouseLookYawOffset *= mouseDecay;
                 mouseLookPitchOffset *= mouseDecay;
             }
 
-            camera->UpdateZoom(fixedDt);
-            viewport->DrawCameraMarker(camera.get());
         }
 
         double hudPlayerX = simulation ? simulation->GetPlayerX() : 0.0;
@@ -1011,6 +1020,11 @@ void MainLoop::Shutdown() {
         ecsInspector->SetEntityManager(nullptr);
     }
     // unique_ptr will free sceneManager
+}
+
+void MainLoop::RequestShutdown() {
+    std::cout << "Window close requested, shutting down..." << std::endl;
+    Shutdown();
 }
 
 std::string MainLoop::GetVersion() const { return version; }

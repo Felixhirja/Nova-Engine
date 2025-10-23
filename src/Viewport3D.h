@@ -4,6 +4,7 @@
 #include "MainMenu.h"
 #include "Transform.h"
 #include "EnergyHUDTelemetry.h"
+#include "graphics/UIBatcher.h"
 #include <string>
 #include <iostream>
 #include <memory>
@@ -174,6 +175,7 @@ private:
     std::unique_ptr<ParticleRenderer, ParticleRendererDeleter> particleRenderer_;
     std::vector<ViewportLayout> layouts_;
     size_t activeLayoutIndex_;
+    std::unique_ptr<UIBatcher> uiBatcher_;
 
     void EnsureLayoutConfiguration();
     void ApplyViewportView(const ViewportView& view);

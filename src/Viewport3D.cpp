@@ -15,6 +15,7 @@
 #if defined(USE_GLFW) || defined(USE_SDL)
 #include <glad/glad.h>
 #include <GL/glu.h>
+#include <GL/freeglut.h>
 #endif
 #ifdef USE_SDL
 #if defined(USE_SDL3)
@@ -457,6 +458,7 @@ Viewport3D::Viewport3D()
     , glfwWindow(nullptr)
 #endif
     , activeLayoutIndex_(0)
+    , uiBatcher_(nullptr)
 {
 }
 
@@ -673,7 +675,8 @@ void Viewport3D::ActivateOpenGLView(const ViewportView& view, const Camera* came
     int viewportWidth = std::max(1, static_cast<int>(view.normalizedWidth * static_cast<double>(width)));
     int viewportHeight = std::max(1, static_cast<int>(view.normalizedHeight * static_cast<double>(height)));
     double aspect = static_cast<double>(viewportWidth) / static_cast<double>(viewportHeight);
-    gluPerspective(45.0, aspect, 0.1, 100.0);
+    double fov = camera ? camera->zoom() : 45.0;
+    gluPerspective(fov, aspect, 0.1, 100.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
@@ -776,13 +779,25 @@ void Viewport3D::Init() {
     };
 
     const std::vector<GLContextAttempt> contextAttempts = {
+        {3, 3, false, false, "OpenGL 3.3 Compatibility"},
+        {2, 1, false, false, "OpenGL 2.1 Compatibility"},
         {4, 6, true, true, "OpenGL 4.6 Core"},
         {4, 5, true, true, "OpenGL 4.5 Core"},
         {4, 3, true, true, "OpenGL 4.3 Core"},
         {3, 3, true, true, "OpenGL 3.3 Core"},
-        {2, 1, false, false, "OpenGL 2.1 Compatibility"},
     };
 
+    // Get primary monitor for fullscreen
+    GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
+
+    // Update width and height to match fullscreen resolution
+    width = mode->width;
+    height = mode->height;
+
+    // Create windowed window for development (easier to close when testing)
+    // Comment out the fullscreen lines below and uncomment windowed lines for fullscreen
+    /*
     // Get primary monitor for fullscreen
     GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
@@ -800,6 +815,8 @@ void Viewport3D::Init() {
         glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
         if (attempt.coreProfile) {
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        } else if (attempt.major >= 3) {
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
         } else {
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
         }
@@ -807,6 +824,38 @@ void Viewport3D::Init() {
 
         std::cout << "Viewport3D: Trying " << attempt.description << " context" << std::endl;
         glfwWindow = glfwCreateWindow(width, height, "Nova Engine", primaryMonitor, nullptr);
+        if (glfwWindow) {
+            chosenAttempt = &attempt;
+            break;
+        }
+
+        std::cerr << "Viewport3D: GLFW window creation failed for " << attempt.description << std::endl;
+    }
+    */
+
+    // Windowed mode for development
+    // Set reasonable default window size (don't use fullscreen resolution for windowed mode)
+    width = 1280;
+    height = 720;
+    const GLContextAttempt* chosenAttempt = nullptr;
+    for (const auto& attempt : contextAttempts) {
+        glfwDefaultWindowHints();
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, attempt.major);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, attempt.minor);
+        glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE); // Explicitly request window to be visible
+        glfwWindowHint(GLFW_FOCUSED, GLFW_TRUE); // Request focus
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        if (attempt.coreProfile) {
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        } else if (attempt.major >= 3) {
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+        } else {
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
+        }
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, attempt.forwardCompatible ? GL_TRUE : GL_FALSE);
+
+        std::cout << "Viewport3D: Trying " << attempt.description << " context (windowed)" << std::endl;
+        glfwWindow = glfwCreateWindow(width, height, "Nova Engine", nullptr, nullptr);
         if (glfwWindow) {
             chosenAttempt = &attempt;
             break;
@@ -823,6 +872,9 @@ void Viewport3D::Init() {
 
     std::cout << "GLFW window created successfully using " << chosenAttempt->description << std::endl;
 
+    // Make sure the window is visible
+    glfwShowWindow(glfwWindow);
+
     // Make the OpenGL context current
     glfwMakeContextCurrent(glfwWindow);
     if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
@@ -832,6 +884,12 @@ void Viewport3D::Init() {
         glfwTerminate();
         return;
     }
+    // Initialize UIBatcher after GLAD setup
+    uiBatcher_ = std::make_unique<UIBatcher>();
+    // Initialize GLUT for text rendering
+    int glutArgc = 1;
+    char* glutArgv[] = {(char*)"nova-engine"};
+    glutInit(&glutArgc, glutArgv);
     // Disable VSync to allow higher FPS by default
     SetVSyncEnabled(false);
     useGL = true;
@@ -840,8 +898,8 @@ void Viewport3D::Init() {
     glViewport(0, 0, width, height);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-    // Enable relative mouse mode for camera control (GLFW equivalent)
-    glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // Enable normal cursor mode for window interaction
+    glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     std::cout << "Viewport3D: Using GLFW with OpenGL for rendering." << std::endl;
     return;
@@ -963,6 +1021,8 @@ void Viewport3D::Init() {
                             useGL = false;
                             if (sdlWindow) { SDL_DestroyWindow(sdlWindow); sdlWindow = nullptr; }
                         } else {
+                        // Initialize UIBatcher after GLAD setup
+                        uiBatcher_ = std::make_unique<UIBatcher>();
                         // Setup basic GL state
                         glViewport(0, 0, width, height);
                         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -1068,10 +1128,16 @@ void Viewport3D::Init() {
 }
 
 void Viewport3D::Render(const class Camera* camera, double playerX, double playerY, double playerZ) {
+    std::cout << "Viewport3D::Render() called with camera=" << (camera ? "valid" : "null") << std::endl;
     EnsureLayoutConfiguration();
-    BeginFrame();
+    std::cout << "Viewport3D::Render() - after EnsureLayoutConfiguration()" << std::endl;
+    // BeginFrame(); // Removed - Clear() is already called in MainLoop
+    std::cout << "Viewport3D::Render() - after BeginFrame()" << std::endl;
 
-    if (GetActiveViewCount() == 0) {
+    int activeViewCount = GetActiveViewCount();
+    std::cout << "Viewport3D::Render() - active view count: " << activeViewCount << std::endl;
+    if (activeViewCount == 0) {
+        std::cout << "Viewport3D::Render() - no active views" << std::endl;
         return;
     }
 
@@ -1079,9 +1145,13 @@ void Viewport3D::Render(const class Camera* camera, double playerX, double playe
 
 #if defined(USE_GLFW) || defined(USE_SDL)
     if (useGL && camera) {
+        std::cout << "Viewport3D::Render() - drawing camera debug" << std::endl;
         DrawCameraDebug(camera, playerX, playerY, playerZ, ViewRole::Main);
     } else if (usingSDL && !useGL) {
         // 2D fallback: nothing additional required here
+        std::cout << "Viewport3D::Render() - SDL 2D fallback" << std::endl;
+    } else {
+        std::cout << "Viewport3D::Render() - no rendering (useGL=" << useGL << ", camera=" << (camera ? "valid" : "null") << ")" << std::endl;
     }
 #else
     (void)camera;
@@ -1092,10 +1162,17 @@ void Viewport3D::Render(const class Camera* camera, double playerX, double playe
 }
 
 void Viewport3D::Clear() {
+    std::cout << "Viewport3D::Clear() called" << std::endl;
     if (usingSDL) {
 #ifdef USE_SDL
         if (useGL) {
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            SDL_GL_MakeCurrent(sdlWindow, sdlGLContext);
+            glViewport(0, 0, width, height);
+            glClear(GL_COLOR_BUFFER_BIT); // Only clear color buffer for now
+            GLenum err = glGetError();
+            if (err != GL_NO_ERROR) {
+                std::cerr << "OpenGL error in Clear(): " << err << " (GL_INVALID_OPERATION=" << GL_INVALID_OPERATION << ")" << std::endl;
+            }
         } else {
             SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, 255);
             // SDL3 keeps SDL_RenderClear as-is
@@ -1106,7 +1183,13 @@ void Viewport3D::Clear() {
 #ifdef USE_GLFW
         if (useGL && glfwWindow) {
             glfwMakeContextCurrent(glfwWindow);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glViewport(0, 0, width, height);
+            // Ensure we're using the default framebuffer
+            glClear(GL_COLOR_BUFFER_BIT); // Only clear color buffer for now
+            GLenum err = glGetError();
+            if (err != GL_NO_ERROR) {
+                std::cerr << "OpenGL error in Clear(): " << err << " (GL_INVALID_OPERATION=" << GL_INVALID_OPERATION << ")" << std::endl;
+            }
         }
 #endif
     }
@@ -1132,46 +1215,67 @@ void Viewport3D::Present() {
 }
 
 void Viewport3D::DrawPlayer(double x, double y, double z) {
+    std::cout << "Viewport3D::DrawPlayer() called at (" << x << ", " << y << ", " << z << ")" << std::endl;
+    std::cout << "Viewport3D::DrawPlayer() - useGL=" << useGL << ", usingSDL=" << usingSDL << std::endl;
     if (usingSDL) {
 #ifdef USE_SDL
         if (useGL) {
             SDL_GL_MakeCurrent(sdlWindow, sdlGLContext);
-            glColor3f(1.0f, 1.0f, 0.0f);
+            // Draw a distinctive player patch - larger bright marker
             glPushMatrix();
             glTranslatef((GLfloat)x, (GLfloat)y, (GLfloat)z);
+
+            // Main bright yellow core
+            glColor3f(1.0f, 1.0f, 0.0f);
             glBegin(GL_QUADS);
-            glVertex3f(-0.5f, -0.5f, 0.5f);
-            glVertex3f(0.5f, -0.5f, 0.5f);
-            glVertex3f(0.5f, 0.5f, 0.5f);
-            glVertex3f(-0.5f, 0.5f, 0.5f);
-            glVertex3f(-0.5f, -0.5f, -0.5f);
-            glVertex3f(-0.5f, 0.5f, -0.5f);
-            glVertex3f(0.5f, 0.5f, -0.5f);
-            glVertex3f(0.5f, -0.5f, -0.5f);
-            glVertex3f(-0.5f, -0.5f, 0.5f);
-            glVertex3f(-0.5f, 0.5f, 0.5f);
-            glVertex3f(-0.5f, 0.5f, -0.5f);
-            glVertex3f(-0.5f, -0.5f, -0.5f);
-            glVertex3f(0.5f, -0.5f, 0.5f);
-            glVertex3f(0.5f, -0.5f, -0.5f);
-            glVertex3f(0.5f, 0.5f, -0.5f);
-            glVertex3f(0.5f, 0.5f, 0.5f);
-            glVertex3f(-0.5f, 0.5f, 0.5f);
-            glVertex3f(0.5f, 0.5f, 0.5f);
-            glVertex3f(0.5f, 0.5f, -0.5f);
-            glVertex3f(-0.5f, 0.5f, -0.5f);
-            glVertex3f(-0.5f, -0.5f, 0.5f);
-            glVertex3f(-0.5f, -0.5f, -0.5f);
-            glVertex3f(0.5f, -0.5f, -0.5f);
-            glVertex3f(0.5f, -0.5f, 0.5f);
+            // Front face - larger and brighter
+            glVertex3f(-1.0f, -1.0f, 1.0f);
+            glVertex3f(1.0f, -1.0f, 1.0f);
+            glVertex3f(1.0f, 1.0f, 1.0f);
+            glVertex3f(-1.0f, 1.0f, 1.0f);
             glEnd();
+
+            // Add red accent stripes for visibility
+            glColor3f(1.0f, 0.0f, 0.0f);
+            glBegin(GL_QUADS);
+            // Top stripe
+            glVertex3f(-1.0f, 0.8f, 1.01f);
+            glVertex3f(1.0f, 0.8f, 1.01f);
+            glVertex3f(1.0f, 1.0f, 1.01f);
+            glVertex3f(-1.0f, 1.0f, 1.01f);
+            // Bottom stripe
+            glVertex3f(-1.0f, -1.0f, 1.01f);
+            glVertex3f(1.0f, -1.0f, 1.01f);
+            glVertex3f(1.0f, -0.8f, 1.01f);
+            glVertex3f(-1.0f, -0.8f, 1.01f);
+            glEnd();
+
+            // Add a small blue center dot for extra visibility
+            glColor3f(0.0f, 0.0f, 1.0f);
+            glBegin(GL_QUADS);
+            glVertex3f(-0.2f, -0.2f, 1.02f);
+            glVertex3f(0.2f, -0.2f, 1.02f);
+            glVertex3f(0.2f, 0.2f, 1.02f);
+            glVertex3f(-0.2f, 0.2f, 1.02f);
+            glEnd();
+
             glPopMatrix();
         } else {
             int px = static_cast<int>(((x + 5.0) / 10.0) * width);
             int py = height / 2;
-            SDL_Rect rect{px - 5, py - 5, 10, 10};
-            SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 0, 255);
-            compat_RenderFillRect(sdlRenderer, &rect);
+            // Draw smaller, more visible player patch
+            SDL_Rect mainRect{px - 6, py - 6, 12, 12};
+            SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 0, 255); // Bright yellow
+            compat_RenderFillRect(sdlRenderer, &mainRect);
+
+            // Add red border for visibility
+            SDL_SetRenderDrawColor(sdlRenderer, 255, 0, 0, 255);
+            compat_RenderDrawRect(sdlRenderer, &mainRect);
+
+            // Add blue center dot
+            SDL_Rect centerDot{px - 2, py - 2, 4, 4};
+            SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 255, 255);
+            compat_RenderFillRect(sdlRenderer, &centerDot);
         }
 #else
         (void)x; (void)y; (void)z;
@@ -1180,35 +1284,44 @@ void Viewport3D::DrawPlayer(double x, double y, double z) {
 #ifdef USE_GLFW
     else if (useGL && glfwWindow) {
         glfwMakeContextCurrent(glfwWindow);
-        glColor3f(1.0f, 1.0f, 0.0f);
+        // Draw a distinctive player patch - smaller bright marker
         glPushMatrix();
         glTranslatef((GLfloat)x, (GLfloat)y, (GLfloat)z);
+
+        // Main bright yellow core - smaller
+        glColor3f(1.0f, 1.0f, 0.0f);
         glBegin(GL_QUADS);
-        glVertex3f(-0.5f, -0.5f, 0.5f);
-        glVertex3f(0.5f, -0.5f, 0.5f);
-        glVertex3f(0.5f, 0.5f, 0.5f);
-        glVertex3f(-0.5f, 0.5f, 0.5f);
-        glVertex3f(-0.5f, -0.5f, -0.5f);
-        glVertex3f(-0.5f, 0.5f, -0.5f);
-        glVertex3f(0.5f, 0.5f, -0.5f);
-        glVertex3f(0.5f, -0.5f, -0.5f);
-        glVertex3f(-0.5f, -0.5f, 0.5f);
-        glVertex3f(-0.5f, 0.5f, 0.5f);
-        glVertex3f(-0.5f, 0.5f, -0.5f);
-        glVertex3f(-0.5f, -0.5f, -0.5f);
-        glVertex3f(0.5f, -0.5f, 0.5f);
-        glVertex3f(0.5f, -0.5f, -0.5f);
-        glVertex3f(0.5f, 0.5f, -0.5f);
-        glVertex3f(0.5f, 0.5f, 0.5f);
-        glVertex3f(-0.5f, 0.5f, 0.5f);
-        glVertex3f(0.5f, 0.5f, 0.5f);
-        glVertex3f(0.5f, 0.5f, -0.5f);
-        glVertex3f(-0.5f, 0.5f, -0.5f);
-        glVertex3f(-0.5f, -0.5f, 0.5f);
-        glVertex3f(-0.5f, -0.5f, -0.5f);
-        glVertex3f(0.5f, -0.5f, -0.5f);
-        glVertex3f(0.5f, -0.5f, 0.5f);
+        // Front face - smaller and brighter
+        glVertex3f(-1.0f, -1.0f, 1.0f);
+        glVertex3f(1.0f, -1.0f, 1.0f);
+        glVertex3f(1.0f, 1.0f, 1.0f);
+        glVertex3f(-1.0f, 1.0f, 1.0f);
         glEnd();
+
+        // Add red accent stripes for visibility
+        glColor3f(1.0f, 0.0f, 0.0f);
+        glBegin(GL_QUADS);
+        // Top stripe
+        glVertex3f(-1.0f, 0.8f, 1.01f);
+        glVertex3f(1.0f, 0.8f, 1.01f);
+        glVertex3f(1.0f, 1.0f, 1.01f);
+        glVertex3f(-1.0f, 1.0f, 1.01f);
+        // Bottom stripe
+        glVertex3f(-1.0f, -1.0f, 1.01f);
+        glVertex3f(1.0f, -1.0f, 1.01f);
+        glVertex3f(1.0f, -0.8f, 1.01f);
+        glVertex3f(-1.0f, -0.8f, 1.01f);
+        glEnd();
+
+        // Add a small blue center dot for extra visibility
+        glColor3f(0.0f, 0.0f, 1.0f);
+        glBegin(GL_QUADS);
+        glVertex3f(-0.2f, -0.2f, 1.02f);
+        glVertex3f(0.2f, -0.2f, 1.02f);
+        glVertex3f(0.2f, 0.2f, 1.02f);
+        glVertex3f(-0.2f, 0.2f, 1.02f);
+        glEnd();
+
         glPopMatrix();
     }
 #endif
@@ -1372,49 +1485,76 @@ void Viewport3D::DrawCoordinateSystem() {
     if (usingSDL && useGL) {
 #ifdef USE_SDL
         SDL_GL_MakeCurrent(sdlWindow, sdlGLContext);
-        glDisable(GL_DEPTH_TEST); // Draw on top
-        glLineWidth(3.0f);
-        glBegin(GL_LINES);
-        // X-axis: red
-        glColor3f(1.0f, 0.0f, 0.0f);
-        glVertex3f(0.0f, 0.0f, 0.0f);
-        glVertex3f(5.0f, 0.0f, 0.0f);
-        // Y-axis: green
-        glColor3f(0.0f, 1.0f, 0.0f);
-        glVertex3f(0.0f, 0.0f, 0.0f);
-        glVertex3f(0.0f, 5.0f, 0.0f);
-        // Z-axis: blue
-        glColor3f(0.0f, 0.0f, 1.0f);
-        glVertex3f(0.0f, 0.0f, 0.0f);
-        glVertex3f(0.0f, 0.0f, 5.0f);
-        glEnd();
-        glLineWidth(1.0f);
-        glEnable(GL_DEPTH_TEST);
 #endif
     } else if (!usingSDL && useGL) {
 #ifdef USE_GLFW
         if (glfwWindow) {
             glfwMakeContextCurrent(glfwWindow);
-            glDisable(GL_DEPTH_TEST); // Draw on top
-            glLineWidth(3.0f);
-            glBegin(GL_LINES);
-            // X-axis: red
-            glColor3f(1.0f, 0.0f, 0.0f);
-            glVertex3f(0.0f, 0.0f, 0.0f);
-            glVertex3f(5.0f, 0.0f, 0.0f);
-            // Y-axis: green
-            glColor3f(0.0f, 1.0f, 0.0f);
-            glVertex3f(0.0f, 0.0f, 0.0f);
-            glVertex3f(0.0f, 5.0f, 0.0f);
-            // Z-axis: blue
-            glColor3f(0.0f, 0.0f, 1.0f);
-            glVertex3f(0.0f, 0.0f, 0.0f);
-            glVertex3f(0.0f, 0.0f, 5.0f);
-            glEnd();
-            glLineWidth(1.0f);
-            glEnable(GL_DEPTH_TEST);
         }
 #endif
+    }
+
+    if (useGL) {
+        // Save current matrices
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+
+        // Disable depth test so axes draw on top
+        glDisable(GL_DEPTH_TEST);
+        glLineWidth(3.0f);
+
+        // Draw coordinate system axes in world space at origin (0,0,0)
+        // Use current perspective projection instead of orthographic
+        const float axisLength = 10.0f; // Longer axes for better visibility
+
+        glBegin(GL_LINES);
+        // X-axis: red (positive X direction)
+        glColor3f(1.0f, 0.0f, 0.0f);
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(axisLength, 0.0f, 0.0f);
+
+        // Y-axis: green (positive Y direction)
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(0.0f, axisLength, 0.0f);
+
+        // Z-axis: blue (positive Z direction)
+        glColor3f(0.0f, 0.0f, 1.0f);
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(0.0f, 0.0f, axisLength);
+        glEnd();
+
+        // Draw axis labels using TextRenderer so we don't rely on raw GLUT calls here
+        TextRenderer::RenderText3D("X",
+                                   axisLength + 0.5f,
+                                   0.0f,
+                                   0.0f,
+                                   TextColor::White(),
+                                   FontSize::Medium);
+        TextRenderer::RenderText3D("Y",
+                                   0.0f,
+                                   axisLength + 0.5f,
+                                   0.0f,
+                                   TextColor::White(),
+                                   FontSize::Medium);
+        TextRenderer::RenderText3D("Z",
+                                   0.0f,
+                                   0.0f,
+                                   axisLength + 0.5f,
+                                   TextColor::White(),
+                                   FontSize::Medium);
+
+        glLineWidth(1.0f);
+        glEnable(GL_DEPTH_TEST);
+
+        // Restore matrices
+        glMatrixMode(GL_MODELVIEW);
+        glPopMatrix();
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
     }
 }
 
@@ -1686,10 +1826,8 @@ void Viewport3D::DrawCameraDebug(const class Camera* camera, double playerX, dou
 
     if (useGL) {
         glPushMatrix();
-        glTranslatef(10.0f - static_cast<float>(camera->x()),
-                     -static_cast<float>(camera->y()),
-                     -static_cast<float>(camera->z()));
-        DrawCoordinateSystem();
+        // Draw world coordinate system at origin
+        // DrawCoordinateSystem(); // Commented out - debug axis visualization removed
         glPopMatrix();
 
         double camDistToPlayer = std::sqrt((camera->x() - playerX) * (camera->x() - playerX) +
@@ -2143,12 +2281,11 @@ void Viewport3D::DrawHUD(const class Camera* camera,
                          double playerY,
                          double playerZ,
                          const struct EnergyHUDTelemetry* energyTelemetry) {
-    (void)camera;
-    (void)fps;
-    (void)playerX;
-    (void)playerY;
-    (void)playerZ;
-    (void)energyTelemetry;
+    std::cout << "Viewport3D::DrawHUD() called" << std::endl;
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        std::cout << "OpenGL error before DrawHUD: " << error << std::endl;
+    }
     if (!usingSDL) {
 #ifdef USE_GLFW
         if (useGL && glfwWindow) {
@@ -2165,14 +2302,23 @@ void Viewport3D::DrawHUD(const class Camera* camera,
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+            // Begin batched UI rendering
+            if (uiBatcher_) {
+                uiBatcher_->Begin(width, height);
+            }
+
             // Draw background - SMALLER BOX for better performance
-            glColor4f(0.0f, 0.0f, 0.0f, 0.8f);
-            glBegin(GL_QUADS);
-            glVertex2f(10, 10);
-            glVertex2f(10+340, 10);  // HUD width adjusted for frame pacing info
-            glVertex2f(10+340, 10+120);  // HUD height adjusted for additional rows
-            glVertex2f(10, 10+80);
-            glEnd();
+            if (uiBatcher_) {
+                uiBatcher_->AddQuad(10, 10, 340, 110, 0.2f, 0.2f, 0.2f, 0.8f);
+            } else {
+                glColor4f(0.2f, 0.2f, 0.2f, 0.8f);
+                glBegin(GL_QUADS);
+                glVertex2f(10, 10);
+                glVertex2f(10+340, 10);  // HUD width adjusted for frame pacing info
+                glVertex2f(10+340, 10+120);  // HUD height adjusted for additional rows
+                glVertex2f(10, 10+120);
+                glEnd();
+            }
 
             // Border - SMALLER BOX
             glColor4f(1.0f, 1.0f, 1.0f, 0.8f);
@@ -2180,21 +2326,17 @@ void Viewport3D::DrawHUD(const class Camera* camera,
             glVertex2f(10, 10);
             glVertex2f(10+340, 10);  // HUD width adjusted for frame pacing info
             glVertex2f(10+340, 10+120);  // HUD height adjusted for additional rows
-            glVertex2f(10, 10+80);
+            glVertex2f(10, 10+120);
             glEnd();
 
             // Simple 7-segment style display for GLFW (similar to SDL version)
-            auto drawRect = [](float x, float y, float w, float h, float r, float g, float b, float a = 1.0f) {
-                glColor4f(r, g, b, a);
-                glBegin(GL_QUADS);
-                glVertex2f(x, y);
-                glVertex2f(x + w, y);
-                glVertex2f(x + w, y + h);
-                glVertex2f(x, y + h);
-                glEnd();
+            auto addRect = [this](float x, float y, float w, float h, float r, float g, float b, float a = 1.0f) {
+                if (uiBatcher_) {
+                    uiBatcher_->AddQuad(x, y, w, h, r, g, b, a);
+                }
             };
 
-            auto drawSevenSegDigitGL = [&](int x, int y, int segLen, int segThick, char c) {
+            auto drawSevenSegDigitGL = [&](int x, int y, int segLen, int segThick, char c, float r, float g, float b) {
                 static const uint8_t segMap[10] = {
                     0b0111111, // 0
                     0b0000110, // 1
@@ -2208,12 +2350,9 @@ void Viewport3D::DrawHUD(const class Camera* camera,
                     0b1101111  // 9
                 };
                 auto drawSegGL = [&](float sx, float sy, float w, float h) {
-                    glBegin(GL_QUADS);
-                    glVertex2f(sx, sy);
-                    glVertex2f(sx + w, sy);
-                    glVertex2f(sx + w, sy + h);
-                    glVertex2f(sx, sy + h);
-                    glEnd();
+                    if (uiBatcher_) {
+                        uiBatcher_->AddQuad(sx, sy, w, h, r, g, b, 1.0f);
+                    }
                 };
                 int a = x + segThick, ay = y, aw = segLen, ah = segThick;
                 int f_x = x, f_y = y + segThick, f_w = segThick, f_h = segLen;
@@ -2227,7 +2366,7 @@ void Viewport3D::DrawHUD(const class Camera* camera,
                     return;
                 }
                 if (c == '.') {
-                    drawRect(x + segThick + segLen + segThick / 2, y + 2 * (segThick + segLen) + segThick, segThick, segThick, 1, 1, 1);
+                    addRect(x + segThick + segLen + segThick / 2, y + 2 * (segThick + segLen) + segThick, segThick, segThick, 1, 1, 1);
                     return;
                 }
                 if (c < '0' || c > '9') return;
@@ -2249,8 +2388,8 @@ void Viewport3D::DrawHUD(const class Camera* camera,
 
             // Label "FPS:"
             glColor3f(0.7f, 0.7f, 0.7f);
-            drawRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
-            drawRect(x, y + segThick + 2, 4, segThick, 0.7f, 0.7f, 0.7f);
+            addRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
+            addRect(x, y + segThick + 2, 4, segThick, 0.7f, 0.7f, 0.7f);
             x += 14;
 
             // FPS value
@@ -2258,16 +2397,16 @@ void Viewport3D::DrawHUD(const class Camera* camera,
             snprintf(fbuf, sizeof(fbuf), "%d", (int)std::floor(fps + 0.5));
             glColor3f(1.0f, 0.9f, 0.5f);
             for (char* p = fbuf; *p; ++p) {
-                drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+                drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
                 x += spacing;
             }
 
             x += 12;
             // Zoom label "Z:"
             glColor3f(0.7f, 0.7f, 0.7f);
-            drawRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
-            drawRect(x + segLen - 2, y + segThick, 4, segThick, 0.7f, 0.7f, 0.7f);
-            drawRect(x, y + 2 * (segThick + segLen), 4, segThick, 0.7f, 0.7f, 0.7f);
+            addRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
+            addRect(x + segLen - 2, y + segThick, 4, segThick, 0.7f, 0.7f, 0.7f);
+            addRect(x, y + 2 * (segThick + segLen), 4, segThick, 0.7f, 0.7f, 0.7f);
             x += 18;
 
             // Zoom value
@@ -2277,10 +2416,10 @@ void Viewport3D::DrawHUD(const class Camera* camera,
             glColor3f(1.0f, 0.9f, 0.5f);
             for (char* p = zbuf; *p; ++p) {
                 if (*p >= '0' && *p <= '9') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+                    drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
                     x += spacing;
                 } else if (*p == '.') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, '.');
+                    drawSevenSegDigitGL(x, y, segLen, segThick, '.', 1.0f, 0.9f, 0.5f);
                     x += spacing / 2;
                 }
             }
@@ -2328,8 +2467,8 @@ void Viewport3D::DrawHUD(const class Camera* camera,
             x = 18; y += 50;
             glColor3f(0.7f, 0.7f, 0.7f);
             // X label
-            drawRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
-            drawRect(x + 6, y + segThick + 2, 4, segThick, 0.7f, 0.7f, 0.7f);
+            addRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
+            addRect(x + 6, y + segThick + 2, 4, segThick, 0.7f, 0.7f, 0.7f);
             x += 18;
             
             // X value
@@ -2338,13 +2477,13 @@ void Viewport3D::DrawHUD(const class Camera* camera,
             glColor3f(0.5f, 1.0f, 1.0f);
             for (char* p = xbuf; *p; ++p) {
                 if (*p >= '0' && *p <= '9') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+                    drawSevenSegDigitGL(x, y, segLen, segThick, *p, 0.5f, 1.0f, 1.0f);
                     x += spacing;
                 } else if (*p == '.') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, '.');
+                    drawSevenSegDigitGL(x, y, segLen, segThick, '.', 0.5f, 1.0f, 1.0f);
                     x += spacing / 2;
                 } else if (*p == '-') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, '-');
+                    drawSevenSegDigitGL(x, y, segLen, segThick, '-', 0.5f, 1.0f, 1.0f);
                     x += spacing;
                 }
             }
@@ -2352,8 +2491,8 @@ void Viewport3D::DrawHUD(const class Camera* camera,
             x += 12;
             // Y label
             glColor3f(0.7f, 0.7f, 0.7f);
-            drawRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
-            drawRect(x + 6, y + segThick + 2, 4, segThick, 0.7f, 0.7f, 0.7f);
+            addRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
+            addRect(x + 6, y + segThick + 2, 4, segThick, 0.7f, 0.7f, 0.7f);
             x += 18;
 
             // Y value
@@ -2362,13 +2501,13 @@ void Viewport3D::DrawHUD(const class Camera* camera,
             glColor3f(0.5f, 1.0f, 1.0f);
             for (char* p = ybuf; *p; ++p) {
                 if (*p >= '0' && *p <= '9') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+                    drawSevenSegDigitGL(x, y, segLen, segThick, *p, 0.5f, 1.0f, 1.0f);
                     x += spacing;
                 } else if (*p == '.') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, '.');
+                    drawSevenSegDigitGL(x, y, segLen, segThick, '.', 0.5f, 1.0f, 1.0f);
                     x += spacing / 2;
                 } else if (*p == '-') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, '-');
+                    drawSevenSegDigitGL(x, y, segLen, segThick, '-', 0.5f, 1.0f, 1.0f);
                     x += spacing;
                 }
             }
@@ -2379,6 +2518,11 @@ void Viewport3D::DrawHUD(const class Camera* camera,
                 RenderEnergyPanel(*energyTelemetry, width, height);
             }
 #endif
+
+            // Flush batched UI rendering
+            if (uiBatcher_) {
+                uiBatcher_->Flush();
+            }
 
             // Restore
             glEnable(GL_DEPTH_TEST);
@@ -2407,14 +2551,23 @@ void Viewport3D::DrawHUD(const class Camera* camera,
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+        // Begin batched UI rendering
+        if (uiBatcher_) {
+            uiBatcher_->Begin(width, height);
+        }
+
         // Draw background
-        glColor4f(0.0f, 0.0f, 0.0f, 0.7f);
-        glBegin(GL_QUADS);
-        glVertex2f(8, 8);
-        glVertex2f(8+380, 8);
-        glVertex2f(8+380, 8+180);
-        glVertex2f(8, 8+180);
-        glEnd();
+        if (uiBatcher_) {
+            uiBatcher_->AddQuad(8, 8, 380, 180, 0.0f, 0.0f, 0.0f, 0.7f);
+        } else {
+            glColor4f(0.0f, 0.0f, 0.0f, 0.7f);
+            glBegin(GL_QUADS);
+            glVertex2f(8, 8);
+            glVertex2f(8+380, 8);
+            glVertex2f(8+380, 8+180);
+            glVertex2f(8, 8+180);
+            glEnd();
+        }
 
         // Border
         glColor4f(1.0f, 1.0f, 1.0f, 0.7f);
@@ -2426,17 +2579,13 @@ void Viewport3D::DrawHUD(const class Camera* camera,
         glEnd();
 
         // Helper functions
-        auto drawRect = [](float x, float y, float w, float h, float r, float g, float b, float a = 1.0f) {
-            glColor4f(r, g, b, a);
-            glBegin(GL_QUADS);
-            glVertex2f(x, y);
-            glVertex2f(x + w, y);
-            glVertex2f(x + w, y + h);
-            glVertex2f(x, y + h);
-            glEnd();
+        auto addRect = [this](float x, float y, float w, float h, float r, float g, float b, float a = 1.0f) {
+            if (uiBatcher_) {
+                uiBatcher_->AddQuad(x, y, w, h, r, g, b, a);
+            }
         };
 
-        auto drawSevenSegDigitGL = [&](int x, int y, int segLen, int segThick, char c) {
+        auto drawSevenSegDigitGL = [&](int x, int y, int segLen, int segThick, char c, float r, float g, float b) {
             static const uint8_t segMap[10] = {
                 0b0111111, // 0
                 0b0000110, // 1
@@ -2450,12 +2599,9 @@ void Viewport3D::DrawHUD(const class Camera* camera,
                 0b1101111  // 9
             };
             auto drawSegGL = [&](float sx, float sy, float w, float h) {
-                glBegin(GL_QUADS);
-                glVertex2f(sx, sy);
-                glVertex2f(sx + w, sy);
-                glVertex2f(sx + w, sy + h);
-                glVertex2f(sx, sy + h);
-                glEnd();
+                if (uiBatcher_) {
+                    uiBatcher_->AddQuad(sx, sy, w, h, r, g, b, 1.0f);
+                }
             };
             int a = x + segThick, ay = y, aw = segLen, ah = segThick;
             int f_x = x, f_y = y + segThick, f_w = segThick, f_h = segLen;
@@ -2469,7 +2615,7 @@ void Viewport3D::DrawHUD(const class Camera* camera,
                 return;
             }
             if (c == '.') {
-                drawRect(x + segThick + segLen + segThick / 2, y + 2 * (segThick + segLen) + segThick, segThick, segThick, 1, 1, 1);
+                addRect(x + segThick + segLen + segThick / 2, y + 2 * (segThick + segLen) + segThick, segThick, segThick, 1, 1, 1);
                 return;
             }
             if (c < '0' || c > '9') return;
@@ -2490,9 +2636,9 @@ void Viewport3D::DrawHUD(const class Camera* camera,
         int x = 18, y = 18;
 
         // Label "Z:"
-        drawRect(x, y, 4, segThick, 0.5f, 0.5f, 0.5f);
-        drawRect(x + segLen - 2, y + segThick, 4, segThick, 0.5f, 0.5f, 0.5f);
-        drawRect(x, y + 2 * (segThick + segLen), 4, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x, y, 4, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x + segLen - 2, y + segThick, 4, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x, y + 2 * (segThick + segLen), 4, segThick, 0.5f, 0.5f, 0.5f);
         x += 24;
 
         // Zoom
@@ -2501,24 +2647,24 @@ void Viewport3D::DrawHUD(const class Camera* camera,
         glColor3f(1.0f, 0.9f, 0.5f);
         for (char* p = zbuf; *p; ++p) {
             if (*p >= '0' && *p <= '9') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+                drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
                 x += spacing;
             } else if (*p == '.') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '.');
+                drawSevenSegDigitGL(x, y, segLen, segThick, '.', 1.0f, 0.9f, 0.5f);
                 x += spacing / 2;
             }
         }
 
         x += 18;
         // FPS label
-        drawRect(x, y, 6, segThick, 0.5f, 0.5f, 0.5f);
-        drawRect(x, y + segThick + 2, 6, segThick, 0.5f, 0.5f, 0.5f);
-        drawRect(x, y + 2 * (segThick + segLen), 6, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x, y, 6, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x, y + segThick + 2, 6, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x, y + 2 * (segThick + segLen), 6, segThick, 0.5f, 0.5f, 0.5f);
         x += 18;
         char fbuf[16]; snprintf(fbuf, sizeof(fbuf), "%d", (int)std::floor(fps + 0.5));
         glColor3f(1.0f, 0.9f, 0.5f);
         for (char* p = fbuf; *p; ++p) {
-            drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+            drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
             x += spacing;
         }
 
@@ -2563,20 +2709,20 @@ void Viewport3D::DrawHUD(const class Camera* camera,
 
         x += 18;
         // Player X label
-        drawRect(x, y, 6, segThick, 0.5f, 0.5f, 0.5f);
-        drawRect(x + 8, y + segThick + 2, 6, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x, y, 6, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x + 8, y + segThick + 2, 6, segThick, 0.5f, 0.5f, 0.5f);
         x += 18;
         char xbuf[32]; snprintf(xbuf, sizeof(xbuf), "%.2f", playerX);
         glColor3f(1.0f, 0.9f, 0.5f);
         for (char* p = xbuf; *p; ++p) {
             if (*p >= '0' && *p <= '9') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+                drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
                 x += spacing;
             } else if (*p == '.') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '.');
+                drawSevenSegDigitGL(x, y, segLen, segThick, '.', 1.0f, 0.9f, 0.5f);
                 x += spacing / 2;
             } else if (*p == '-') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '-');
+                drawSevenSegDigitGL(x, y, segLen, segThick, '-', 1.0f, 0.9f, 0.5f);
                 x += spacing;
             }
         }
@@ -2584,43 +2730,48 @@ void Viewport3D::DrawHUD(const class Camera* camera,
         // Next row
         x = 18; y += 60;
         // Player Y label
-        drawRect(x, y, 6, segThick, 0.5f, 0.5f, 0.5f);
-        drawRect(x + 8, y + segThick + 2, 6, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x, y, 6, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x + 8, y + segThick + 2, 6, segThick, 0.5f, 0.5f, 0.5f);
         x += 18;
         char ybuf[32]; snprintf(ybuf, sizeof(ybuf), "%.2f", playerY);
         glColor3f(1.0f, 0.9f, 0.5f);
         for (char* p = ybuf; *p; ++p) {
             if (*p >= '0' && *p <= '9') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+                drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
                 x += spacing;
             } else if (*p == '.') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '.');
+                drawSevenSegDigitGL(x, y, segLen, segThick, '.', 1.0f, 0.9f, 0.5f);
                 x += spacing / 2;
             } else if (*p == '-') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '-');
+                drawSevenSegDigitGL(x, y, segLen, segThick, '-', 1.0f, 0.9f, 0.5f);
                 x += spacing;
             }
         }
 
         x += 18;
         // Player Z label
-        drawRect(x, y, 4, segThick, 0.5f, 0.5f, 0.5f);
-        drawRect(x + segLen - 2, y + segThick, 4, segThick, 0.5f, 0.5f, 0.5f);
-        drawRect(x, y + 2 * (segThick + segLen), 4, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x, y, 4, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x + segLen - 2, y + segThick, 4, segThick, 0.5f, 0.5f, 0.5f);
+        addRect(x, y + 2 * (segThick + segLen), 4, segThick, 0.5f, 0.5f, 0.5f);
         x += 24;
         char zbuf2[32]; snprintf(zbuf2, sizeof(zbuf2), "%.2f", playerZ);
         glColor3f(1.0f, 0.9f, 0.5f);
         for (char* p = zbuf2; *p; ++p) {
             if (*p >= '0' && *p <= '9') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, *p);
+                drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
                 x += spacing;
             } else if (*p == '.') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '.');
+                drawSevenSegDigitGL(x, y, segLen, segThick, '.', 1.0f, 0.9f, 0.5f);
                 x += spacing / 2;
             } else if (*p == '-') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '-');
+                drawSevenSegDigitGL(x, y, segLen, segThick, '-', 1.0f, 0.9f, 0.5f);
                 x += spacing;
             }
+        }
+
+        // Flush batched UI rendering
+        if (uiBatcher_) {
+            uiBatcher_->Flush();
         }
 
         // Restore
@@ -2780,6 +2931,10 @@ void Viewport3D::DrawHUD(const class Camera* camera,
         }
     }
 #endif
+    error = glGetError();
+    if (error != GL_NO_ERROR) {
+        std::cout << "OpenGL error after DrawHUD: " << error << std::endl;
+    }
 }
 
 bool Viewport3D::CaptureToBMP(const char* path) {

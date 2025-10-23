@@ -36,21 +36,24 @@ void UpdateTargetLockCamera(Camera& camera,
     double targetCameraY = playerY + config.orbitDistance * std::cos(orbitAngle);
     double targetCameraZ = playerZ + config.orbitHeight + input.mouseLookPitchOffset * 2.0;
 
-    double camToPlayerX = targetCameraX - playerX;
-    double camToPlayerY = targetCameraY - playerY;
-    double camToPlayerZ = targetCameraZ - playerZ;
-    double distanceFromPlayer = std::sqrt(camToPlayerX * camToPlayerX + camToPlayerY * camToPlayerY + camToPlayerZ * camToPlayerZ);
+    // Removed distance calculation and minimum distance clamp for unrestricted camera movement
+    // double camToPlayerX = targetCameraX - playerX;
+    // double camToPlayerY = targetCameraY - playerY;
+    // double camToPlayerZ = targetCameraZ - playerZ;
+    // double distanceFromPlayer = std::sqrt(camToPlayerX * camToPlayerX + camToPlayerY * camToPlayerY + camToPlayerZ * camToPlayerZ);
 
-    if (distanceFromPlayer < config.minDistanceFromPlayer && distanceFromPlayer > 0.0) {
-        double pullFactor = config.minDistanceFromPlayer / distanceFromPlayer;
-        targetCameraX = playerX + camToPlayerX * pullFactor;
-        targetCameraY = playerY + camToPlayerY * pullFactor;
-        targetCameraZ = playerZ + camToPlayerZ * pullFactor;
-    }
+    // Removed minimum distance clamp for unrestricted camera movement
+    // if (distanceFromPlayer < config.minDistanceFromPlayer && distanceFromPlayer > 0.0) {
+    //     double pullFactor = config.minDistanceFromPlayer / distanceFromPlayer;
+    //     targetCameraX = playerX + camToPlayerX * pullFactor;
+    //     targetCameraY = playerY + camToPlayerY * pullFactor;
+    //     targetCameraZ = playerZ + camToPlayerZ * pullFactor;
+    // }
 
-    if (targetCameraZ < config.groundLevel) {
-        targetCameraZ = config.groundLevel;
-    }
+    // Removed ground level clamp for unrestricted camera movement
+    // if (targetCameraZ < config.groundLevel) {
+    //     targetCameraZ = config.groundLevel;
+    // }
 
     double terrainFloor = config.terrainBuffer;
     if (targetCameraZ < terrainFloor) {
@@ -95,8 +98,10 @@ void UpdateTargetLockCamera(Camera& camera,
     double newYaw = currentYaw + yawDiff * rotationLerpFactor;
     double newPitch = currentPitch + (targetPitch - currentPitch) * rotationLerpFactor;
 
-    if (newPitch > PI/2 - 0.1) newPitch = PI/2 - 0.1;
-    if (newPitch < -PI/2 + 0.1) newPitch = -PI/2 + 0.1;
+    // Removed pitch clamp for unrestricted camera movement
+    // Allow full 180-degree pitch range for better camera control
+    // if (newPitch > PI/2) newPitch = PI/2;
+    // if (newPitch < -PI/2) newPitch = -PI/2;
 
     camera.SetOrientation(newPitch, newYaw);
 }

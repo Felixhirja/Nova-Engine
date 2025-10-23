@@ -143,6 +143,12 @@ void RegisterDemoEntity(EntityManager& entityManager, int textureHandle, double 
     position->z = 0.0;
     entityManager.AddComponent<Position>(e, position);
 
+    auto velocity = std::make_shared<Velocity>();
+    velocity->vx = 0.0;
+    velocity->vy = 0.0;
+    velocity->vz = 0.0;
+    entityManager.AddComponent<Velocity>(e, velocity);
+
     auto sprite = std::make_shared<Sprite>();
     sprite->textureHandle = textureHandle;
     sprite->frame = 0;

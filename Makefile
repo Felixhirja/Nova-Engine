@@ -86,6 +86,13 @@ endif
 $(TARGET): $(GLAD_OBJ) $(OBJ)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(GLAD_OBJ) $(OBJ) $(LDLIBS)
 
+run: $(TARGET)
+ifeq ($(OS),Windows_NT)
+	./$(TARGET).exe
+else
+	./$(TARGET)
+endif
+
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
@@ -151,11 +158,11 @@ tests/test_frame_pacing_controller: tests/test_frame_pacing_controller.cpp src/F
 
 ifeq ($(OS),Windows_NT)
 clean:
-        @cmd /C "del /F /Q $(WINDOWS_CLEAN_TARGETS) >nul 2>&1"
+	@cmd /C "del /F /Q $(WINDOWS_CLEAN_TARGETS) >nul 2>&1"
 else
 clean:
 	rm -f $(CLEAN_TARGETS)
 endif
 
-.PHONY: all test clean
+.PHONY: all test clean run
 

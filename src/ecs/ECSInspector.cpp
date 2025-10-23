@@ -11,6 +11,10 @@
 #include <unordered_set>
 
 #if defined(USE_GLFW)
+// Define CALLBACK for GLU compatibility on MinGW
+#ifndef CALLBACK
+#define CALLBACK __stdcall
+#endif
 #include <glad/glad.h>
 #include <GL/glu.h>
 #include <GLFW/glfw3.h>

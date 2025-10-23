@@ -1,7 +1,11 @@
 #include "SolarSystemGenerator.h"
 
-#include <algorithm>
-#include <array>
+// Define M_PI if not available (Windows)
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <numeric>
 #include <sstream>
@@ -246,6 +250,11 @@ Entity SolarSystemGenerator::GenerateStar(EntityManager* entityManager, std::mt1
 
     entityManager->EmplaceComponent<Position>(starEntity);
 
+    auto& velocity = entityManager->EmplaceComponent<Velocity>(starEntity);
+    velocity.vx = 0.0;
+    velocity.vy = 0.0;
+    velocity.vz = 0.0;
+
     auto& nameComponent = entityManager->EmplaceComponent<Name>(starEntity);
     nameComponent.value = body.name;
 
@@ -323,6 +332,11 @@ std::vector<Entity> SolarSystemGenerator::GeneratePlanets(
 
         auto& position = entityManager->EmplaceComponent<Position>(planetEntity);
         position.x = position.y = position.z = 0.0;
+
+        auto& velocity = entityManager->EmplaceComponent<Velocity>(planetEntity);
+        velocity.vx = 0.0;
+        velocity.vy = 0.0;
+        velocity.vz = 0.0;
 
         auto& planetComponent = entityManager->EmplaceComponent<PlanetComponent>(planetEntity);
         double gravity = (bodyComponent.radius > 0.0)
@@ -434,6 +448,11 @@ std::vector<Entity> SolarSystemGenerator::GenerateMoons(
         visual = GenerateVisualProperties(CelestialBodyComponent::BodyType::Moon, rng);
 
         entityManager->EmplaceComponent<Position>(moonEntity);
+
+        auto& velocity = entityManager->EmplaceComponent<Velocity>(moonEntity);
+        velocity.vx = 0.0;
+        velocity.vy = 0.0;
+        velocity.vz = 0.0;
 
         auto& nameComponent = entityManager->EmplaceComponent<Name>(moonEntity);
         nameComponent.value = moonBody.name;
@@ -608,6 +627,11 @@ std::vector<Entity> SolarSystemGenerator::GenerateSpaceStations(
         visual.roughness = 0.3f;
 
         entityManager->EmplaceComponent<Position>(stationEntity);
+
+        auto& velocity = entityManager->EmplaceComponent<Velocity>(stationEntity);
+        velocity.vx = 0.0;
+        velocity.vy = 0.0;
+        velocity.vz = 0.0;
 
         auto& nameComponent = entityManager->EmplaceComponent<Name>(stationEntity);
         nameComponent.value = body.name;

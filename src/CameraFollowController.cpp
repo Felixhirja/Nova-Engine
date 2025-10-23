@@ -58,29 +58,33 @@ void CameraFollowController::ApplyFreeCameraMovement(Camera& camera,
         newCameraZ -= displacement;
     }
 
-    const double playerX = followInput.playerX;
-    const double playerY = followInput.playerY;
-    const double playerZ = followInput.playerZ;
+    // Removed distance calculation and minimum distance clamp for unrestricted camera movement
+    // const double playerX = followInput.playerX;
+    // const double playerY = followInput.playerY;
+    // const double playerZ = followInput.playerZ;
 
-    const double minDistanceFromPlayer = config_.minDistanceFromPlayer;
-    const double freeCamToPlayerX = newCameraX - playerX;
-    const double freeCamToPlayerY = newCameraY - playerY;
-    const double freeCamToPlayerZ = newCameraZ - playerZ;
-    const double distanceFromPlayer = std::sqrt(freeCamToPlayerX * freeCamToPlayerX +
-                                               freeCamToPlayerY * freeCamToPlayerY +
-                                               freeCamToPlayerZ * freeCamToPlayerZ);
+    // Removed minimum distance clamp for unrestricted camera movement
+    // const double minDistanceFromPlayer = config_.minDistanceFromPlayer;
+    // const double freeCamToPlayerX = newCameraX - playerX;
+    // const double freeCamToPlayerY = newCameraY - playerY;
+    // const double freeCamToPlayerZ = newCameraZ - playerZ;
+    // const double distanceFromPlayer = std::sqrt(freeCamToPlayerX * freeCamToPlayerX +
+    //                                            freeCamToPlayerY * freeCamToPlayerY +
+    //                                            freeCamToPlayerZ * freeCamToPlayerZ);
 
-    if (distanceFromPlayer < minDistanceFromPlayer && distanceFromPlayer > 0.0) {
-        const double pushFactor = minDistanceFromPlayer / distanceFromPlayer;
-        newCameraX = playerX + freeCamToPlayerX * pushFactor;
-        newCameraY = playerY + freeCamToPlayerY * pushFactor;
-        newCameraZ = playerZ + freeCamToPlayerZ * pushFactor;
-    }
+    // Removed minimum distance clamp for unrestricted camera movement
+    // if (distanceFromPlayer < minDistanceFromPlayer && distanceFromPlayer > 0.0) {
+    //     const double pushFactor = minDistanceFromPlayer / distanceFromPlayer;
+    //     newCameraX = playerX + freeCamToPlayerX * pushFactor;
+    //     newCameraY = playerY + freeCamToPlayerY * pushFactor;
+    //     newCameraZ = playerZ + freeCamToPlayerZ * pushFactor;
+    // }
 
-    const double groundLevel = config_.groundLevel;
-    if (newCameraZ < groundLevel) {
-        newCameraZ = groundLevel;
-    }
+    // Removed ground level clamp for unrestricted camera movement
+    // const double groundLevel = config_.groundLevel;
+    // if (newCameraZ < groundLevel) {
+    //     newCameraZ = groundLevel;
+    // }
 
     camera.SetPosition(newCameraX, newCameraY, newCameraZ);
 }

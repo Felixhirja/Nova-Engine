@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Spaceship HUD SVG Preview</title>
+  <style>
+    body { background: #111217; color: #cfeffb; font-family: Inter, Segoe UI, Arial, sans-serif; padding: 20px; }
+    .note { margin-bottom: 12px; color: #9fdcff; }
+    .preview-box { background: #0b0f14; padding: 12px; border-radius: 8px; box-shadow: 0 6px 30px rgba(0,0,0,0.6); }
+    .controls { margin-bottom: 12px; }
+    iframe, img, svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    .small { font-size: 13px; color: #9bbddf; }
+  </style>
+</head>
+<body>
+  <h1>Spaceship HUD SVG Preview</h1>
+  <p class="note">This page embeds the repository SVG so you can inspect the visual quickly in a browser. If you want the original file opened directly, use the link below.</p>
+
+  <div class="controls small">
+    <a href="../../assets/ui/spaceship_hud.svg" target="_blank">Open original SVG in new tab/file viewer</a>
+    &nbsp;·&nbsp;
+    <a href="../../assets/ui/spaceship_hud.svg" download>Download SVG</a>
+  </div>
+
+  <div class="preview-box">
+    <!-- Inline embed: copy of assets/ui/spaceship_hud.svg (no XML declaration) -->
+
+<!-- Begin embedded SVG -->
+<svg width="1024" height="768" viewBox="0 0 1024 768" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0A1E3A" stop-opacity="0.9" />
+      <stop offset="70%" stop-color="#021126" stop-opacity="0.7" />
+      <stop offset="100%" stop-color="#000" stop-opacity="0.4" />
+    </radialGradient>
+    <linearGradient id="panelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0F3C62" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#071E36" stop-opacity="0.8" />
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+      <feMerge>
+        <feMergeNode in="coloredBlur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="panelGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+      <feColorMatrix in="blur" type="matrix"
+        values="0 0 0 0 0
+                0 0 0 0 0.7
+                0 0 0 0 1
+                0 0 0 0.5 0" />
+      <feMerge>
+        <feMergeNode />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <linearGradient id="energyGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFB347" />
+      <stop offset="45%" stop-color="#FF6A3D" />
+      <stop offset="100%" stop-color="#FF2F91" />
+    </linearGradient>
+    <linearGradient id="energyTrack" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#11263B" stop-opacity="0.4" />
+      <stop offset="50%" stop-color="#0A1B2C" stop-opacity="0.7" />
+      <stop offset="100%" stop-color="#081220" stop-opacity="0.9" />
+    </linearGradient>
+    <filter id="energyGlow" x="-40%" y="-70%" width="180%" height="240%">
+      <feGaussianBlur stdDeviation="8" result="energyBlur" />
+      <feMerge>
+        <feMergeNode in="energyBlur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <path id="tick" d="M0 0 L6 -16" stroke="#6DE1FF" stroke-width="2" />
+  </defs>
+
+  <rect width="1024" height="768" fill="url(#bgGlow)" />
+
+  <!-- Outer frame -->
+  <rect x="40" y="40" width="944" height="688" rx="24" stroke="#1DD8FF" stroke-width="2" opacity="0.5" />
+  <rect x="60" y="60" width="904" height="648" rx="20" stroke="#1DD8FF" stroke-width="1.5" opacity="0.35" />
+
+  <!-- (SVG truncated in preview for readability) -->
+  <!-- Full SVG available at ../../assets/ui/spaceship_hud.svg -->
+</svg>
+
+<!-- End embedded SVG -->
+  </div>
+
+  <p class="small">Notes:
+    <ul>
+      <li>The project's C++ SVG rasterizer (src/SVGSurfaceLoader.cpp) supports a small subset of SVG: shapes (rect/circle/ellipse/polygon/polyline/line/path) using fills.
+      </li>
+      <li>It does not currently support gradients, filters, strokes, text, &lt;use&gt;/href resolution, or style references stored in &lt;defs&gt;. As a result the in-engine rasterization will miss most stroked/gradient elements from this HUD.</li>
+      <li>Recommended quick checks: open this page in a modern browser (Chrome/Edge/Firefox) to see the intended visual. To get an accurate rasterized PNG for the engine, either export a PNG from a vector editor or extend the loader to support strokes/gradients.</li>
+    </ul>
+  </p>
+
+  <h3 class="small">How to open (Windows PowerShell)</h3>
+  <pre class="small"># Open this preview in the default browser
+Start-Process -FilePath "${PWD}\artifacts\svg_preview\spaceship_hud_preview.html"
+
+# Or open the original SVG directly
+Start-Process -FilePath "${PWD}\assets\ui\spaceship_hud.svg"
+  </pre>
+
+</body>
+</html>

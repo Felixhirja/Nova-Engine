@@ -1,5 +1,6 @@
 #include "SolarSystem.h"
 
+#define _USE_MATH_DEFINES
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -463,6 +464,12 @@ void SolarSystem::UpdateOrbit(Entity entity, OrbitalComponent* orbit, const Vect
         transform->x = orbit->cachedPosition.x;
         transform->y = orbit->cachedPosition.y;
     }
+
+    if (auto* velocity = entityManager_->GetComponent<Velocity>(entity)) {
+        velocity->vx = orbit->cachedVelocity.x;
+        velocity->vy = orbit->cachedVelocity.y;
+        velocity->vz = orbit->cachedVelocity.z;
+    }
 }
 
 void SolarSystem::UpdateBodyHierarchy(Entity entity, const Vector3& parentPosition) {
@@ -716,6 +723,11 @@ void SolarSystem::InitializeOrbitState(Entity entity) {
         } else if (auto* transform = entityManager_->GetComponent<Transform2D>(entity)) {
             transform->x = state.position.x;
             transform->y = state.position.y;
+        }
+        if (auto* velocity = entityManager_->GetComponent<Velocity>(entity)) {
+            velocity->vx = state.velocity.x;
+            velocity->vy = state.velocity.y;
+            velocity->vz = state.velocity.z;
         }
     }
 }
