@@ -80,14 +80,23 @@ PHASE 1: FOUNDATION (Next 1-2 months)
   ✅ Core headers created (SolarSystem.h, SolarSystemGenerator.h)
   ✅ Task breakdown with time estimates (docs/solar_system_tasks.md)
   ✅ Quick reference guide (docs/solar_system_quickref.md)
-  
+
   NEXT STEPS:
   □ Implement SolarSystem.cpp (Phase 1, Task 1.3)
   □ Implement basic circular orbits (Phase 1, Task 1.4)
   □ Create basic visualization with colored spheres (Phase 1, Task 1.5)
   □ Implement SolarSystemGenerator.cpp star generation (Phase 2, Task 2.1)
   □ Complete procedural planet generation (Phase 2, Tasks 2.3-2.7)
-  
+
+⏳ Rendering & Visual Polish [PLANNED]
+  ✅ High level design captured in docs/advanced_graphics_implementation.md
+  ✅ Shader modernization goals defined in docs/opengl_modernization_summary.md
+  □ Port forward renderer to new shader architecture (src/renderer/*)
+  □ Integrate HDR pipeline and tone mapping (reference docs/postprocess_implementation_summary.md)
+  □ Add particle renderer hooks to engine loop (docs/particle_rendering_integration.md)
+  □ Build automated screenshot harness for regression testing (scripts/, docs/postprocess_usage_examples.md)
+  □ Document asset authoring workflow updates (docs/ship_art_pipeline.md)
+
   See docs/solar_system_tasks.md for complete roadmap (275-377 hours estimated)
   Current Phase: Phase 1 - Core Framework (22-32 hours)
 
