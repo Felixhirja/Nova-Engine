@@ -1,4 +1,5 @@
 #include "Viewport3D.h"
+#include "TextRenderer.h"
 #include <iostream>
 #include <vector>
 #include <cstdint>
@@ -124,6 +125,308 @@ static void drawTinyCharGL(float x, float y, char c, float scale, float r, float
     glEnd();
 }
 #endif
+
+#if defined(USE_GLFW)
+namespace {
+
+struct Color4 {
+    float r;
+    float g;
+    float b;
+    float a;
+};
+
+inline Color4 MakeColor(float r, float g, float b, float a = 1.0f) {
+    return {r, g, b, a};
+}
+
+Color4 StatusColor(double percent, bool recharging) {
+    if (recharging) {
+        return MakeColor(0.3f, 0.6f, 1.0f, 1.0f);
+    }
+    if (percent >= 0.75) {
+        return MakeColor(0.2f, 0.85f, 0.4f, 1.0f);
+    }
+    if (percent >= 0.5) {
+        return MakeColor(0.95f, 0.8f, 0.25f, 1.0f);
+    }
+    if (percent >= 0.25) {
+        return MakeColor(0.95f, 0.55f, 0.1f, 1.0f);
+    }
+    return MakeColor(0.9f, 0.2f, 0.2f, 1.0f);
+}
+
+Color4 WarningColorForLabel(const std::string& warning) {
+    if (warning.find("Power") != std::string::npos) {
+        return MakeColor(0.9f, 0.25f, 0.25f, 1.0f);
+    }
+    if (warning.find("Shield") != std::string::npos) {
+        return MakeColor(0.95f, 0.55f, 0.15f, 1.0f);
+    }
+    if (warning.find("Overload") != std::string::npos) {
+        return MakeColor(0.95f, 0.8f, 0.25f, 1.0f);
+    }
+    return MakeColor(0.6f, 0.8f, 0.95f, 1.0f);
+}
+
+void DrawQuad2D(float x, float y, float w, float h, const Color4& color) {
+    glColor4f(color.r, color.g, color.b, color.a);
+    glBegin(GL_QUADS);
+    glVertex2f(x, y);
+    glVertex2f(x + w, y);
+    glVertex2f(x + w, y + h);
+    glVertex2f(x, y + h);
+    glEnd();
+}
+
+void DrawBorder2D(float x, float y, float w, float h, const Color4& color) {
+    glColor4f(color.r, color.g, color.b, color.a);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(x, y);
+    glVertex2f(x + w, y);
+    glVertex2f(x + w, y + h);
+    glVertex2f(x, y + h);
+    glEnd();
+}
+
+float Clamp01(double value) {
+    if (value < 0.0) return 0.0f;
+    if (value > 1.0) return 1.0f;
+    return static_cast<float>(value);
+}
+
+void DrawFillBar(float x, float y, float w, float h, double fillAmount, const Color4& fillColor) {
+    DrawQuad2D(x, y, w, h, MakeColor(0.1f, 0.1f, 0.14f, 0.9f));
+    float fill = Clamp01(fillAmount);
+    if (fill > 0.0f) {
+        DrawQuad2D(x, y, w * fill, h, fillColor);
+    }
+    DrawBorder2D(x, y, w, h, MakeColor(0.35f, 0.35f, 0.4f, 0.9f));
+}
+
+void RenderEnergyPanel(const EnergyHUDTelemetry& telemetry, int screenWidth, int screenHeight) {
+    const float panelWidth = 420.0f;
+    const float panelHeight = 300.0f;
+    const float margin = 18.0f;
+    const float panelX = static_cast<float>(screenWidth) - panelWidth - margin;
+    const float panelY = margin;
+
+    DrawQuad2D(panelX, panelY, panelWidth, panelHeight, MakeColor(0.02f, 0.02f, 0.04f, 0.82f));
+    DrawBorder2D(panelX, panelY, panelWidth, panelHeight, MakeColor(0.45f, 0.55f, 0.75f, 0.8f));
+
+    TextRenderer::RenderText("SHIP STATUS HUD",
+                             static_cast<int>(panelX + 18.0f),
+                             static_cast<int>(panelY + 28.0f),
+                             TextColor::Cyan(),
+                             FontSize::Large);
+
+    const float boxTop = panelY + 52.0f;
+    const float boxHeight = 92.0f;
+    const float boxGap = 12.0f;
+    const float boxWidth = (panelWidth - (margin * 2.0f) - (boxGap * 2.0f)) / 3.0f;
+
+    auto drawSubsystemBox = [&](float boxIndex,
+                                const char* label,
+                                double percent,
+                                double delivered,
+                                double requirement,
+                                double value,
+                                double valueMax,
+                                const char* valueUnits,
+                                double auxValue,
+                                const char* auxLabel,
+                                bool rechargingHighlight) {
+        float bx = panelX + margin + boxIndex * (boxWidth + boxGap);
+        float by = boxTop;
+        DrawQuad2D(bx, by, boxWidth, boxHeight, MakeColor(0.05f, 0.05f, 0.09f, 0.85f));
+        DrawBorder2D(bx, by, boxWidth, boxHeight, MakeColor(0.25f, 0.35f, 0.55f, 0.9f));
+
+        TextRenderer::RenderText(label,
+                                 static_cast<int>(bx + 12.0f),
+                                 static_cast<int>(by + 20.0f),
+                                 TextColor::White(),
+                                 FontSize::Medium);
+
+        Color4 statusColor = StatusColor(percent, rechargingHighlight);
+        DrawFillBar(bx + 12.0f,
+                    by + 34.0f,
+                    boxWidth - 24.0f,
+                    14.0f,
+                    percent,
+                    statusColor);
+
+        TextRenderer::RenderTextF(static_cast<int>(bx + boxWidth - 60.0f),
+                                  static_cast<int>(by + 28.0f),
+                                  TextColor::White(),
+                                  FontSize::Small,
+                                  "%3.0f%%",
+                                  std::clamp(percent * 100.0, 0.0, 999.0));
+
+        if (requirement > 0.0) {
+            TextRenderer::RenderTextF(static_cast<int>(bx + 12.0f),
+                                      static_cast<int>(by + 56.0f),
+                                      TextColor::Gray(0.85f),
+                                      FontSize::Small,
+                                      "%0.1f/%0.1f MW",
+                                      delivered,
+                                      requirement);
+        }
+
+        if (valueMax > 0.0 && valueUnits) {
+            TextRenderer::RenderTextF(static_cast<int>(bx + 12.0f),
+                                      static_cast<int>(by + 72.0f),
+                                      TextColor::Gray(0.9f),
+                                      FontSize::Small,
+                                      "%0.0f/%0.0f %s",
+                                      value,
+                                      valueMax,
+                                      valueUnits);
+        }
+
+        if (auxLabel && auxLabel[0] != '\0') {
+            TextRenderer::RenderTextF(static_cast<int>(bx + 12.0f),
+                                      static_cast<int>(by + 86.0f),
+                                      TextColor::Gray(0.75f),
+                                      FontSize::Small,
+                                      "%s %0.1f",
+                                      auxLabel,
+                                      auxValue);
+        }
+    };
+
+    drawSubsystemBox(0.0f,
+                     "SHIELDS",
+                     telemetry.shieldPercent,
+                     telemetry.shieldDeliveredMW,
+                     telemetry.shieldRequirementMW,
+                     telemetry.shieldCapacityMJ,
+                     telemetry.shieldCapacityMaxMJ,
+                     "MJ",
+                     telemetry.shieldRechargeRateMJ,
+                     telemetry.warningRechargeDelay ? "RECH" : "+",
+                     telemetry.shieldRechargeRemaining <= 0.0 && telemetry.shieldPercent < 1.0);
+
+    drawSubsystemBox(1.0f,
+                     "WEAPONS",
+                     telemetry.weaponPercent,
+                     telemetry.weaponDeliveredMW,
+                     telemetry.weaponRequirementMW,
+                     telemetry.weaponAmmoCurrent >= 0 ? static_cast<double>(telemetry.weaponAmmoCurrent) : telemetry.weaponDeliveredMW,
+                     telemetry.weaponAmmoMax >= 0 ? static_cast<double>(telemetry.weaponAmmoMax) : telemetry.weaponRequirementMW,
+                     telemetry.weaponAmmoMax >= 0 ? "AMMO" : "MW",
+                     telemetry.weaponCooldownSeconds,
+                     telemetry.weaponCooldownSeconds > 0.0 ? "CD" : "",
+                     false);
+
+    drawSubsystemBox(2.0f,
+                     "THRUSTERS",
+                     telemetry.thrusterPercent,
+                     telemetry.thrusterDeliveredMW,
+                     telemetry.thrusterRequirementMW,
+                     telemetry.thrustToMass,
+                     telemetry.thrustToMass,
+                     telemetry.thrustToMass > 0.0 ? "T/M" : "MW",
+                     telemetry.thrustToMass,
+                     telemetry.thrustToMass > 0.0 ? "T/M" : "",
+                     false);
+
+    const float allocationTop = boxTop + boxHeight + 26.0f;
+    const float warningColumnX = panelX + panelWidth - 150.0f;
+
+    TextRenderer::RenderText("POWER ALLOCATION",
+                             static_cast<int>(panelX + margin),
+                             static_cast<int>(allocationTop - 8.0f),
+                             TextColor::Gray(0.85f),
+                             FontSize::Small);
+    TextRenderer::RenderText("WARNINGS",
+                             static_cast<int>(warningColumnX),
+                             static_cast<int>(allocationTop - 8.0f),
+                             TextColor::Gray(0.85f),
+                             FontSize::Small);
+
+    auto drawAllocationRow = [&](float rowIndex,
+                                 const char* name,
+                                 double allocation,
+                                 double delivered,
+                                 double requirement) {
+        float rowY = allocationTop + rowIndex * 34.0f;
+        TextRenderer::RenderText(name,
+                                 static_cast<int>(panelX + margin),
+                                 static_cast<int>(rowY),
+                                 TextColor::White(),
+                                 FontSize::Small);
+        float barX = panelX + margin + 90.0f;
+        float barWidth = warningColumnX - barX - 12.0f;
+        DrawFillBar(barX, rowY - 12.0f, barWidth, 12.0f, allocation, MakeColor(0.35f, 0.75f, 0.95f, 0.9f));
+        TextRenderer::RenderTextF(static_cast<int>(barX + barWidth + 6.0f),
+                                  static_cast<int>(rowY),
+                                  TextColor::Gray(0.9f),
+                                  FontSize::Small,
+                                  "%02.0f%%",
+                                  allocation * 100.0);
+        if (requirement > 0.0) {
+            TextRenderer::RenderTextF(static_cast<int>(barX),
+                                      static_cast<int>(rowY + 12.0f),
+                                      TextColor::Gray(0.7f),
+                                      FontSize::Small,
+                                      "%0.1f/%0.1f MW",
+                                      delivered,
+                                      requirement);
+        }
+    };
+
+    drawAllocationRow(0.0f, "Shields", telemetry.shieldAllocation, telemetry.shieldDeliveredMW, telemetry.shieldRequirementMW);
+    drawAllocationRow(1.0f, "Weapons", telemetry.weaponAllocation, telemetry.weaponDeliveredMW, telemetry.weaponRequirementMW);
+    drawAllocationRow(2.0f, "Thrusters", telemetry.thrusterAllocation, telemetry.thrusterDeliveredMW, telemetry.thrusterRequirementMW);
+
+    float warningY = allocationTop + 4.0f;
+    if (telemetry.warnings.empty()) {
+        TextRenderer::RenderText("All systems nominal",
+                                 static_cast<int>(warningColumnX),
+                                 static_cast<int>(warningY),
+                                 TextColor::Gray(0.6f),
+                                 FontSize::Small);
+    } else {
+        for (const auto& warning : telemetry.warnings) {
+            Color4 warnColor = WarningColorForLabel(warning);
+            TextRenderer::RenderText(warning,
+                                     static_cast<int>(warningColumnX),
+                                     static_cast<int>(warningY),
+                                     TextColor{warnColor.r, warnColor.g, warnColor.b, warnColor.a},
+                                     FontSize::Small);
+            warningY += 18.0f;
+        }
+    }
+
+    if (!telemetry.activePreset.empty()) {
+        TextRenderer::RenderTextF(static_cast<int>(panelX + margin),
+                                  static_cast<int>(allocationTop + 118.0f),
+                                  TextColor::Gray(0.85f),
+                                  FontSize::Small,
+                                  "Preset: %s",
+                                  telemetry.activePreset.c_str());
+    }
+
+    const double usedPower = telemetry.totalPowerOutputMW - telemetry.netPowerMW;
+    const int netY = static_cast<int>(panelY + panelHeight - 42.0f);
+    TextRenderer::RenderTextF(static_cast<int>(panelX + margin),
+                              netY,
+                              telemetry.netPowerMW < 0.0 ? TextColor::Red() : TextColor::White(),
+                              FontSize::Medium,
+                              "NET POWER: %.1f/%.1f MW",
+                              std::max(0.0, usedPower),
+                              telemetry.totalPowerOutputMW);
+    TextRenderer::RenderTextF(static_cast<int>(panelX + margin),
+                              netY + 18,
+                              TextColor::Gray(0.85f),
+                              FontSize::Small,
+                              "EFFICIENCY: %.0f%%  DRAIN: %.1f MW",
+                              telemetry.efficiencyPercent,
+                              telemetry.drainRateMW);
+}
+
+} // namespace
+#endif // defined(USE_GLFW)
 
 void ParticleRendererDeleter::operator()(ParticleRenderer* ptr) const {
 #if defined(USE_GLFW) || defined(USE_SDL)
@@ -1793,6 +2096,7 @@ void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX,
     (void)playerX;
     (void)playerY;
     (void)playerZ;
+    (void)energyTelemetry;
     if (!usingSDL) {
 #ifdef USE_GLFW
         if (useGL && glfwWindow) {
@@ -2016,6 +2320,13 @@ void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX,
                     x += spacing;
                 }
             }
+
+            // Energy management overlay
+#if defined(USE_GLFW)
+            if (energyTelemetry && energyTelemetry->valid) {
+                RenderEnergyPanel(*energyTelemetry, width, height);
+            }
+#endif
 
             // Restore
             glEnable(GL_DEPTH_TEST);
@@ -2446,9 +2757,16 @@ bool Viewport3D::CaptureToBMP(const char* path) {
 #endif
 }
 
-void Viewport3D::DrawHUD(const class Camera* camera, double fps, double playerX, double playerY, double playerZ, bool, const class ShipAssemblyResult*) {
+void Viewport3D::DrawHUD(const class Camera* camera,
+                         double fps,
+                         double playerX,
+                         double playerY,
+                         double playerZ,
+                         bool,
+                         const class ShipAssemblyResult*,
+                         const EnergyHUDTelemetry* energyTelemetry) {
     // Call the existing DrawHUD
-    DrawHUD(camera, fps, playerX, playerY, playerZ);
+    DrawHUD(camera, fps, playerX, playerY, playerZ, energyTelemetry);
 }
 
 void Viewport3D::RenderParticles(const class Camera* camera, const class VisualFeedbackSystem* visualFeedback) {

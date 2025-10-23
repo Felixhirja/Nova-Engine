@@ -4,6 +4,7 @@
 #include "Simulation.h"
 #include "ResourceManager.h"
 #include "Spaceship.h"
+#include "EnergyManagementSystem.h"
 #include "Camera.h"
 #include "CameraPresets.h"
 #include "GamepadManager.h"
@@ -25,6 +26,7 @@
 #include <utility>
 #include <cstdlib>
 #include <string>
+#include <sstream>
 #ifdef USE_SDL
 #include <SDL2/SDL.h>
 #endif
@@ -192,6 +194,7 @@ void MainLoop::Init() {
     EngineBootstrap bootstrap;
     auto bootstrapResult = bootstrap.Run(*resourceManager, *entityManager);
     hudShipAssembly = std::move(bootstrapResult.hudAssembly);
+    ConfigureEnergyTelemetry();
 
     stateMachine.TransitionTo(EngineState::Running);
 }
@@ -270,6 +273,8 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             }
         }
 #endif
+
+        UpdateEnergyTelemetry(deltaSeconds);
 
         Input::UpdateKeyState();
         int key = Input::PollKey();
@@ -557,6 +562,281 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
     Input::Shutdown();
 }
+
+void MainLoop::ConfigureEnergyTelemetry() {
+    energyTelemetry = EnergyHUDTelemetry{};
+    hudShieldCurrentMJ = 0.0;
+    hudShieldRechargeTimer = 0.0;
+    hudShieldRequirementMW = 0.0;
+    hudWeaponRequirementMW = 0.0;
+    hudThrusterRequirementMW = 0.0;
+    hudOtherDrawMW = 0.0;
+    hudEnergyEntityId = 0;
+
+    if (!simulation) {
+        energyTelemetry.valid = false;
+        energyManagementSystem.reset();
+        return;
+    }
+
+    const bool hasAssembly = hudShipAssembly.hull != nullptr || !hudShipAssembly.components.empty();
+    if (!hasAssembly) {
+        energyTelemetry.valid = false;
+        energyManagementSystem.reset();
+        return;
+    }
+
+    energyTelemetry.valid = true;
+    energyTelemetry.totalPowerOutputMW = hudShipAssembly.totalPowerOutputMW;
+    energyTelemetry.drainRateMW = hudShipAssembly.totalPowerDrawMW;
+    energyTelemetry.netPowerMW = energyTelemetry.totalPowerOutputMW - energyTelemetry.drainRateMW;
+    if (energyTelemetry.totalPowerOutputMW > 0.0) {
+        energyTelemetry.efficiencyPercent = std::clamp(
+            (energyTelemetry.drainRateMW / energyTelemetry.totalPowerOutputMW) * 100.0,
+            0.0,
+            200.0);
+    } else {
+        energyTelemetry.efficiencyPercent = 0.0;
+    }
+
+    energyTelemetry.presets = {
+        {"Balanced", 0.33, 0.33, 0.34},
+        {"Offense", 0.20, 0.50, 0.30},
+        {"Defense", 0.50, 0.25, 0.25},
+        {"Speed", 0.25, 0.20, 0.55}
+    };
+    if (!energyTelemetry.presets.empty()) {
+        const auto& preset = energyTelemetry.presets.front();
+        energyTelemetry.activePreset = preset.name;
+        energyTelemetry.shieldAllocation = preset.shields;
+        energyTelemetry.weaponAllocation = preset.weapons;
+        energyTelemetry.thrusterAllocation = preset.thrusters;
+    }
+
+    const SubsystemSummary* shieldSummary = hudShipAssembly.GetSubsystem(ComponentSlotCategory::Shield);
+    const SubsystemSummary* weaponSummary = hudShipAssembly.GetSubsystem(ComponentSlotCategory::Weapon);
+    const SubsystemSummary* mainThrusters = hudShipAssembly.GetSubsystem(ComponentSlotCategory::MainThruster);
+    const SubsystemSummary* maneuverThrusters = hudShipAssembly.GetSubsystem(ComponentSlotCategory::ManeuverThruster);
+
+    if (shieldSummary) {
+        hudShieldRequirementMW = shieldSummary->totalPowerDrawMW;
+    }
+    if (weaponSummary) {
+        hudWeaponRequirementMW = weaponSummary->totalPowerDrawMW;
+    }
+    if (mainThrusters) {
+        hudThrusterRequirementMW += mainThrusters->totalPowerDrawMW;
+    }
+    if (maneuverThrusters) {
+        hudThrusterRequirementMW += maneuverThrusters->totalPowerDrawMW;
+    }
+
+    hudOtherDrawMW = std::max(0.0, energyTelemetry.drainRateMW - (hudShieldRequirementMW + hudWeaponRequirementMW + hudThrusterRequirementMW));
+
+    double totalShieldCapacity = 0.0;
+    double totalShieldRecharge = 0.0;
+    double maxShieldDelay = 0.0;
+    int totalAmmoCapacity = 0;
+    double maxWeaponFireRate = 0.0;
+
+    for (const auto& component : hudShipAssembly.components) {
+        const ShipComponentBlueprint* blueprint = component.blueprint;
+        if (!blueprint) {
+            continue;
+        }
+
+        switch (blueprint->category) {
+            case ComponentSlotCategory::Shield:
+                totalShieldCapacity += blueprint->shieldCapacityMJ;
+                totalShieldRecharge += blueprint->shieldRechargeRateMJPerSec;
+                maxShieldDelay = std::max(maxShieldDelay, blueprint->shieldRechargeDelaySeconds);
+                break;
+            case ComponentSlotCategory::Weapon:
+                if (blueprint->weaponAmmoCapacity > 0) {
+                    totalAmmoCapacity += blueprint->weaponAmmoCapacity;
+                }
+                if (blueprint->weaponFireRatePerSecond > 0.0) {
+                    maxWeaponFireRate = std::max(maxWeaponFireRate, blueprint->weaponFireRatePerSecond);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    energyTelemetry.shieldCapacityMaxMJ = totalShieldCapacity;
+    hudShieldCurrentMJ = totalShieldCapacity > 0.0 ? totalShieldCapacity * 0.85 : 0.0;
+    energyTelemetry.shieldCapacityMJ = hudShieldCurrentMJ;
+    energyTelemetry.shieldPercent = totalShieldCapacity > 0.0 ? hudShieldCurrentMJ / totalShieldCapacity : 0.0;
+    energyTelemetry.shieldRechargeRateMJ = totalShieldRecharge;
+    energyTelemetry.shieldRechargeDelaySeconds = maxShieldDelay;
+    energyTelemetry.shieldRechargeRemaining = 0.0;
+
+    if (totalAmmoCapacity > 0) {
+        energyTelemetry.weaponAmmoMax = totalAmmoCapacity;
+        energyTelemetry.weaponAmmoCurrent = totalAmmoCapacity;
+    } else {
+        energyTelemetry.weaponAmmoMax = -1;
+        energyTelemetry.weaponAmmoCurrent = -1;
+    }
+    if (maxWeaponFireRate > 0.0) {
+        energyTelemetry.weaponCooldownSeconds = 1.0 / maxWeaponFireRate;
+    }
+
+    energyTelemetry.thrustToMass = hudShipAssembly.ThrustToMassRatio();
+
+    hudEnergyEntityId = simulation ? static_cast<int>(simulation->GetPlayerEntity()) : 0;
+    if (hudEnergyEntityId != 0) {
+        energyManagementSystem = std::make_unique<EnergyManagementSystem>();
+        energyManagementSystem->Initialize(hudEnergyEntityId,
+                                           energyTelemetry.totalPowerOutputMW,
+                                           hudShieldRequirementMW,
+                                           hudWeaponRequirementMW,
+                                           hudThrusterRequirementMW);
+        energyManagementSystem->SetAllocation(hudEnergyEntityId,
+                                              energyTelemetry.shieldAllocation,
+                                              energyTelemetry.weaponAllocation,
+                                              energyTelemetry.thrusterAllocation);
+    } else {
+        energyManagementSystem.reset();
+        energyTelemetry.valid = false;
+        return;
+    }
+
+    UpdateEnergyTelemetry(0.0);
+}
+
+void MainLoop::UpdateEnergyTelemetry(double deltaSeconds) {
+    if (!energyTelemetry.valid || !energyManagementSystem || hudEnergyEntityId == 0) {
+        return;
+    }
+
+    const double totalOutput = energyTelemetry.totalPowerOutputMW;
+    const double availablePower = totalOutput;
+
+    energyManagementSystem->UpdateDemand(hudEnergyEntityId,
+                                         totalOutput,
+                                         availablePower,
+                                         hudShieldRequirementMW,
+                                         hudWeaponRequirementMW,
+                                         hudThrusterRequirementMW);
+    energyManagementSystem->Update(hudEnergyEntityId, static_cast<float>(deltaSeconds));
+
+    const EnergyManagementState* state = energyManagementSystem->GetState(hudEnergyEntityId);
+    if (!state) {
+        return;
+    }
+
+    energyTelemetry.shieldAllocation = state->shieldAllocation;
+    energyTelemetry.weaponAllocation = state->weaponAllocation;
+    energyTelemetry.thrusterAllocation = state->thrusterAllocation;
+    energyTelemetry.shieldDeliveredMW = state->shieldPowerMW;
+    energyTelemetry.weaponDeliveredMW = state->weaponPowerMW;
+    energyTelemetry.thrusterDeliveredMW = state->thrusterPowerMW;
+    energyTelemetry.shieldRequirementMW = state->shieldRequirementMW;
+    energyTelemetry.weaponRequirementMW = state->weaponRequirementMW;
+    energyTelemetry.thrusterRequirementMW = state->thrusterRequirementMW;
+
+    const double totalSubsystemDemand = state->shieldRequirementMW + state->weaponRequirementMW + state->thrusterRequirementMW;
+    energyTelemetry.drainRateMW = hudOtherDrawMW + totalSubsystemDemand;
+    energyTelemetry.netPowerMW = totalOutput - energyTelemetry.drainRateMW;
+
+    if (energyTelemetry.weaponRequirementMW > 0.0) {
+        energyTelemetry.weaponPercent = std::clamp(
+            energyTelemetry.weaponDeliveredMW / energyTelemetry.weaponRequirementMW,
+            0.0,
+            1.2);
+    } else {
+        energyTelemetry.weaponPercent = 1.0;
+    }
+    if (energyTelemetry.thrusterRequirementMW > 0.0) {
+        energyTelemetry.thrusterPercent = std::clamp(
+            energyTelemetry.thrusterDeliveredMW / energyTelemetry.thrusterRequirementMW,
+            0.0,
+            1.2);
+    } else {
+        energyTelemetry.thrusterPercent = 1.0;
+    }
+
+    if (energyTelemetry.totalPowerOutputMW > 0.0) {
+        energyTelemetry.efficiencyPercent = std::clamp(
+            (energyTelemetry.drainRateMW / energyTelemetry.totalPowerOutputMW) * 100.0,
+            0.0,
+            200.0);
+    }
+
+    if (energyTelemetry.shieldCapacityMaxMJ > 0.0) {
+        if (energyTelemetry.netPowerMW < 0.0) {
+            double drain = std::max(0.0, -energyTelemetry.netPowerMW) * std::max(0.0, deltaSeconds) * 0.5;
+            if (drain > 0.0) {
+                hudShieldCurrentMJ = std::max(0.0, hudShieldCurrentMJ - drain);
+                hudShieldRechargeTimer = energyTelemetry.shieldRechargeDelaySeconds;
+            }
+        } else {
+            if (hudShieldRechargeTimer > 0.0) {
+                hudShieldRechargeTimer = std::max(0.0, hudShieldRechargeTimer - deltaSeconds);
+            } else if (energyTelemetry.shieldRechargeRateMJ > 0.0) {
+                double recharge = energyTelemetry.shieldRechargeRateMJ * std::max(0.0, deltaSeconds);
+                if (recharge > 0.0) {
+                    hudShieldCurrentMJ = std::min(energyTelemetry.shieldCapacityMaxMJ, hudShieldCurrentMJ + recharge);
+                }
+            }
+        }
+
+        energyTelemetry.shieldRechargeRemaining = hudShieldRechargeTimer;
+        energyTelemetry.shieldCapacityMJ = hudShieldCurrentMJ;
+        energyTelemetry.shieldPercent = energyTelemetry.shieldCapacityMaxMJ > 0.0
+            ? std::clamp(hudShieldCurrentMJ / energyTelemetry.shieldCapacityMaxMJ, 0.0, 1.0)
+            : 0.0;
+    }
+
+    energyTelemetry.warningPowerDeficit = energyTelemetry.netPowerMW < 0.0;
+    energyTelemetry.warningShieldCritical = energyTelemetry.shieldPercent < 0.25;
+    energyTelemetry.warningRechargeDelay = hudShieldRechargeTimer > 0.0;
+    energyTelemetry.warningOverloadRisk = state->overloadProtection &&
+        (totalSubsystemDemand > state->totalPowerMW * state->overloadThreshold);
+
+    energyTelemetry.warnings.clear();
+
+    auto appendWarning = [&](const std::string& label) {
+        if (!label.empty()) {
+            energyTelemetry.warnings.push_back(label);
+        }
+    };
+
+    if (energyTelemetry.warningPowerDeficit) {
+        std::ostringstream oss;
+        oss << "\u26A0 Power Deficit";
+        if (energyTelemetry.netPowerMW < 0.0) {
+            oss << " (" << std::fixed << std::setprecision(1)
+                << std::abs(energyTelemetry.netPowerMW) << " MW)";
+        }
+        appendWarning(oss.str());
+    }
+
+    if (energyTelemetry.warningShieldCritical) {
+        std::ostringstream oss;
+        oss << "\u26A0 Shield Critical";
+        oss << " (" << std::fixed << std::setprecision(0)
+            << std::clamp(energyTelemetry.shieldPercent * 100.0, 0.0, 100.0) << "%)";
+        appendWarning(oss.str());
+    }
+
+    if (energyTelemetry.warningRechargeDelay) {
+        std::ostringstream oss;
+        oss << "\u26A0 Shield Recharge";
+        if (hudShieldRechargeTimer > 0.0) {
+            oss << " (" << std::fixed << std::setprecision(1)
+                << hudShieldRechargeTimer << "s)";
+        }
+        appendWarning(oss.str());
+    }
+
+    if (energyTelemetry.warningOverloadRisk) {
+        appendWarning("\u26A0 Overload Risk");
+    }
+}
+
 void MainLoop::ApplyCameraPreset(size_t index) {
     if (!camera || index >= cameraPresets.size()) {
         return;

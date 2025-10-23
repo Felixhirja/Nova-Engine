@@ -49,9 +49,17 @@ public:
     
     // Set allocation percentages (must sum to ~1.0)
     void SetAllocation(int entityId, double shields, double weapons, double thrusters);
-    
+
     // Get current state
     const EnergyManagementState* GetState(int entityId) const;
+
+    // Update subsystem demand/available power snapshot
+    void UpdateDemand(int entityId,
+                      double totalPower,
+                      double availablePower,
+                      double shieldReq,
+                      double weaponReq,
+                      double thrusterReq);
     
     // Emergency power diversion
     void DivertPower(int entityId, PowerPriority priority, double amount);
