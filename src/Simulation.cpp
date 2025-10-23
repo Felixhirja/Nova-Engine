@@ -3,6 +3,7 @@
 #include "ecs/LocomotionSystem.h"
 #include "ecs/MovementSystem.h"
 #include "ecs/PlayerControlSystem.h"
+#include "ecs/LegacySystemAdapter.h"
 #include "TargetingSystem.h"
 #include "WeaponSystem.h"
 #include "ShieldSystem.h"
@@ -388,6 +389,8 @@ Simulation::Simulation()
       useThrustMode(false),
       inputLeft(false),
       inputRight(false),
+      schedulerV2_(),
+      useSchedulerV2_(false),
       movementBoundsConfig(CreateDefaultMovementBounds()),
       movementParametersConfigPath("assets/config/player_movement.ini"),
       movementParametersProfile("default"),
@@ -412,13 +415,27 @@ void Simulation::Init(EntityManager* externalEm) {
     }
 
     systemManager.Clear();
-    systemManager.RegisterSystem<PlayerControlSystem>();
-    systemManager.RegisterSystem<MovementSystem>();
-    systemManager.RegisterSystem<LocomotionSystem>();
-    systemManager.RegisterSystem<AnimationSystem>();
-    systemManager.RegisterSystem<TargetingSystem>();
-    systemManager.RegisterSystem<WeaponSystem>();
-    systemManager.RegisterSystem<ShieldSystem>();
+    schedulerV2_.Clear();
+
+    if (useSchedulerV2_) {
+        useEm->EnableArchetypeFacade();
+
+        schedulerV2_.RegisterSystem<ecs::LegacySystemAdapter<PlayerControlSystem>>(*useEm);
+        schedulerV2_.RegisterSystem<ecs::LegacySystemAdapter<MovementSystem>>(*useEm);
+        schedulerV2_.RegisterSystem<ecs::LegacySystemAdapter<LocomotionSystem>>(*useEm);
+        schedulerV2_.RegisterSystem<ecs::LegacySystemAdapter<AnimationSystem>>(*useEm);
+        schedulerV2_.RegisterSystem<ecs::LegacySystemAdapter<TargetingSystem>>(*useEm);
+        schedulerV2_.RegisterSystem<ecs::LegacySystemAdapter<WeaponSystem>>(*useEm);
+        schedulerV2_.RegisterSystem<ecs::LegacySystemAdapter<ShieldSystem>>(*useEm);
+    } else {
+        systemManager.RegisterSystem<PlayerControlSystem>();
+        systemManager.RegisterSystem<MovementSystem>();
+        systemManager.RegisterSystem<LocomotionSystem>();
+        systemManager.RegisterSystem<AnimationSystem>();
+        systemManager.RegisterSystem<TargetingSystem>();
+        systemManager.RegisterSystem<WeaponSystem>();
+        systemManager.RegisterSystem<ShieldSystem>();
+    }
 
     // Create player entity in ECS
     playerEntity = useEm->CreateEntity();
@@ -535,7 +552,14 @@ void Simulation::Update(double dt) {
         physics->thrustMode = useThrustMode;
     }
 
-    systemManager.UpdateAll(*useEm, dt);
+    if (useSchedulerV2_) {
+        if (!useEm->UsingArchetypeStorage()) {
+            useEm->EnableArchetypeFacade();
+        }
+        schedulerV2_.UpdateAll(useEm->GetArchetypeManager(), dt);
+    } else {
+        systemManager.UpdateAll(*useEm, dt);
+    }
 
     if (auto* p = useEm->GetComponent<Position>(playerEntity)) {
         position = p->x;

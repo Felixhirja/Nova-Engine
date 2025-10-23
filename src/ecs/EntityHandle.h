@@ -79,6 +79,3 @@ struct EntityMetadata {
 };
 
 } // namespace ecs
-
-// Backward compatibility: alias for old code
-using Entity = ecs::EntityHandle;

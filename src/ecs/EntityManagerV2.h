@@ -2,6 +2,7 @@
 #include "ArchetypeManager.h"
 #include "EntityHandle.h"
 #include <cassert>
+#include <typeindex>
 #include <vector>
 
 namespace ecs {
@@ -262,7 +263,11 @@ public:
     const ArchetypeManager& GetArchetypeManager() const {
         return archetypeManager_;
     }
-    
+
+    bool CanProvideComponentType(const std::type_index& typeIndex) const {
+        return archetypeManager_.CanProvideComponentType(typeIndex);
+    }
+
     void Clear() {
         entityMetadata_.clear();
         freeIndices_.clear();
