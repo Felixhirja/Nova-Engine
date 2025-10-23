@@ -16,6 +16,7 @@ class EntityManager;
 class VisualFeedbackSystem;
 class AudioFeedbackSystem;
 class HUDAlertSystem;
+class ECSInspector;
 
 class Camera;
 
@@ -44,6 +45,7 @@ private:
     std::unique_ptr<Camera> camera;
     // Canonical ECS entity manager
     std::unique_ptr<EntityManager> entityManager;
+    std::unique_ptr<ECSInspector> ecsInspector;
     // Feedback systems
     std::unique_ptr<VisualFeedbackSystem> visualFeedbackSystem;
     std::unique_ptr<AudioFeedbackSystem> audioFeedbackSystem;

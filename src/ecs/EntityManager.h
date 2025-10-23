@@ -1,5 +1,7 @@
 #pragma once
 #include <cassert>
+#include <array>
+#include <functional>
 #include <memory>
 #include <tuple>
 #include <typeindex>
@@ -33,6 +35,9 @@ public:
     const std::unordered_set<std::type_index>& GetUnsupportedComponentTypes() const {
         return unsupportedComponentTypes_;
     }
+
+    std::vector<std::type_index> GetComponentTypes(Entity e) const;
+    void EnumerateEntities(const std::function<void(Entity, const std::vector<std::type_index>&)>& callback) const;
 
     template<typename T>
     void AddComponent(Entity e, std::shared_ptr<T> comp) {
@@ -216,16 +221,35 @@ public:
         for (auto& kv : it->second) {
             Entity ent = kv.first;
             auto* first = static_cast<T*>(kv.second.get());
-            if (!first) continue;
+            if (!first) {
+                LogForEachComponentMismatch(ent,
+                                            {std::type_index(typeid(T))},
+                                            {std::type_index(typeid(T))});
+                continue;
+            }
             if constexpr (sizeof...(Ts) == 0) {
                 func(ent, *first);
             } else {
                 auto rest = std::tuple<Ts*...>{GetComponent<Ts>(ent)...};
                 bool all = true;
+                std::vector<std::type_index> missingTypes;
+                const std::array<std::type_index, sizeof...(Ts)> restTypeIndices = {std::type_index(typeid(Ts))...};
+                size_t idx = 0;
+                auto processPtr = [&](auto* ptr) {
+                    all = all && (ptr != nullptr);
+                    if (!ptr) {
+                        missingTypes.push_back(restTypeIndices[idx]);
+                    }
+                    ++idx;
+                };
                 std::apply([&](auto*... ptrs) {
-                    ((all = all && (ptrs != nullptr)), ...);
+                    (processPtr(ptrs), ...);
                 }, rest);
-                if (!all) continue;
+                if (!all) {
+                    std::vector<std::type_index> requestedTypes = {std::type_index(typeid(T)), std::type_index(typeid(Ts))...};
+                    LogForEachComponentMismatch(ent, requestedTypes, missingTypes);
+                    continue;
+                }
                 std::apply([&](auto*... ptrs) {
                     func(ent, *first, *ptrs...);
                 }, rest);
@@ -264,16 +288,35 @@ public:
         for (const auto& kv : it->second) {
             Entity ent = kv.first;
             auto* first = static_cast<const T*>(kv.second.get());
-            if (!first) continue;
+            if (!first) {
+                LogForEachComponentMismatch(ent,
+                                            {std::type_index(typeid(T))},
+                                            {std::type_index(typeid(T))});
+                continue;
+            }
             if constexpr (sizeof...(Ts) == 0) {
                 func(ent, *first);
             } else {
                 auto rest = std::tuple<const Ts*...>{GetComponent<Ts>(ent)...};
                 bool all = true;
+                std::vector<std::type_index> missingTypes;
+                const std::array<std::type_index, sizeof...(Ts)> restTypeIndices = {std::type_index(typeid(Ts))...};
+                size_t idx = 0;
+                auto processPtr = [&](auto* ptr) {
+                    all = all && (ptr != nullptr);
+                    if (!ptr) {
+                        missingTypes.push_back(restTypeIndices[idx]);
+                    }
+                    ++idx;
+                };
                 std::apply([&](auto*... ptrs) {
-                    ((all = all && (ptrs != nullptr)), ...);
+                    (processPtr(ptrs), ...);
                 }, rest);
-                if (!all) continue;
+                if (!all) {
+                    std::vector<std::type_index> requestedTypes = {std::type_index(typeid(T)), std::type_index(typeid(Ts))...};
+                    LogForEachComponentMismatch(ent, requestedTypes, missingTypes);
+                    continue;
+                }
                 std::apply([&](auto*... ptrs) {
                     func(ent, *first, *ptrs...);
                 }, rest);
@@ -305,6 +348,10 @@ private:
                       "Component must derive from Component base class");
         return std::shared_ptr<Component>(static_cast<Component*>(&component), [](Component*) {});
     }
+
+    static void LogForEachComponentMismatch(Entity entity,
+                                            const std::vector<std::type_index>& requested,
+                                            const std::vector<std::type_index>& missing);
 
     Entity nextEntity = 1;
     std::unordered_set<Entity> aliveEntities;

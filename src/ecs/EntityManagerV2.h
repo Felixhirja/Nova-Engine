@@ -268,6 +268,24 @@ public:
         return archetypeManager_.CanProvideComponentType(typeIndex);
     }
 
+    std::vector<std::type_index> GetComponentTypes(EntityHandle handle) const {
+        std::vector<std::type_index> types;
+        if (!IsAlive(handle)) {
+            return types;
+        }
+
+        EntityIndex index = handle.Index();
+        const EntityMetadata& meta = entityMetadata_[index];
+        const Archetype* archetype = archetypeManager_.GetArchetype(meta.archetypeId);
+        if (!archetype) {
+            return types;
+        }
+
+        const auto& signature = archetype->GetSignature();
+        types.assign(signature.types.begin(), signature.types.end());
+        return types;
+    }
+
     void Clear() {
         entityMetadata_.clear();
         freeIndices_.clear();
