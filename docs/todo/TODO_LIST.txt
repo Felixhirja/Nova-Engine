@@ -107,6 +107,8 @@ PHASE 1: FOUNDATION (Next 1-2 months)
   □ Document asset authoring workflow updates (docs/ship_art_pipeline.md)
   □ Establish SVG asset workflow for HUD and UI elements
     - Hook ResourceManager SVG ingestion to tessellate icons or bake SDF atlases
+    - ✅ LoadSVGSurface now exposes DPI-aware rasterization options so fallback
+      bitmap atlases can be generated at multiple resolutions
     - Update Viewport3D HUD pipeline to load vector icons at runtime
     - Provide SVG layout exports for designers to review HUD alignments
 
