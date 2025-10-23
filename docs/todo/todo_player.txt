@@ -14,7 +14,7 @@
 		- [x] Clamped bounds coverage
 		- [x] Diagonal movement coverage
 		- [x] Zero-gravity scenario coverage
-- [ ] Introduce configurable acceleration, deceleration, and friction parameters
+- [x] Introduce configurable acceleration, deceleration, and friction parameters
 - [x] Implement jump/gravity mechanics or thrust-based vertical control depending on setting
         - [x] Introduce PlayerPhysics component with gravity and thrust tuning
         - [x] Add jump impulse handling with ground detection

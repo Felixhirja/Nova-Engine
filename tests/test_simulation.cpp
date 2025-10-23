@@ -231,6 +231,39 @@ int main() {
         return 23;
     }
 
+    // Test 12: movement parameters can be loaded from configuration profiles
+    sim.SetMovementParametersConfigPath("assets/config/player_movement.ini");
+    sim.SetMovementParametersProfile("slow");
+    sim.Init();
+    const MovementParameters& slowProfile = sim.GetMovementParameters();
+    std::cout << "Test12 slow profile accel=" << slowProfile.strafeAcceleration << " friction=" << slowProfile.friction << std::endl;
+    if (std::abs(slowProfile.strafeAcceleration - 2.0) > 1e-6 || std::abs(slowProfile.friction - 0.25) > 1e-6) {
+        std::cerr << "Test12 FAILED: slow profile not applied from config" << std::endl;
+        return 24;
+    }
+
+    sim.SetMovementParametersProfile("fast");
+    sim.Init();
+    const MovementParameters& fastProfile = sim.GetMovementParameters();
+    std::cout << "Test12 fast profile accel=" << fastProfile.strafeAcceleration << " maxSpeed=" << fastProfile.strafeMaxSpeed << std::endl;
+    if (std::abs(fastProfile.strafeAcceleration - 8.0) > 1e-6 || std::abs(fastProfile.strafeMaxSpeed - 10.0) > 1e-6) {
+        std::cerr << "Test12 FAILED: fast profile not applied from config" << std::endl;
+        return 25;
+    }
+
+    MovementParameters manualParams = fastProfile;
+    manualParams.strafeAcceleration = 3.3;
+    manualParams.friction = 0.05;
+    sim.ConfigureMovementParameters(manualParams);
+    sim.Init();
+    const MovementParameters& manualApplied = sim.GetMovementParameters();
+    std::cout << "Test12 manual profile accel=" << manualApplied.strafeAcceleration << " friction=" << manualApplied.friction << std::endl;
+    if (std::abs(manualApplied.strafeAcceleration - manualParams.strafeAcceleration) > 1e-6 ||
+        std::abs(manualApplied.friction - manualParams.friction) > 1e-6) {
+        std::cerr << "Test12 FAILED: manual override should persist when config disabled" << std::endl;
+        return 26;
+    }
+
     std::cout << "All tests passed." << std::endl;
     return 0;
 }
