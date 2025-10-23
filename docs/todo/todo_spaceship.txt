@@ -31,9 +31,13 @@
 	- [ ] Model power distribution with overload and fail-safe behavior
 	- [ ] Simulate heat buildup/dissipation and crew workload modifiers
 - [ ] Integrate advanced physics handling for thrust, momentum, inertia, and atmospheric flight
-	- [ ] Extend physics integrator with multi-thruster vectoring and gimbal limits
-	- [ ] Add atmospheric drag/lift curves per hull profile
-	- [ ] Implement autopilot/assist layers for damping and flight modes
+       - [ ] Extend physics integrator with multi-thruster vectoring and gimbal limits
+       - [ ] Add atmospheric drag/lift curves per hull profile
+       - [ ] Implement autopilot/assist layers for damping and flight modes
+- [ ] Model fuel consumption, refueling, and propellant logistics
+        - [ ] Track per-engine fuel flow and shared tank capacity in `ShipPerformanceMetrics`
+        - [ ] Support refueling interactions at stations, tenders, and EVA drones
+        - [ ] Reflect fuel burn on mass/inertia calculations and mission range planning tools
 - [ ] Add damage model covering hull integrity, subsystem failures, and repairs
 	- [ ] Track per-component health and cascading failure rules
 	- [x] Integrate with visual/audio feedback (sparks, alarms, HUD alerts)
@@ -48,6 +52,10 @@
 - [ ] Create cargo management and inventory linkage for freighters
 - [ ] Support passenger transport and crew management hooks
 - [ ] Introduce ship progression (upgrades, unlocks, research trees)
+- [ ] Add life support and environmental management loops
+        - [ ] Simulate atmosphere, temperature, and radiation tolerances per compartment
+        - [ ] Trigger HUD/audio alerts when life support falls outside safe ranges
+        - [ ] Provide consumable resupply mechanics (filters, coolant, breathable gases)
 
 ### Controls & UX
 - [ ] Design cockpit/bridge UI layouts per ship size
@@ -55,6 +63,10 @@
 - [ ] Provide input remapping and sensitivity tuning specific to flight controls
 - [ ] Add tutorial missions and simulator scenarios for ship piloting
 - [ ] Surface real-time telemetry (speed, G-force, system status) on HUD
+- [ ] Implement docking and hangar operations UX
+        - [ ] Add docking port components with guidance beacons and alignment cues
+        - [ ] Animate airlock pressurization, clamps, and bridge extensions during transitions
+        - [ ] Surface docking status, timers, and safety interlocks through HUD prompts
 
 ### Visuals & Audio
 - [x] Create modular art pipeline for hulls, wings, engine exhausts, and interiors
