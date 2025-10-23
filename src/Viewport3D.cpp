@@ -773,6 +773,7 @@ void Viewport3D::DrawCoordinateSystem() {
 }
 
 void Viewport3D::DrawCameraVisual(const class Camera* camera) {
+#if defined(USE_GLFW) || defined(USE_SDL)
     if (!camera) return;
 
 #if defined(USE_GLFW) || defined(USE_SDL)
@@ -1014,11 +1015,7 @@ void Viewport3D::DrawCameraVisual(const class Camera* camera) {
 #endif
     }
 #else
-    static bool warned = false;
-    if (!warned) {
-        std::cout << "Camera visualization unavailable without OpenGL; skipping debug draw." << std::endl;
-        warned = true;
-    }
+    (void)camera;
 #endif
 }
 

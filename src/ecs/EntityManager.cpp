@@ -1,6 +1,13 @@
 #include "EntityManager.h"
 #include "Components.h"
+#include "TypeNameUtils.h"
 #include "../CelestialBody.h"
+
+#include <algorithm>
+#include <cassert>
+#include <iostream>
+#include <sstream>
+#include <unordered_set>
 
 EntityManager::EntityManager() {}
 EntityManager::~EntityManager() {}
@@ -71,88 +78,216 @@ void EntityManager::EnableArchetypeFacade() {
         return;
     }
 
-    archetypeManager_.Clear();
-    legacyToModern_.clear();
-    modernToLegacy_.clear();
-    unsupportedComponentTypes_.clear();
+    std::unordered_map<Entity, ecs::EntityHandle> newLegacyToModern;
+    std::unordered_map<uint32_t, Entity> newModernToLegacy;
+    std::unordered_set<std::type_index> unsupported;
+
+    MigrateToArchetypeManager(archetypeManager_, newLegacyToModern, newModernToLegacy, unsupported);
+
+    legacyToModern_ = std::move(newLegacyToModern);
+    modernToLegacy_ = std::move(newModernToLegacy);
+    unsupportedComponentTypes_ = std::move(unsupported);
+
+    AliasMigratedComponents();
+
+    usingArchetypes_ = true;
+}
+
+void EntityManager::MigrateToArchetypeManager(ecs::EntityManagerV2& target,
+                                              std::unordered_map<Entity, ecs::EntityHandle>& legacyToModernOut,
+                                              std::unordered_map<uint32_t, Entity>& modernToLegacyOut,
+                                              std::unordered_set<std::type_index>& unsupportedTypesOut) const {
+    target.Clear();
+    legacyToModernOut.clear();
+    modernToLegacyOut.clear();
+    unsupportedTypesOut.clear();
 
     for (Entity entity : aliveEntities) {
-        ecs::EntityHandle handle = archetypeManager_.CreateEntity();
-        legacyToModern_[entity] = handle;
-        modernToLegacy_[handle.value] = entity;
+        ecs::EntityHandle handle = target.CreateEntity();
+        legacyToModernOut.emplace(entity, handle);
+        modernToLegacyOut.emplace(handle.value, entity);
     }
 
-    auto migrateIfMatches = [&](const std::type_index& typeIndex,
-                                auto typeTag,
-                                auto& entityMap,
-                                bool& migrated) {
-        using ComponentType = decltype(typeTag);
-        if (typeIndex != std::type_index(typeid(ComponentType))) {
-            return;
-        }
-
-        for (auto& [entity, componentPtr] : entityMap) {
-            if (!componentPtr) continue;
-            auto typedPtr = std::dynamic_pointer_cast<ComponentType>(componentPtr);
-            if (!typedPtr) continue;
-
-            ecs::EntityHandle handle = GetModernHandle(entity);
-            if (handle.IsNull()) continue;
-
-            ComponentType& stored = archetypeManager_.AddComponent<ComponentType>(handle, *typedPtr);
-            componentPtr = AliasComponent(stored);
-        }
-
-        migrated = true;
-    };
-
-    for (auto& [typeIndex, entityMap] : components) {
+    for (const auto& [typeIndex, entityMap] : components) {
         if (entityMap.empty()) {
             continue;
         }
-        if (!archetypeManager_.CanProvideComponentType(typeIndex)) {
-            unsupportedComponentTypes_.insert(typeIndex);
+
+        if (!target.CanProvideComponentType(typeIndex)) {
+            unsupportedTypesOut.insert(typeIndex);
             continue;
         }
 
         bool migrated = false;
-        migrateIfMatches(typeIndex, Position{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, Velocity{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, Acceleration{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, PhysicsBody{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, Transform2D{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, Sprite{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, Hitbox{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, AnimationState{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, Name{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, PlayerController{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, MovementParameters{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, MovementBounds{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, PlayerPhysics{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, LocomotionStateMachine{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, TargetLock{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, RigidBody{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, Force{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, Collider{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, CollisionInfo{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, GravitySource{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, ConstantForce{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, CharacterController{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, Joint{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, CelestialBodyComponent{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, OrbitalComponent{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, VisualCelestialComponent{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, AtmosphereComponent{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, SpaceStationComponent{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, SatelliteSystemComponent{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, StarComponent{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, AsteroidBeltComponent{}, entityMap, migrated);
-        migrateIfMatches(typeIndex, PlanetComponent{}, entityMap, migrated);
+        auto migrateIfMatches = [&](auto typeTag) {
+            using ComponentType = std::decay_t<decltype(typeTag)>;
+            if (typeIndex != std::type_index(typeid(ComponentType))) {
+                return;
+            }
+
+            migrated = true;
+            for (const auto& [entity, componentPtr] : entityMap) {
+                if (!componentPtr) {
+                    continue;
+                }
+                auto typedPtr = std::dynamic_pointer_cast<ComponentType>(componentPtr);
+                if (!typedPtr) {
+                    continue;
+                }
+
+                auto handleIt = legacyToModernOut.find(entity);
+                if (handleIt == legacyToModernOut.end()) {
+                    continue;
+                }
+
+                ComponentType* existing = target.GetComponent<ComponentType>(handleIt->second);
+                if (existing) {
+                    *existing = *typedPtr;
+                } else {
+                    target.AddComponent<ComponentType>(handleIt->second, *typedPtr);
+                }
+            }
+        };
+
+        std::apply([&](auto... typeTag) { (migrateIfMatches(typeTag), ...); }, FacadeComponentTypes{});
 
         if (!migrated) {
-            unsupportedComponentTypes_.insert(typeIndex);
+            unsupportedTypesOut.insert(typeIndex);
+        }
+    }
+}
+
+void EntityManager::AliasMigratedComponents() {
+    for (auto& [typeIndex, entityMap] : components) {
+        if (unsupportedComponentTypes_.count(typeIndex)) {
+            continue;
+        }
+
+        auto aliasIfMatches = [&](auto typeTag) {
+            using ComponentType = std::decay_t<decltype(typeTag)>;
+            if (typeIndex != std::type_index(typeid(ComponentType))) {
+                return;
+            }
+
+            for (auto& [entity, componentPtr] : entityMap) {
+                if (!componentPtr) {
+                    continue;
+                }
+
+                auto handleIt = legacyToModern_.find(entity);
+                if (handleIt == legacyToModern_.end()) {
+                    continue;
+                }
+
+                ComponentType* stored = archetypeManager_.GetComponent<ComponentType>(handleIt->second);
+                if (!stored) {
+                    continue;
+                }
+
+                componentPtr = AliasComponent(*stored);
+            }
+        };
+
+        std::apply([&](auto... typeTag) { (aliasIfMatches(typeTag), ...); }, FacadeComponentTypes{});
+    }
+}
+
+std::vector<std::type_index> EntityManager::GetComponentTypes(Entity e) const {
+    std::vector<std::type_index> result;
+    if (!IsAlive(e)) {
+        return result;
+    }
+
+    std::unordered_set<std::type_index> seen;
+    seen.reserve(16);
+
+    if (usingArchetypes_) {
+        ecs::EntityHandle handle = GetModernHandle(e);
+        if (!handle.IsNull()) {
+            auto archetypeTypes = archetypeManager_.GetComponentTypes(handle);
+            for (const auto& typeIndex : archetypeTypes) {
+                if (seen.insert(typeIndex).second) {
+                    result.push_back(typeIndex);
+                }
+            }
         }
     }
 
-    usingArchetypes_ = true;
+    for (const auto& [typeIndex, entityMap] : components) {
+        auto it = entityMap.find(e);
+        if (it != entityMap.end()) {
+            if (seen.insert(typeIndex).second) {
+                result.push_back(typeIndex);
+            }
+        }
+    }
+
+    std::sort(result.begin(), result.end(), [](const std::type_index& a, const std::type_index& b) {
+        return a.hash_code() < b.hash_code();
+    });
+
+    return result;
+}
+
+void EntityManager::EnumerateEntities(const std::function<void(Entity, const std::vector<std::type_index>&)>& callback) const {
+    if (!callback) {
+        return;
+    }
+
+    for (Entity entity : aliveEntities) {
+        callback(entity, GetComponentTypes(entity));
+    }
+}
+
+namespace {
+std::string JoinTypeNames(const std::vector<std::type_index>& types) {
+    if (types.empty()) {
+        return "(none)";
+    }
+
+    std::ostringstream oss;
+    bool first = true;
+    for (const auto& type : types) {
+        if (!first) {
+            oss << ", ";
+        }
+        oss << ecs::debug::GetReadableTypeName(type);
+        first = false;
+    }
+    return oss.str();
+}
+} // namespace
+
+void EntityManager::LogForEachComponentMismatch(Entity entity,
+                                                const std::vector<std::type_index>& requested,
+                                                const std::vector<std::type_index>& missing) {
+    if (missing.empty()) {
+        return;
+    }
+
+    static std::unordered_set<std::string> loggedMessages;
+    std::ostringstream keyStream;
+    keyStream << entity;
+    for (const auto& type : missing) {
+        keyStream << '|' << type.name();
+    }
+    keyStream << "->";
+    for (const auto& type : requested) {
+        keyStream << type.name() << ';';
+    }
+
+    std::string key = keyStream.str();
+    if (!loggedMessages.insert(key).second) {
+        return;
+    }
+
+    std::ostringstream message;
+    message << "[ECS] ForEach mismatch on entity " << entity
+            << ": missing {" << JoinTypeNames(missing)
+            << "} while requesting {" << JoinTypeNames(requested) << "}";
+    std::cerr << message.str() << std::endl;
+
+#ifndef NDEBUG
+    assert(!"Entity missing required components for ForEach");
+#endif
 }

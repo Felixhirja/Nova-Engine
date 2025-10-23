@@ -8,6 +8,7 @@
 #include "Camera.h"
 #include "CameraPresets.h"
 #include "CameraFollow.h"
+#include "GamepadManager.h"
 #include "ecs/EntityManager.h"
 #include "ecs/Components.h"
 #include "VisualFeedbackSystem.h"
@@ -99,7 +100,18 @@ ShipAssemblyResult BuildHudAssembly() {
 
 } // namespace
 
-MainLoop::MainLoop() : running(false), version("1.0.0"), viewport(nullptr), simulation(nullptr), mouseLookYawOffset(0.0), mouseLookPitchOffset(0.0), cameraFollowConfig(), cameraFollowState(), cameraPresets(GetDefaultCameraPresets()) {}
+MainLoop::MainLoop()
+    : running(false)
+    , version("1.0.0")
+    , viewport(nullptr)
+    , simulation(nullptr)
+    , mouseLookYawOffset(0.0)
+    , mouseLookPitchOffset(0.0)
+    , cameraFollowConfig()
+    , cameraFollowState()
+    , cameraPresets(GetDefaultCameraPresets()) {
+    ecsInspector = std::make_unique<ECSInspector>();
+}
 
 MainLoop::~MainLoop() {
     Shutdown();
@@ -115,6 +127,36 @@ void MainLoop::Init() {
     log.close();
     running = true;
     Input::Init();
+
+    {
+        auto& gamepadManager = GamepadManager::Instance();
+        bool xinputReady = gamepadManager.EnsureInitialized();
+
+        std::ofstream diagLog("sdl_diag.log", std::ios::app);
+        if (diagLog) {
+            diagLog << "GamepadManager: attempt="
+                    << (gamepadManager.HasAttemptedInitialization() ? "true" : "false")
+                    << ", available=" << (xinputReady ? "true" : "false");
+            if (xinputReady) {
+                diagLog << ", library=" << gamepadManager.ActiveLibraryNameUtf8();
+            } else if (!gamepadManager.LastError().empty()) {
+                diagLog << ", error=" << gamepadManager.LastError();
+            }
+            diagLog << std::endl;
+        }
+
+        if (xinputReady) {
+            std::cout << "GamepadManager: XInput available via "
+                      << gamepadManager.ActiveLibraryNameUtf8() << std::endl;
+        } else {
+            const std::string errorDescription = gamepadManager.LastError();
+            if (!errorDescription.empty()) {
+                std::cout << "GamepadManager: XInput unavailable (" << errorDescription << ")" << std::endl;
+            } else {
+                std::cout << "GamepadManager: XInput unavailable" << std::endl;
+            }
+        }
+    }
 
     viewport = std::make_unique<Viewport3D>();
     viewport->Init();
@@ -167,6 +209,10 @@ void MainLoop::Init() {
     std::cout << "About to create entity manager" << std::endl;
     // Create canonical ECS manager and initialize simulation with it
     entityManager = std::make_unique<EntityManager>();
+    if (!ecsInspector) {
+        ecsInspector = std::make_unique<ECSInspector>();
+    }
+    ecsInspector->SetEntityManager(entityManager.get());
     simulation = std::make_unique<Simulation>();
     std::cout << "About to call simulation->Init()" << std::endl;
     simulation->Init(entityManager.get());
@@ -446,11 +492,26 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             viewport->SetBloomEnabled(!bloomEnabled);
             std::cout << "Bloom effect: " << (!bloomEnabled ? "ENABLED" : "DISABLED") << std::endl;
         }
-        
+
         if ((key == 'l' || key == 'L') && viewport) {
             bool letterboxEnabled = viewport->IsLetterboxEnabled();
             viewport->SetLetterboxEnabled(!letterboxEnabled);
             std::cout << "Letterbox overlay: " << (!letterboxEnabled ? "ENABLED" : "DISABLED") << std::endl;
+        }
+
+        if ((key == 'i' || key == 'I') && ecsInspector) {
+            ecsInspector->Toggle();
+            std::cout << "ECS inspector: " << (ecsInspector->IsEnabled() ? "ENABLED" : "DISABLED") << std::endl;
+        }
+
+        if (ecsInspector && ecsInspector->IsEnabled()) {
+            if (key == '[' || key == '{') {
+                ecsInspector->PreviousFilter();
+            } else if (key == ']' || key == '}') {
+                ecsInspector->NextFilter();
+            } else if (key == '0' || key == ')') {
+                ecsInspector->ClearFilter();
+            }
         }
 
         // Set player input based on held keys using Input class
@@ -729,6 +790,9 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                     if (visualFeedbackSystem) {
                         viewport->RenderParticles(camera.get(), visualFeedbackSystem.get());
                     }
+                    if (ecsInspector) {
+                        ecsInspector->Render(*viewport);
+                    }
                     // If STAR_CAPTURE env var is set, dump the renderer contents to BMP for inspection
                     const char* cap = std::getenv("STAR_CAPTURE");
                     if (cap && std::string(cap) == "1") {
@@ -794,6 +858,9 @@ void MainLoop::ApplyCameraPreset(size_t index) {
 void MainLoop::Shutdown() {
     if (running) { std::cout << "Nova Engine Shutting down..." << std::endl; running = false; }
     if (viewport) { viewport->Shutdown(); }
+    if (ecsInspector) {
+        ecsInspector->SetEntityManager(nullptr);
+    }
     // unique_ptr will free sceneManager
 }
 

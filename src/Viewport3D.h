@@ -90,6 +90,9 @@ public:
     void Clear() override;
     void Present() override;
 
+    int GetWidth() const { return width; }
+    int GetHeight() const { return height; }
+
 private:
     int width;
     int height;
