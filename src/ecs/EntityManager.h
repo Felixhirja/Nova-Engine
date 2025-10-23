@@ -414,6 +414,8 @@ private:
         return std::shared_ptr<Component>(static_cast<Component*>(&component), [](Component*) {});
     }
 
+    void AliasMigratedComponents();
+
     static void LogForEachComponentMismatch(Entity entity,
                                             const std::vector<std::type_index>& requested,
                                             const std::vector<std::type_index>& missing);

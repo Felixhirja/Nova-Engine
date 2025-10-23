@@ -14,7 +14,7 @@
 namespace ecs {
 
 struct LegacySystemAdapterConfig {
-    UpdatePhase phase = UpdatePhase::Update;
+    UpdatePhase phase = UpdatePhase::Simulation;
     std::vector<ComponentDependency> componentDependencies;
     std::vector<SystemDependency> systemDependencies;
 };
