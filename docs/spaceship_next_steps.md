@@ -1,5 +1,12 @@
 # Spaceship Systems - Quick Start Guide for Next Tasks
 
+## 🚀 Executive Summary
+
+- **Immediate focus:** Stand up the text rendering system so HUD/UI work can finally unblock downstream features.
+- **Parallel prep:** Document component validation copy so designers can plug in better error messaging while engineering finalizes suggestions.
+- **Upcoming deep work:** Begin modelling power, heat, and crew loops once rendering + validation are stable; these systems feed directly into combat + economy milestones.
+- **Risks to track:** Font library integration time, availability of component catalog data for suggestions, and balancing parameters for the performance simulator.
+
 ## 🎯 Recommended Implementation Order
 
 Based on dependencies and priority, here's the optimal order to tackle remaining work:
