@@ -172,15 +172,29 @@ Star Frontier is a massively multiplayer online space simulation game inspired b
 ## Player Progression & Social Systems
 
 ### Player Progression System
-- **Reputation:** Each major faction tracks standing from -100 (hostile) to +100 (ally), unlocking exclusive gear, docking rights, and storyline arcs.
-- **Pilot Ranks:**
-  1. **Rookie** (0-10 flight hours) – tutorial missions and basic contracts.
-  2. **Cadet** (10-25 hours) – introduces faction conflicts and advanced ship roles.
-  3. **Pilot** (25-50 hours) – grants access to medium hulls and cooperative objectives.
-  4. **Veteran** (50-100 hours) – enables capital ship crews and large-scale events.
-  5. **Elite** (100-250 hours) – unlocks faction flagships and strategic management missions.
-  6. **Legend** (250+ hours) – opens endgame raids, political influence, and player governance tools.
-- **Skill Specializations:** Four trees (Combat, Trading, Exploration, Engineering) provide passive bonuses, active abilities, and unique mission modifiers; progress via mission completion and milestone achievements.
+
+#### Reputation System
+- **Faction Standing:** Track reputation from **-100 (hostile)** to **+100 (ally)** with every major faction.
+- **Reputation Effects:**
+  - Unlock faction-exclusive ships, weapons, and support equipment.
+  - Gate mission chains, contract difficulty, and payout multipliers.
+  - Adjust trade tariffs, docking fees, and repair costs at faction-controlled stations.
+  - Determine whether patrols offer safe escort or treat the player as a trespasser within faction territory.
+
+#### Pilot Ranks
+1. **Rookie** (0-10 hours) – Access to basic flight school missions, starter ships, and low-risk contracts.
+2. **Cadet** (10-25 hours) – Introduces faction skirmishes, multi-crew training, and intermediate ship variants.
+3. **Pilot** (25-50 hours) – Grants medium-class hull certifications, cooperative missions, and advanced module licenses.
+4. **Veteran** (50-100 hours) – Enables capital ship crew roles, large-scale operations, and strategic command contracts.
+5. **Elite** (100-250 hours) – Unlocks faction flagships, special operations raids, and political influence arcs.
+6. **Legend** (250+ hours) – Provides endgame governance tools, sector-wide events, and legacy hangar rewards.
+
+#### Skill Specializations
+- **Combat:** Improves weapon calibration, shield modulation, evasive maneuvers, and grants tactical overdrives for dogfights.
+- **Trading:** Enhances market analytics, negotiation bonuses, smuggling concealment, and optimized cargo routing.
+- **Exploration:** Boosts scan resolution, anomaly triangulation, jump range, and hazard navigation protocols.
+- **Engineering:** Speeds in-field repairs, enables component overclocking, reduces system heat, and unlocks drone support modules.
+
 - **Progression Rewards:** Titles, hangar trophies, blueprint access, and social prestige showcase player accomplishments without breaking balance.
 
 ### Faction System
