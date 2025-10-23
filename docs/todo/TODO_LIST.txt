@@ -42,6 +42,16 @@ PHASE 1: FOUNDATION (Next 1-2 months)
      - ✅ INTEGRATED into Viewport3D::DrawHUD() with enhanced ship stats
      - ✅ Build successful, ready for runtime testing
      - See: docs/text_rendering_viewport_integration.md for integration details
+  🔄 Text renderer follow-up tasks (NEW 2025-10-11):
+  □ Expand HUD usage beyond ship stats (threat indicators, target locking prompts)
+    - Replace final GLUT strings in diagnostics overlays with TextRenderer API
+    - Gate new overlays behind debug toggles to avoid clutter during flight
+  □ Create fallback font atlas & localization hooks
+    - Load emergency bitmap font when TrueType assets missing
+    - Stub layout direction switch for right-to-left languages
+  □ Add regression coverage for multiline layout edge cases
+    - Snapshot baseline outputs for 4:3, 16:9, 21:9 aspect ratios
+    - Stress test wrap/ellipsis behaviour through automated headless run
   □ Component validation with user-friendly error messages (use TextRenderer)
   □ Advanced performance model (heat buildup, power overload)
   □ Physics integration (coordinate with Advanced Physics Engine)
