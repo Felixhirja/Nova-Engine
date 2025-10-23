@@ -332,9 +332,16 @@ make
 - Can extend vertex format (rotation, velocity)
 - Ready for instanced rendering (Phase 6)
 
+## TODO Checklist
+
+- [ ] Complete **Phase 4.3b** by wiring in the shader-based rendering path once `ShaderProgram` lands (track under "Phase 4" in `docs/todo/TODO_LIST.txt`).
+- [ ] Schedule a stress test with 10,000+ particles and record metrics so QA tasks can be logged in the master TODO list.
+- [ ] Document particle asset requirements (textures, animations) ahead of shader integration and add follow-up items to `docs/todo/TODO_LIST.txt`.
+- [ ] Verify headless-mode compatibility for particle simulations and note any blockers for automated testing.
+
 ---
 
-**Status**: ✅ COMPLETE  
+**Status**: ✅ COMPLETE
 **Performance**: ✅ MAINTAINED (64-65 FPS)  
 **Quality**: ✅ PRODUCTION READY  
 **Documentation**: ✅ COMPREHENSIVE

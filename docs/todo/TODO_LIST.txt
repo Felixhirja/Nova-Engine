@@ -377,6 +377,10 @@ GRAPHICS SYSTEM ALTERNATIVES:
     - Element Buffer Objects for indexed drawing
     - Uniform Buffer Objects for shader constants
     - Shader Storage Buffers for large data arrays
+    - Documentation TODOs:
+      - Track phased work in `docs/advanced_graphics_implementation.md` (see TODO checklist).
+      - Follow shader integration/testing notes in `docs/particle_renderer_implementation.md`.
+      - Coordinate HUD migration tasks from `docs/uibatcher_implementation.md`.
   
   □ Phase 5: Shader-Based Rendering (Required for Core Profile)
     - Core profile removes fixed-function pipeline

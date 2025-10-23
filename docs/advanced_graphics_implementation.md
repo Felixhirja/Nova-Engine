@@ -426,5 +426,12 @@ All features have graceful degradation:
 
 Legend: 🔴 Not Started | 🟡 In Progress | 🟢 Complete
 
+## TODO Checklist
+
+- [ ] Kick off **Phase 1: Shader System** implementation (`ShaderProgram`, `ShaderManager`, initial mesh conversion) and update the "Phase 4" entry in `docs/todo/TODO_LIST.txt` when work begins.
+- [ ] Prepare asset and documentation notes for **Phase 2: Skybox System** (procedural starfield + cubemap loader) before integrating into `Viewport3D`.
+- [ ] Define testing plan and engine hooks for **Phase 3: Shadow Mapping** so that QA tasks can be added to `docs/todo/TODO_LIST.txt` alongside rendering milestones.
+- [ ] Prototype **Phase 4: Motion Blur** within the post-process pipeline and record performance metrics for future TODO tracking.
+
 ---
 *Last Updated: October 10, 2025*
