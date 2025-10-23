@@ -60,6 +60,12 @@ public:
     void BeginFrame();
     void FinishFrame();
     void ActivateView(const class Camera* camera, double playerX, double playerY, double playerZ, size_t viewIndex);
+    void ConfigureLayouts(std::vector<ViewportLayout> layouts);
+    void CycleLayout();
+    void SetActiveLayout(size_t index);
+    const ViewportLayout& GetActiveLayout() const;
+    std::string GetActiveLayoutName() const;
+    static std::vector<ViewportLayout> CreateDefaultLayouts();
     size_t GetActiveViewCount() const;
     ViewRole GetViewRole(size_t viewIndex) const;
     bool IsOverlayView(size_t viewIndex) const;
