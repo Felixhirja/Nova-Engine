@@ -16,12 +16,17 @@ desktop platforms and ships with a portable MinGW toolchain for Windows users.
 
 ## Prerequisites
 
-Nova-Engine relies on an OpenGL 3.x capable GPU and the following libraries:
+Nova-Engine relies on a GPU/driver stack that supports at least the OpenGL 4.3
+Core Profile (4.6 recommended) and the following libraries:
 
 - GLFW 3.x (windowing, input)
 - OpenGL / GLU
 - GLAD (core OpenGL function loader, bundled in `lib/glad/`)
 - MinGW-w64 toolchain (on Windows)
+
+Keeping GPU drivers up to date is strongly advised—outdated drivers frequently
+report support for legacy OpenGL 2.x contexts only, which prevents GLFW from
+initializing modern rendering paths.
 
 > **Tip:** Pre-built DLLs for Windows are tracked in the repository under the
 > `lib/` directory. They are primarily meant for local testing and continuous
