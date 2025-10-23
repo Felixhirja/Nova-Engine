@@ -514,6 +514,8 @@ Simulation::Simulation()
       useThrustMode(false),
       inputLeft(false),
       inputRight(false),
+      schedulerV2_(),
+      useSchedulerV2_(false),
       movementBoundsConfig(CreateDefaultMovementBounds()),
       movementParametersConfigPath("assets/config/player_movement.ini"),
       movementParametersProfile("default"),
@@ -669,7 +671,14 @@ void Simulation::Update(double dt) {
         physics->thrustMode = useThrustMode;
     }
 
-    systemManager.UpdateAll(*useEm, dt);
+    if (useSchedulerV2_) {
+        if (!useEm->UsingArchetypeStorage()) {
+            useEm->EnableArchetypeFacade();
+        }
+        schedulerV2_.UpdateAll(useEm->GetArchetypeManager(), dt);
+    } else {
+        systemManager.UpdateAll(*useEm, dt);
+    }
 
     if (auto* p = useEm->GetComponent<Position>(playerEntity)) {
         position = p->x;

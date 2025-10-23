@@ -4,6 +4,7 @@
 #include "ecs/Components.h"
 #include "ecs/EntityManager.h"
 #include "ecs/System.h"
+#include "ecs/SystemSchedulerV2.h"
 
 #include <string>
 #include <vector>
@@ -31,6 +32,8 @@ public:
     void SetUseThrustMode(bool thrustMode);
     void ConfigureMovementParameters(const MovementParameters& params);
     const MovementParameters& GetMovementParameters() const { return movementConfig; }
+    void SetUseSchedulerV2(bool enabled) { useSchedulerV2_ = enabled; }
+    bool IsUsingSchedulerV2() const { return useSchedulerV2_; }
     void SetMovementParametersConfigPath(const std::string& path);
     void SetMovementParametersProfile(const std::string& profile);
     const std::string& GetMovementParametersConfigPath() const { return movementParametersConfigPath; }
@@ -61,6 +64,8 @@ private:
     bool inputLeft;
     bool inputRight;
     SystemManager systemManager;
+    ecs::SystemSchedulerV2 schedulerV2_;
+    bool useSchedulerV2_ = false;
     MovementParameters movementConfig;
     MovementBounds movementBoundsConfig;
     std::string movementParametersConfigPath;

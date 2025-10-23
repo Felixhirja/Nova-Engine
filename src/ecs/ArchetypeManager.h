@@ -3,6 +3,7 @@
 #include "EntityHandle.h"
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace ecs {
@@ -37,6 +38,8 @@ public:
         return archetypes_[id].get();
     }
     
+    bool CanProvideComponentType(const std::type_index& typeIndex) const;
+
     // Find archetype with signature + one component added
     template<typename T>
     Archetype* GetArchetypeWithAdded(const ComponentSignature& baseSignature) {
@@ -149,10 +152,11 @@ private:
     
     // Type-erased component array registration
     void RegisterComponentArrayForType(Archetype* archetype, const std::type_index& typeIndex);
-    
+
     std::vector<std::unique_ptr<Archetype>> archetypes_;
     std::unordered_map<ComponentSignature, uint32_t> signatureToArchetype_;
     uint32_t nextArchetypeId_ = 0;
+    std::unordered_set<std::type_index> registeredComponentTypes_;
 };
 
 } // namespace ecs
