@@ -1,5 +1,6 @@
 #include "Simulation.h"
 #include "ecs/AnimationSystem.h"
+#include "ecs/LocomotionSystem.h"
 #include "ecs/MovementSystem.h"
 #include "ecs/PhysicsSystem.h"
 #include "ecs/PlayerControlSystem.h"
@@ -540,7 +541,7 @@ void Simulation::Init(EntityManager* externalEm) {
     systemManager.Clear();
     systemManager.RegisterSystem<PlayerControlSystem>();
     systemManager.RegisterSystem<MovementSystem>();
-    physicsSystem = &systemManager.RegisterSystem<PhysicsSystem>(useEm);
+    systemManager.RegisterSystem<LocomotionSystem>();
     systemManager.RegisterSystem<AnimationSystem>();
     systemManager.RegisterSystem<TargetingSystem>();
     systemManager.RegisterSystem<WeaponSystem>();
@@ -604,6 +605,19 @@ void Simulation::Init(EntityManager* externalEm) {
 
     auto movementParams = std::make_shared<MovementParameters>(movementConfig);
     useEm->AddComponent<MovementParameters>(playerEntity, movementParams);
+
+    auto locomotion = std::make_shared<LocomotionStateMachine>();
+    locomotion->wasGrounded = physics->isGrounded;
+    const double forwardMax = std::max(0.0, movementConfig.forwardMaxSpeed);
+    const double backwardMax = std::max(0.0, movementConfig.backwardMaxSpeed);
+    const double strafeMax = std::max(0.0, movementConfig.strafeMaxSpeed);
+    const double baseSpeed = std::max(forwardMax, std::max(backwardMax, strafeMax));
+    if (baseSpeed > 0.0) {
+        locomotion->idleSpeedThreshold = std::max(0.1, baseSpeed * 0.1);
+        locomotion->walkSpeedThreshold = std::max(locomotion->idleSpeedThreshold + 0.1, baseSpeed * 0.4);
+        locomotion->sprintSpeedThreshold = std::max(locomotion->walkSpeedThreshold + 0.1, baseSpeed * 0.85);
+    }
+    useEm->AddComponent<LocomotionStateMachine>(playerEntity, locomotion);
 
     auto targetLock = std::make_shared<TargetLock>();
     targetLock->targetEntityId = 0;  // No target initially
@@ -682,6 +696,23 @@ double Simulation::GetPlayerZ() const {
     const EntityManager* useEm = activeEm ? activeEm : &em;
     auto p = useEm->GetComponent<Position>(playerEntity);
     return p ? p->z : 0.0;
+}
+
+LocomotionStateMachine::State Simulation::GetLocomotionState() const {
+    const EntityManager* useEm = activeEm ? activeEm : &em;
+    if (auto* locomotion = useEm->GetComponent<LocomotionStateMachine>(playerEntity)) {
+        return locomotion->currentState;
+    }
+    return LocomotionStateMachine::State::Idle;
+}
+
+LocomotionStateMachine::Weights Simulation::GetLocomotionBlendWeights() const {
+    const EntityManager* useEm = activeEm ? activeEm : &em;
+    LocomotionStateMachine::Weights weights;
+    if (auto* locomotion = useEm->GetComponent<LocomotionStateMachine>(playerEntity)) {
+        weights = locomotion->blendWeights;
+    }
+    return weights;
 }
 
 void Simulation::SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw) {

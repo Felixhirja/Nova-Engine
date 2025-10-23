@@ -4,6 +4,10 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <mutex>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 using namespace ecs;
 
@@ -70,6 +74,84 @@ public:
     
     const char* GetName() const override {
         return "AccelerationSystemV2";
+    }
+};
+
+struct ExecutionRecorder {
+    std::vector<std::string> events;
+    std::mutex mutex;
+
+    void Record(const std::string& event) {
+        std::lock_guard<std::mutex> lock(mutex);
+        events.push_back(event);
+    }
+};
+
+class TrackingSystemA : public SystemV2 {
+public:
+    explicit TrackingSystemA(ExecutionRecorder& recorder) : recorder_(recorder) {}
+
+    bool SupportsStage(UpdateStage) const override { return true; }
+
+    void PreUpdate(EntityManagerV2&, double) override { recorder_.Record("A_Pre"); }
+
+    void Update(EntityManagerV2&, double) override {
+        recorder_.Record("A_Update");
+    }
+
+    void PostUpdate(EntityManagerV2&, double) override { recorder_.Record("A_Post"); }
+
+    const char* GetName() const override { return "TrackingSystemA"; }
+
+private:
+    ExecutionRecorder& recorder_;
+};
+
+class TrackingSystemB : public SystemV2 {
+public:
+    explicit TrackingSystemB(ExecutionRecorder& recorder) : recorder_(recorder) {}
+
+    bool SupportsStage(UpdateStage) const override { return true; }
+
+    void PreUpdate(EntityManagerV2&, double) override { recorder_.Record("B_Pre"); }
+
+    void Update(EntityManagerV2&, double) override {
+        recorder_.Record("B_Update");
+    }
+
+    void PostUpdate(EntityManagerV2&, double) override { recorder_.Record("B_Post"); }
+
+    const char* GetName() const override { return "TrackingSystemB"; }
+
+    std::vector<SystemDependency> GetSystemDependencies() const override {
+        return {SystemDependency::Requires<TrackingSystemA>()};
+    }
+
+private:
+    ExecutionRecorder& recorder_;
+};
+
+class CycleSystemB;
+
+class CycleSystemA : public SystemV2 {
+public:
+    void Update(EntityManagerV2&, double) override {}
+
+    const char* GetName() const override { return "CycleSystemA"; }
+
+    std::vector<SystemDependency> GetSystemDependencies() const override {
+        return {SystemDependency::Requires<CycleSystemB>()};
+    }
+};
+
+class CycleSystemB : public SystemV2 {
+public:
+    void Update(EntityManagerV2&, double) override {}
+
+    const char* GetName() const override { return "CycleSystemB"; }
+
+    std::vector<SystemDependency> GetSystemDependencies() const override {
+        return {SystemDependency::Requires<CycleSystemA>()};
     }
 };
 
@@ -246,6 +328,46 @@ void TestParallelSystemExecution() {
     std::cout << "  Total update time: " << scheduler.GetTotalUpdateTime() << "ms" << std::endl;
 }
 
+void TestMultiPhaseOrdering() {
+    std::cout << "\nTesting Multi-Stage Ordering..." << std::endl;
+
+    EntityManagerV2 em;
+    SystemSchedulerV2 scheduler;
+    ExecutionRecorder recorder;
+
+    scheduler.RegisterSystem<TrackingSystemA>(recorder);
+    scheduler.RegisterSystem<TrackingSystemB>(recorder);
+
+    scheduler.UpdateAll(em, 0.016);
+
+    std::vector<std::string> expected = {
+        "A_Pre", "B_Pre", "A_Update", "B_Update", "A_Post", "B_Post"
+    };
+
+    assert(recorder.events == expected);
+    std::cout << "  ✅ Multi-stage ordering respected" << std::endl;
+}
+
+void TestDependencyCycleDetection() {
+    std::cout << "\nTesting Dependency Cycle Detection..." << std::endl;
+
+    EntityManagerV2 em;
+    SystemSchedulerV2 scheduler;
+
+    scheduler.RegisterSystem<CycleSystemA>();
+    scheduler.RegisterSystem<CycleSystemB>();
+
+    bool caught = false;
+    try {
+        scheduler.UpdateAll(em, 0.016);
+    } catch (const std::runtime_error& e) {
+        caught = true;
+        std::cout << "  ✅ Caught cycle: " << e.what() << std::endl;
+    }
+
+    assert(caught);
+}
+
 void TestStressTest() {
     std::cout << "\nStress Test: 50,000 Entities..." << std::endl;
     
@@ -309,6 +431,8 @@ int main() {
         TestCacheFriendlyIteration();
         TestParallelSystemExecution();
         TestStressTest();
+        TestMultiPhaseOrdering();
+        TestDependencyCycleDetection();
         
         std::cout << "\n==================================" << std::endl;
         std::cout << "✅ ALL TESTS PASSED!" << std::endl;

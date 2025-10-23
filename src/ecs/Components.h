@@ -115,6 +115,37 @@ struct PlayerPhysics : public Component {
     double thrustDamping = 6.0;
 };
 
+struct LocomotionStateMachine : public Component {
+    enum class State {
+        Idle,
+        Walk,
+        Sprint,
+        Airborne,
+        Landing
+    };
+
+    struct Weights {
+        double idle = 1.0;
+        double walk = 0.0;
+        double sprint = 0.0;
+        double airborne = 0.0;
+        double landing = 0.0;
+    };
+
+    State currentState = State::Idle;
+    State previousState = State::Idle;
+    Weights blendWeights;
+    double timeInState = 0.0;
+    double landingTimer = 0.0;
+    double landingDuration = 0.25;
+    double blendSmoothing = 8.0;
+    double idleSpeedThreshold = 0.2;
+    double walkSpeedThreshold = 1.5;
+    double sprintSpeedThreshold = 4.5;
+    double airborneVerticalSpeedThreshold = 0.2;
+    bool wasGrounded = true;
+};
+
 struct TargetLock : public Component {
     unsigned int targetEntityId = 0;  // Entity ID to lock onto (0 = no target)
     bool isLocked = false;            // Whether target lock is active
