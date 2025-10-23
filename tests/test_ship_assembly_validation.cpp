@@ -140,6 +140,38 @@ bool TestSizeMismatchDetection() {
     return true;
 }
 
+bool TestUserFacingMessages() {
+    const ShipHullBlueprint* hull = ShipHullCatalog::Find("fighter_mk1");
+    if (!hull) {
+        std::cerr << "Fighter hull blueprint not found" << std::endl;
+        return false;
+    }
+
+    ShipAssemblyRequest request = BuildValidRequest(*hull);
+    request.slotAssignments.erase("PowerPlant_0");
+
+    ShipAssemblyResult result = ShipAssembler::Assemble(request);
+    if (result.IsValid()) {
+        std::cerr << "Assembly unexpectedly succeeded with missing power plant" << std::endl;
+        return false;
+    }
+
+    auto messages = result.diagnostics.BuildUserFacingMessages(result.hull);
+    if (!ContainsMessage(messages, "Error:")) {
+        std::cerr << "Expected user-facing error prefix missing" << std::endl;
+        return false;
+    }
+    if (!ContainsMessage(messages, "Suggestion for")) {
+        std::cerr << "Expected user-facing suggestion prefix missing" << std::endl;
+        return false;
+    }
+    if (!ContainsMessage(messages, "Fusion Core Mk.I")) {
+        std::cerr << "Expected component display name missing from suggestions" << std::endl;
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 int main() {
@@ -151,6 +183,9 @@ int main() {
     }
     if (!TestSizeMismatchDetection()) {
         return 3;
+    }
+    if (!TestUserFacingMessages()) {
+        return 4;
     }
 
     std::cout << "Ship assembly validation tests passed." << std::endl;
