@@ -77,10 +77,21 @@ void Viewport3D::Init() {
     }
     std::cout << "GLFW initialized successfully" << std::endl;
 
-    // Set GLFW window hints for OpenGL
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // Disable resizing for fullscreen
+    struct GLContextAttempt {
+        int major;
+        int minor;
+        bool coreProfile;
+        bool forwardCompatible;
+        const char* description;
+    };
+
+    const std::vector<GLContextAttempt> contextAttempts = {
+        {4, 6, true, true, "OpenGL 4.6 Core"},
+        {4, 5, true, true, "OpenGL 4.5 Core"},
+        {4, 3, true, true, "OpenGL 4.3 Core"},
+        {3, 3, true, true, "OpenGL 3.3 Core"},
+        {2, 1, false, false, "OpenGL 2.1 Compatibility"},
+    };
 
     // Get primary monitor for fullscreen
     GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
@@ -90,14 +101,37 @@ void Viewport3D::Init() {
     width = mode->width;
     height = mode->height;
 
-    // Create GLFW window in fullscreen mode
-    glfwWindow = glfwCreateWindow(width, height, "Nova Engine", primaryMonitor, nullptr);
+    const GLContextAttempt* chosenAttempt = nullptr;
+    for (const auto& attempt : contextAttempts) {
+        glfwDefaultWindowHints();
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, attempt.major);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, attempt.minor);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // Disable resizing for fullscreen
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        if (attempt.coreProfile) {
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        } else {
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
+        }
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, attempt.forwardCompatible ? GL_TRUE : GL_FALSE);
+
+        std::cout << "Viewport3D: Trying " << attempt.description << " context" << std::endl;
+        glfwWindow = glfwCreateWindow(width, height, "Nova Engine", primaryMonitor, nullptr);
+        if (glfwWindow) {
+            chosenAttempt = &attempt;
+            break;
+        }
+
+        std::cerr << "Viewport3D: GLFW window creation failed for " << attempt.description << std::endl;
+    }
+
     if (!glfwWindow) {
-        std::cerr << "Viewport3D: GLFW window creation failed" << std::endl;
+        std::cerr << "Viewport3D: Unable to create any OpenGL context" << std::endl;
         glfwTerminate();
         return;
     }
-    std::cout << "GLFW window created successfully" << std::endl;
+
+    std::cout << "GLFW window created successfully using " << chosenAttempt->description << std::endl;
 
     // Make the OpenGL context current
     glfwMakeContextCurrent(glfwWindow);
