@@ -264,6 +264,111 @@ int main() {
         return 26;
     }
 
+    // Test 13: locomotion state machine transitions through idle, walk, and sprint
+    {
+        EntityManager locomotionEm;
+        Simulation locomotionSim;
+        locomotionSim.Init(&locomotionEm);
+        locomotionSim.Update(dt);
+        MovementBounds wideBounds = locomotionSim.GetMovementBounds();
+        wideBounds.maxX = 50.0;
+        wideBounds.minX = -50.0;
+        wideBounds.maxY = 50.0;
+        wideBounds.minY = -50.0;
+        locomotionSim.ConfigureMovementBounds(wideBounds);
+
+        if (locomotionSim.GetLocomotionState() != LocomotionStateMachine::State::Idle) {
+            std::cerr << "Test13 FAILED: expected initial state Idle" << std::endl;
+            return 27;
+        }
+
+        auto idleWeights = locomotionSim.GetLocomotionBlendWeights();
+        double idleSum = idleWeights.idle + idleWeights.walk + idleWeights.sprint +
+                         idleWeights.airborne + idleWeights.landing;
+        if (std::abs(idleWeights.idle - 1.0) > 1e-3 || std::abs(idleSum - 1.0) > 1e-3) {
+            std::cerr << "Test13 FAILED: idle blend weights not normalized" << std::endl;
+            return 28;
+        }
+
+        locomotionSim.SetPlayerInput(true, false, false, false, false, false, 0.0);
+        for (int i = 0; i < 30; ++i) locomotionSim.Update(dt);
+        if (locomotionSim.GetLocomotionState() != LocomotionStateMachine::State::Walk) {
+            std::cerr << "Test13 FAILED: expected Walk state while accelerating" << std::endl;
+            return 29;
+        }
+
+        locomotionSim.SetPlayerInput(true, false, false, false, false, false, 0.0);
+        for (int i = 0; i < 120; ++i) locomotionSim.Update(dt);
+        if (locomotionSim.GetLocomotionState() != LocomotionStateMachine::State::Sprint) {
+            std::cerr << "Test13 FAILED: expected Sprint state at max speed" << std::endl;
+            return 30;
+        }
+
+        auto sprintWeights = locomotionSim.GetLocomotionBlendWeights();
+        if (sprintWeights.sprint < 0.5) {
+            std::cerr << "Test13 FAILED: sprint blend weight should dominate" << std::endl;
+            return 31;
+        }
+
+        locomotionSim.SetPlayerInput(false, false, false, false, false, false, 0.0);
+        for (int i = 0; i < 180; ++i) locomotionSim.Update(dt);
+        if (locomotionSim.GetLocomotionState() != LocomotionStateMachine::State::Idle) {
+            std::cerr << "Test13 FAILED: expected return to Idle after stopping" << std::endl;
+            return 32;
+        }
+    }
+
+    // Test 14: jumping transitions to airborne and landing states with blend weights
+    {
+        Simulation airborneSim;
+        airborneSim.Init();
+        airborneSim.SetUseThrustMode(false);
+        airborneSim.SetPlayerInput(false, false, false, false, false, false, 0.0);
+        for (int i = 0; i < 10; ++i) airborneSim.Update(dt);
+
+        if (airborneSim.GetLocomotionState() != LocomotionStateMachine::State::Idle) {
+            std::cerr << "Test14 FAILED: expected Idle before jump" << std::endl;
+            return 33;
+        }
+
+        airborneSim.SetPlayerInput(false, false, true, false, false, false, 0.0);
+        airborneSim.Update(dt);
+        if (airborneSim.GetLocomotionState() != LocomotionStateMachine::State::Airborne) {
+            std::cerr << "Test14 FAILED: expected Airborne immediately after jump" << std::endl;
+            return 34;
+        }
+
+        airborneSim.SetPlayerInput(false, false, false, false, false, false, 0.0);
+
+        bool sawLanding = false;
+        bool returnedToIdle = false;
+        for (int i = 0; i < 360; ++i) {
+            airborneSim.Update(dt);
+            auto state = airborneSim.GetLocomotionState();
+            if (state == LocomotionStateMachine::State::Landing) {
+                sawLanding = true;
+                auto landingWeights = airborneSim.GetLocomotionBlendWeights();
+                if (landingWeights.landing < 0.1) {
+                    std::cerr << "Test14 FAILED: landing blend weight too low" << std::endl;
+                    return 35;
+                }
+            }
+            if (sawLanding && state == LocomotionStateMachine::State::Idle) {
+                returnedToIdle = true;
+                break;
+            }
+        }
+
+        if (!sawLanding) {
+            std::cerr << "Test14 FAILED: landing state was never reached" << std::endl;
+            return 36;
+        }
+        if (!returnedToIdle) {
+            std::cerr << "Test14 FAILED: did not return to Idle after landing" << std::endl;
+            return 37;
+        }
+    }
+
     std::cout << "All tests passed." << std::endl;
     return 0;
 }
