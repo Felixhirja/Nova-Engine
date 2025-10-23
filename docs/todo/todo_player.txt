@@ -16,14 +16,21 @@
 		- [x] Zero-gravity scenario coverage
 - [ ] Introduce configurable acceleration, deceleration, and friction parameters
 - [x] Implement jump/gravity mechanics or thrust-based vertical control depending on setting
-	- [x] Introduce PlayerPhysics component with gravity and thrust tuning
-	- [x] Add jump impulse handling with ground detection
-	- [x] Support thrust mode toggle and damping via player input
-	- [x] Cover jump and thrust behaviors with simulation tests
+        - [x] Introduce PlayerPhysics component with gravity and thrust tuning
+        - [x] Add jump impulse handling with ground detection
+        - [x] Support thrust mode toggle and damping via player input
+        - [x] Cover jump and thrust behaviors with simulation tests
+- [ ] Build locomotion state machine (idle, walk, sprint, airborne, landing) to centralize behavior blending
+- [ ] Add crouch and slide movement states with camera offset adjustments
 - [ ] Integrate collision response with environment geometry rather than hard-coded bounds
 - [ ] Add sprint/boost mechanics tied to stamina or heat systems
 - [ ] Support different movement profiles per surface (spacewalk, planetary ground, zero-G interiors)
 - [ ] Implement locomotion modifiers for environmental hazards (ice, low gravity, vacuum)
+
+### Camera & Orientation
+- [ ] Synchronize player facingYaw with camera yaw when free-look disengages
+- [ ] Add smooth turn-in-place animations driven by facingYaw delta thresholds
+- [ ] Implement contextual camera offsets for aiming, interaction, and EVA modes
 
 ### Input & Control
 - [ ] Add configurable key bindings and expose sensitivity/response tuning
@@ -54,6 +61,12 @@
 - [ ] Implement dynamic camera shake or FOV changes tied to sprinting and damage
 - [ ] Add procedural animation blending for weapon/tool usage
 - [ ] Support customizable player avatars/skins with preview UI
+- [ ] Introduce suit visor effects (frosting, cracks, HUD glitches) tied to environmental status
+
+### Simulation & Systems Hooks
+- [ ] Record player locomotion metrics (distance traveled, airtime, EVA duration) for analytics
+- [ ] Emit gameplay events for key state changes (entering hazard, stamina exhausted, boosting)
+- [ ] Integrate with telemetry/logging to visualize player state timelines during playtests
 
 ### Systems Integration & QA
 - [ ] Expose player telemetry to debugging HUD/logging for diagnostics
