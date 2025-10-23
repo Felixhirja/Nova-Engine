@@ -58,15 +58,23 @@
         - [ ] Provide consumable resupply mechanics (filters, coolant, breathable gases)
 
 ### Controls & UX
-- [ ] Design cockpit/bridge UI layouts per ship size
+- [x] Design cockpit/bridge UI layouts per ship size
+        - Detailed layout tiers and widget guidelines captured in `docs/controls_and_ux_plan.md` (§1).
 - [ ] Implement flight assist toggles (auto-level, inertia dampening)
+        - Interaction design, telemetry surfacing, and persistence plan recorded in `docs/controls_and_ux_plan.md` (§2).
 - [ ] Provide input remapping and sensitivity tuning specific to flight controls
+        - Flight input profile API (actions, axes, persistence) specified in `docs/controls_and_ux_plan.md` (§3).
 - [ ] Add tutorial missions and simulator scenarios for ship piloting
+        - Mission ladder structure and scenario authoring workflow documented in `docs/controls_and_ux_plan.md` (§4).
 - [ ] Surface real-time telemetry (speed, G-force, system status) on HUD
+        - Telemetry sampling and HUD presentation model outlined in `docs/controls_and_ux_plan.md` (§5).
 - [ ] Implement docking and hangar operations UX
         - [ ] Add docking port components with guidance beacons and alignment cues
+                - Docking guidance widget and beacon requirements detailed in `docs/controls_and_ux_plan.md` (§6).
         - [ ] Animate airlock pressurization, clamps, and bridge extensions during transitions
+                - Transitional sequencing and audio hooks captured in `docs/controls_and_ux_plan.md` (§6).
         - [ ] Surface docking status, timers, and safety interlocks through HUD prompts
+                - HUD prompts, timers, and interlock messaging described in `docs/controls_and_ux_plan.md` (§6).
 
 ### Visuals & Audio
 - [x] Create modular art pipeline for hulls, wings, engine exhausts, and interiors
