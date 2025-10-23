@@ -741,16 +741,14 @@ void Viewport3D::DrawCoordinateSystem() {
 void Viewport3D::DrawCameraVisual(const class Camera* camera) {
     if (!camera) return;
 
-    if (usingSDL) {
-#ifdef USE_SDL
-        SDL_GL_MakeCurrent(sdlWindow, sdlGLContext);
+    auto drawCameraDebug = [&]() {
         glDisable(GL_DEPTH_TEST); // Draw on top
         glPushMatrix();
         glTranslatef(camera->x(), camera->y(), camera->z());
 
         // Draw a much better camera visual - a small camera icon
         glLineWidth(3.0f);
-        
+
         // Calculate forward direction for lens
         double yaw = camera->yaw();
         double pitch = camera->pitch();
@@ -761,6 +759,40 @@ void Viewport3D::DrawCameraVisual(const class Camera* camera) {
         double forwardX = cosYaw * cosPitch;
         double forwardY = sinYaw * cosPitch;
         double forwardZ = sinPitch;
+
+        struct Vec3 {
+            double x;
+            double y;
+            double z;
+        };
+
+        auto cross = [](const Vec3& a, const Vec3& b) {
+            return Vec3{a.y * b.z - a.z * b.y,
+                        a.z * b.x - a.x * b.z,
+                        a.x * b.y - a.y * b.x};
+        };
+
+        auto normalize = [](const Vec3& v) {
+            double len = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+            if (len < 1e-6) {
+                return Vec3{0.0, 0.0, 0.0};
+            }
+            return Vec3{v.x / len, v.y / len, v.z / len};
+        };
+
+        Vec3 forward = normalize(Vec3{forwardX, forwardY, forwardZ});
+        Vec3 worldUp{0.0, 0.0, 1.0};
+        Vec3 right = cross(forward, worldUp);
+        if (std::sqrt(right.x * right.x + right.y * right.y + right.z * right.z) < 1e-5) {
+            right = Vec3{1.0, 0.0, 0.0};
+        } else {
+            right = normalize(right);
+        }
+        Vec3 up = cross(right, forward);
+        up = normalize(up);
+        if (std::sqrt(up.x * up.x + up.y * up.y + up.z * up.z) < 1e-5) {
+            up = worldUp;
+        }
 
         // Camera body (rectangular prism)
         glColor3f(0.8f, 0.8f, 0.8f); // Light gray body
@@ -816,121 +848,133 @@ void Viewport3D::DrawCameraVisual(const class Camera* camera) {
         glVertex3f(-0.1f, 0.1f, 0.12f);
         glEnd();
 
-        // Direction indicator (line showing where camera is looking)
-        glColor3f(1.0f, 0.0f, 0.0f); // Bright red line
+        // Coordinate system at camera position (world axes)
         glLineWidth(2.0f);
         glBegin(GL_LINES);
+        glColor3f(1.0f, 0.0f, 0.0f);
         glVertex3f(0.0f, 0.0f, 0.0f);
-        glVertex3f(forwardX * 2.0f, forwardY * 2.0f, forwardZ * 2.0f);
+        glVertex3f(1.5f, 0.0f, 0.0f);
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(0.0f, 1.5f, 0.0f);
+        glColor3f(0.0f, 0.0f, 1.0f);
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(0.0f, 0.0f, 1.5f);
         glEnd();
 
-        // Small cross at end of direction line
+        // Camera basis vectors
+        const float vecLen = 2.5f;
         glBegin(GL_LINES);
-        glVertex3f(forwardX * 2.0f - 0.1f, forwardY * 2.0f, forwardZ * 2.0f);
-        glVertex3f(forwardX * 2.0f + 0.1f, forwardY * 2.0f, forwardZ * 2.0f);
-        glVertex3f(forwardX * 2.0f, forwardY * 2.0f - 0.1f, forwardZ * 2.0f);
-        glVertex3f(forwardX * 2.0f, forwardY * 2.0f + 0.1f, forwardZ * 2.0f);
+        glColor3f(1.0f, 1.0f, 0.0f); // Forward - yellow
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(static_cast<float>(forward.x * vecLen),
+                   static_cast<float>(forward.y * vecLen),
+                   static_cast<float>(forward.z * vecLen));
+        glColor3f(0.0f, 1.0f, 1.0f); // Right - cyan
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(static_cast<float>(right.x * vecLen),
+                   static_cast<float>(right.y * vecLen),
+                   static_cast<float>(right.z * vecLen));
+        glColor3f(1.0f, 0.0f, 1.0f); // Up - magenta
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(static_cast<float>(up.x * vecLen),
+                   static_cast<float>(up.y * vecLen),
+                   static_cast<float>(up.z * vecLen));
+        glEnd();
+
+        // Look-at target marker (project forward)
+        Vec3 lookAt = Vec3{forward.x * 5.0, forward.y * 5.0, forward.z * 5.0};
+        glColor3f(0.6f, 1.0f, 0.2f);
+        glBegin(GL_LINES);
+        glVertex3f(static_cast<float>(lookAt.x - 0.2), static_cast<float>(lookAt.y), static_cast<float>(lookAt.z));
+        glVertex3f(static_cast<float>(lookAt.x + 0.2), static_cast<float>(lookAt.y), static_cast<float>(lookAt.z));
+        glVertex3f(static_cast<float>(lookAt.x), static_cast<float>(lookAt.y - 0.2), static_cast<float>(lookAt.z));
+        glVertex3f(static_cast<float>(lookAt.x), static_cast<float>(lookAt.y + 0.2), static_cast<float>(lookAt.z));
+        glVertex3f(static_cast<float>(lookAt.x), static_cast<float>(lookAt.y), static_cast<float>(lookAt.z - 0.2));
+        glVertex3f(static_cast<float>(lookAt.x), static_cast<float>(lookAt.y), static_cast<float>(lookAt.z + 0.2));
+        glEnd();
+
+        // Camera frustum visualization
+        double fovRadians = (45.0 * std::acos(-1.0)) / 180.0;
+        double aspect = (height != 0) ? static_cast<double>(width) / static_cast<double>(height) : 1.0;
+        double nearDist = 0.5;
+        double farDist = 5.0;
+        double halfTan = std::tan(fovRadians / 2.0);
+
+        double nearHeight = halfTan * nearDist;
+        double nearWidth = nearHeight * aspect;
+        double farHeight = halfTan * farDist;
+        double farWidth = farHeight * aspect;
+
+        auto scale = [](const Vec3& v, double s) {
+            return Vec3{v.x * s, v.y * s, v.z * s};
+        };
+
+        Vec3 nearCenter = scale(forward, nearDist);
+        Vec3 farCenter = scale(forward, farDist);
+        Vec3 nearUp = scale(up, nearHeight);
+        Vec3 nearRight = scale(right, nearWidth);
+        Vec3 farUp = scale(up, farHeight);
+        Vec3 farRight = scale(right, farWidth);
+
+        auto add = [](const Vec3& a, const Vec3& b) {
+            return Vec3{a.x + b.x, a.y + b.y, a.z + b.z};
+        };
+        auto sub = [](const Vec3& a, const Vec3& b) {
+            return Vec3{a.x - b.x, a.y - b.y, a.z - b.z};
+        };
+
+        Vec3 nearTL = add(sub(nearCenter, nearRight), nearUp);
+        Vec3 nearTR = add(add(nearCenter, nearRight), nearUp);
+        Vec3 nearBL = sub(sub(nearCenter, nearRight), nearUp);
+        Vec3 nearBR = sub(add(nearCenter, nearRight), nearUp);
+        Vec3 farTL = add(sub(farCenter, farRight), farUp);
+        Vec3 farTR = add(add(farCenter, farRight), farUp);
+        Vec3 farBL = sub(sub(farCenter, farRight), farUp);
+        Vec3 farBR = sub(add(farCenter, farRight), farUp);
+
+        glColor3f(1.0f, 0.5f, 0.0f);
+        glLineWidth(1.5f);
+        glBegin(GL_LINE_LOOP);
+        glVertex3f(static_cast<float>(nearTL.x), static_cast<float>(nearTL.y), static_cast<float>(nearTL.z));
+        glVertex3f(static_cast<float>(nearTR.x), static_cast<float>(nearTR.y), static_cast<float>(nearTR.z));
+        glVertex3f(static_cast<float>(nearBR.x), static_cast<float>(nearBR.y), static_cast<float>(nearBR.z));
+        glVertex3f(static_cast<float>(nearBL.x), static_cast<float>(nearBL.y), static_cast<float>(nearBL.z));
+        glEnd();
+
+        glBegin(GL_LINE_LOOP);
+        glVertex3f(static_cast<float>(farTL.x), static_cast<float>(farTL.y), static_cast<float>(farTL.z));
+        glVertex3f(static_cast<float>(farTR.x), static_cast<float>(farTR.y), static_cast<float>(farTR.z));
+        glVertex3f(static_cast<float>(farBR.x), static_cast<float>(farBR.y), static_cast<float>(farBR.z));
+        glVertex3f(static_cast<float>(farBL.x), static_cast<float>(farBL.y), static_cast<float>(farBL.z));
+        glEnd();
+
+        glBegin(GL_LINES);
+        glVertex3f(static_cast<float>(nearTL.x), static_cast<float>(nearTL.y), static_cast<float>(nearTL.z));
+        glVertex3f(static_cast<float>(farTL.x), static_cast<float>(farTL.y), static_cast<float>(farTL.z));
+        glVertex3f(static_cast<float>(nearTR.x), static_cast<float>(nearTR.y), static_cast<float>(nearTR.z));
+        glVertex3f(static_cast<float>(farTR.x), static_cast<float>(farTR.y), static_cast<float>(farTR.z));
+        glVertex3f(static_cast<float>(nearBL.x), static_cast<float>(nearBL.y), static_cast<float>(nearBL.z));
+        glVertex3f(static_cast<float>(farBL.x), static_cast<float>(farBL.y), static_cast<float>(farBL.z));
+        glVertex3f(static_cast<float>(nearBR.x), static_cast<float>(nearBR.y), static_cast<float>(nearBR.z));
+        glVertex3f(static_cast<float>(farBR.x), static_cast<float>(farBR.y), static_cast<float>(farBR.z));
         glEnd();
 
         glPopMatrix();
         glLineWidth(1.0f);
         glEnable(GL_DEPTH_TEST);
+    };
+
+    if (usingSDL) {
+#ifdef USE_SDL
+        SDL_GL_MakeCurrent(sdlWindow, sdlGLContext);
+        drawCameraDebug();
 #endif
     } else if (!usingSDL && useGL) {
 #ifdef USE_GLFW
         if (glfwWindow) {
             glfwMakeContextCurrent(glfwWindow);
-            glDisable(GL_DEPTH_TEST); // Draw on top
-            glPushMatrix();
-            glTranslatef(camera->x(), camera->y(), camera->z());
-
-            // Draw a much better camera visual - a small camera icon
-            glLineWidth(3.0f);
-            
-            // Calculate forward direction for lens
-            double yaw = camera->yaw();
-            double pitch = camera->pitch();
-            double cosYaw = cos(yaw);
-            double sinYaw = sin(yaw);
-            double cosPitch = cos(pitch);
-            double sinPitch = sin(pitch);
-            double forwardX = cosYaw * cosPitch;
-            double forwardY = sinYaw * cosPitch;
-            double forwardZ = sinPitch;
-
-            // Camera body (rectangular prism)
-            glColor3f(0.8f, 0.8f, 0.8f); // Light gray body
-            glBegin(GL_QUADS);
-            // Front face
-            glVertex3f(-0.4f, -0.2f, 0.1f);
-            glVertex3f(0.4f, -0.2f, 0.1f);
-            glVertex3f(0.4f, 0.2f, 0.1f);
-            glVertex3f(-0.4f, 0.2f, 0.1f);
-            // Back face
-            glVertex3f(-0.4f, -0.2f, -0.3f);
-            glVertex3f(-0.4f, 0.2f, -0.3f);
-            glVertex3f(0.4f, 0.2f, -0.3f);
-            glVertex3f(0.4f, -0.2f, -0.3f);
-            // Left face
-            glVertex3f(-0.4f, -0.2f, 0.1f);
-            glVertex3f(-0.4f, 0.2f, 0.1f);
-            glVertex3f(-0.4f, 0.2f, -0.3f);
-            glVertex3f(-0.4f, -0.2f, -0.3f);
-            // Right face
-            glVertex3f(0.4f, -0.2f, 0.1f);
-            glVertex3f(0.4f, -0.2f, -0.3f);
-            glVertex3f(0.4f, 0.2f, -0.3f);
-            glVertex3f(0.4f, 0.2f, 0.1f);
-            // Top face
-            glVertex3f(-0.4f, 0.2f, 0.1f);
-            glVertex3f(0.4f, 0.2f, 0.1f);
-            glVertex3f(0.4f, 0.2f, -0.3f);
-            glVertex3f(-0.4f, 0.2f, -0.3f);
-            // Bottom face
-            glVertex3f(-0.4f, -0.2f, 0.1f);
-            glVertex3f(-0.4f, -0.2f, -0.3f);
-            glVertex3f(0.4f, -0.2f, -0.3f);
-            glVertex3f(0.4f, -0.2f, 0.1f);
-            glEnd();
-
-            // Lens (circular front)
-            glColor3f(0.2f, 0.2f, 0.2f); // Dark gray lens
-            glBegin(GL_QUADS);
-            // Approximate circle with quad
-            glVertex3f(-0.15f, -0.15f, 0.11f);
-            glVertex3f(0.15f, -0.15f, 0.11f);
-            glVertex3f(0.15f, 0.15f, 0.11f);
-            glVertex3f(-0.15f, 0.15f, 0.11f);
-            glEnd();
-
-            // Lens glass (bright center)
-            glColor3f(0.9f, 0.9f, 1.0f); // Light blue-white
-            glBegin(GL_QUADS);
-            glVertex3f(-0.1f, -0.1f, 0.12f);
-            glVertex3f(0.1f, -0.1f, 0.12f);
-            glVertex3f(0.1f, 0.1f, 0.12f);
-            glVertex3f(-0.1f, 0.1f, 0.12f);
-            glEnd();
-
-            // Direction indicator (line showing where camera is looking)
-            glColor3f(1.0f, 0.0f, 0.0f); // Bright red line
-            glLineWidth(2.0f);
-            glBegin(GL_LINES);
-            glVertex3f(0.0f, 0.0f, 0.0f);
-            glVertex3f(forwardX * 2.0f, forwardY * 2.0f, forwardZ * 2.0f);
-            glEnd();
-
-            // Small cross at end of direction line
-            glBegin(GL_LINES);
-            glVertex3f(forwardX * 2.0f - 0.1f, forwardY * 2.0f, forwardZ * 2.0f);
-            glVertex3f(forwardX * 2.0f + 0.1f, forwardY * 2.0f, forwardZ * 2.0f);
-            glVertex3f(forwardX * 2.0f, forwardY * 2.0f - 0.1f, forwardZ * 2.0f);
-            glVertex3f(forwardX * 2.0f, forwardY * 2.0f + 0.1f, forwardZ * 2.0f);
-            glEnd();
-
-            glPopMatrix();
-            glLineWidth(1.0f);
-            glEnable(GL_DEPTH_TEST);
+            drawCameraDebug();
         }
 #endif
     }
