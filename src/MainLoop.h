@@ -11,6 +11,7 @@
 #include "ShipAssembly.h"
 #include "FramePacingController.h"
 #include "EnergyHUDTelemetry.h"
+#include "MainMenu.h"
 
 class Viewport3D;
 class Simulation;
@@ -37,6 +38,16 @@ public:
 
     // Public getter for viewport (needed for GLFW callback)
     Viewport3D* GetViewport() { return viewport.get(); }
+
+    bool IsInMainMenu() const;
+    MainMenu& GetMainMenu() { return mainMenu_; }
+    const MainMenu& GetMainMenu() const { return mainMenu_; }
+
+#ifdef USE_GLFW
+    void HandleKeyEvent(int key, int scancode, int action, int mods);
+    void HandleMouseButtonEvent(int button, int action, int mods);
+    void HandleCursorPosEvent(double xpos, double ypos);
+#endif
 
 private:
     bool running;
@@ -76,9 +87,20 @@ private:
     FramePacingController framePacingController;
     std::array<CameraPreset, 3> cameraPresets;
 
+    enum class GameState {
+        MAIN_MENU,
+        PLAYING,
+        PAUSED
+    };
+
+    GameState currentState_ = GameState::MAIN_MENU;
+    MainMenu mainMenu_;
+
     void ApplyCameraPreset(size_t index);
     void ConfigureEnergyTelemetry();
     void UpdateEnergyTelemetry(double deltaSeconds);
+    void StartNewGame();
+    void LoadSavedGame();
 };
 
 #endif // MAIN_LOOP_H
