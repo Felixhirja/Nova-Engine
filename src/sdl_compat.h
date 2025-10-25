@@ -112,9 +112,23 @@ static inline void compat_GL_DeleteContext(SDL_GLContext context) {
     SDL_GL_DeleteContext(context);
 #endif
 }
+
+static inline void* compat_GetWindowNativeHandle(SDL_Window* window) {
+#if defined(_WIN32)
+    if (!window) {
+        return nullptr;
+    }
+    SDL_PropertiesID props = SDL_GetWindowProperties(window);
+    return SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+#else
+    (void)window;
+    return nullptr;
+#endif
+}
 #else // USE_SDL2
 // On SDL2 we can map compat_* to the SDL2 originals
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_syswm.h>
 static inline bool compat_RenderFillRect(SDL_Renderer* renderer, const SDL_Rect* rect) { return SDL_RenderFillRect(renderer, rect) == 0 ? true : true; }
 static inline bool compat_RenderFillRects(SDL_Renderer* renderer, const SDL_Rect* rects, int count) { return SDL_RenderFillRects(renderer, rects, count) == 0 ? true : true; }
 static inline bool compat_RenderDrawRect(SDL_Renderer* renderer, const SDL_Rect* rect) { return SDL_RenderDrawRect(renderer, rect) == 0 ? true : true; }
@@ -132,6 +146,23 @@ static inline SDL_Renderer* compat_CreateRenderer(SDL_Window* window, const char
 }
 static inline void compat_GL_DeleteContext(SDL_GLContext context) {
     SDL_GL_DeleteContext(context);
+}
+
+static inline void* compat_GetWindowNativeHandle(SDL_Window* window) {
+#if defined(_WIN32)
+    if (!window) {
+        return nullptr;
+    }
+    SDL_SysWMinfo wmInfo;
+    SDL_VERSION(&wmInfo.version);
+    if (SDL_GetWindowWMInfo(window, &wmInfo)) {
+        return wmInfo.info.win.window;
+    }
+    return nullptr;
+#else
+    (void)window;
+    return nullptr;
+#endif
 }
 #endif
 #endif

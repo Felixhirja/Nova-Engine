@@ -1,4 +1,4 @@
-#version 460 core
+#version 330 core
 
 // Vertex attributes
 layout(location = 0) in vec3 aPosition;
@@ -9,11 +9,12 @@ layout(location = 2) in float aSize;
 out vec4 vColor;
 
 // Uniforms
-uniform mat4 uViewProjection;
+uniform mat4 projection;
+uniform mat4 view;
 
 void main() {
     // Transform position to clip space
-    gl_Position = uViewProjection * vec4(aPosition, 1.0);
+    gl_Position = projection * view * vec4(aPosition, 1.0);
     
     // Set point size (for point sprites)
     gl_PointSize = aSize;

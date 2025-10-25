@@ -3,6 +3,7 @@
 #include "../Camera.h"
 #include <cmath>
 #include <algorithm>
+#include "ShaderProgram.h"
 
 ParticleRenderer::ParticleRenderer() {
     // Constructor - resources initialized in Init()
@@ -59,6 +60,14 @@ bool ParticleRenderer::Init() {
     glBufferData(GL_ARRAY_BUFFER, vboCapacity_ * sizeof(ParticleVertex), 
                 nullptr, GL_STREAM_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    // Load shader
+    shader_ = std::make_unique<ShaderProgram>();
+    if (!shader_->LoadFromFiles("shaders/particles.vert", "shaders/particles.frag")) {
+        // Error logged in ShaderProgram
+        shader_.reset();
+        return false;
+    }
     
     return true;
 }
@@ -157,6 +166,10 @@ void ParticleRenderer::Render(const std::vector<Particle>& particles, const Came
                    vertices.size() * sizeof(ParticleVertex),
                    vertices.data());
     
+    // Get matrices from OpenGL state
+    glGetFloatv(GL_MODELVIEW_MATRIX, viewMatrix_);
+    glGetFloatv(GL_PROJECTION_MATRIX, projectionMatrix_);
+
     // Setup render state
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE);  // Additive blending for glow
@@ -165,11 +178,17 @@ void ParticleRenderer::Render(const std::vector<Particle>& particles, const Came
     // Enable point sprites for modern OpenGL
     glEnable(GL_PROGRAM_POINT_SIZE);  // Let shader control point size
     
+    // Use shader and set uniforms
+    shader_->Use();
+    shader_->SetUniformMatrix4("view", viewMatrix_);
+    shader_->SetUniformMatrix4("projection", projectionMatrix_);
+
     // Bind VAO and draw
     glBindVertexArray(vao_);
     glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(vertices.size()));
     
     // Restore state
+    shader_->Unuse();
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glDepthMask(GL_TRUE);

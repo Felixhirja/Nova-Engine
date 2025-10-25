@@ -174,6 +174,34 @@ void UIBatcher::AddQuad(float x, float y, float width, float height,
     quadCount_++;
 }
 
+void UIBatcher::AddRectOutline(float x, float y, float width, float height,
+                               float thickness,
+                               float r, float g, float b, float a) {
+    if (thickness <= 0.0f) return;
+    // Top
+    AddQuad(x, y, width, thickness, r, g, b, a);
+    // Bottom
+    AddQuad(x, y + height - thickness, width, thickness, r, g, b, a);
+    // Left
+    AddQuad(x, y, thickness, height, r, g, b, a);
+    // Right
+    AddQuad(x + width - thickness, y, thickness, height, r, g, b, a);
+}
+
+void UIBatcher::AddTriangle(float x1, float y1,
+                            float x2, float y2,
+                            float x3, float y3,
+                            float r, float g, float b, float a) {
+    GLuint baseIndex = static_cast<GLuint>(vertices_.size());
+    vertices_.push_back({x1, y1, r, g, b, a});
+    vertices_.push_back({x2, y2, r, g, b, a});
+    vertices_.push_back({x3, y3, r, g, b, a});
+
+    indices_.push_back(baseIndex + 0);
+    indices_.push_back(baseIndex + 1);
+    indices_.push_back(baseIndex + 2);
+}
+
 void UIBatcher::Flush() {
     if (vertices_.empty() || vao_ == 0) {
         lastRenderCount_ = 0;

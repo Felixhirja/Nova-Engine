@@ -5,6 +5,7 @@
 #include "ecs/EntityManager.h"
 #include "ecs/System.h"
 #include "ecs/SystemSchedulerV2.h"
+#include "physics/PhysicsEngine.h"
 
 #include <string>
 #include <vector>
@@ -27,6 +28,7 @@ public:
     LocomotionStateMachine::State GetLocomotionState() const;
     LocomotionStateMachine::Weights GetLocomotionBlendWeights() const;
     Entity GetPlayerEntity() const { return playerEntity; }
+    std::shared_ptr<physics::IPhysicsEngine> GetActivePhysicsEngine() const;
     // Set player input state
     void SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw,
                         bool sprint = false, bool crouch = false, bool slide = false, bool boost = false);

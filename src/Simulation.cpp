@@ -813,6 +813,13 @@ LocomotionStateMachine::Weights Simulation::GetLocomotionBlendWeights() const {
     return weights;
 }
 
+std::shared_ptr<physics::IPhysicsEngine> Simulation::GetActivePhysicsEngine() const {
+    if (physicsSystem) {
+        return physicsSystem->GetActiveEngine();
+    }
+    return nullptr;
+}
+
 void Simulation::SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw,
                                bool sprint, bool crouch, bool slide, bool boost) {
     inputForward = forward;

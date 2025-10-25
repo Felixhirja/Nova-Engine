@@ -1,4 +1,4 @@
-#version 460 core
+#version 330 core
 
 // Input from vertex shader
 in vec4 vColor;

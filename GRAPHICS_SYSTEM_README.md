@@ -259,3 +259,7 @@ You now have a complete, professional-quality shader system and procedural skybo
 *October 10, 2025*
 
 **Status: ✅ PHASE 1 COMPLETE - Ready for Integration**
+
+## Immediate-mode OpenGL deprecation
+
+As of 2025-10-25, all active UI/HUD overlays and post-processing paths have been migrated off legacy OpenGL immediate mode (glBegin/glEnd). The engine now uses retained-mode rendering via UIBatcher for 2D overlays and LineBatcher3D for debug lines/points. Immediate-mode fallbacks in these areas have been removed to simplify state management and improve portability. If UIBatcher is unavailable, certain overlay elements may be skipped rather than drawing via legacy paths.

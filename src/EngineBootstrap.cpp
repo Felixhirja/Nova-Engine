@@ -65,19 +65,19 @@ ShipAssemblyResult BuildHudAssembly() {
             std::cerr << "  -> " << err << std::endl;
         }
     } else {
-        std::cout << "HUD assembly: "
-                  << (result.hull ? result.hull->displayName : std::string("Unknown Hull"))
-                  << " | Net Power " << result.NetPowerMW() << " MW"
-                  << " | Thrust/Mass " << result.ThrustToMassRatio()
-                  << std::endl;
+        // std::cout << "HUD assembly: "
+        //           << (result.hull ? result.hull->displayName : std::string("Unknown Hull"))
+        //           << " | Net Power " << result.NetPowerMW() << " MW"
+        //           << " | Thrust/Mass " << result.ThrustToMassRatio()
+        //           << std::endl;
         if (!result.diagnostics.warnings.empty()) {
-            std::cout << "  Warnings:" << std::endl;
+            // std::cout << "  Warnings:" << std::endl;
             for (const auto& warn : result.diagnostics.warnings) {
-                std::cout << "    * " << warn << std::endl;
+                // std::cout << "    * " << warn << std::endl;
             }
         }
     }
-    std::cout.unsetf(std::ios_base::floatfield);
+    // std::cout.unsetf(std::ios_base::floatfield);
     return result;
 }
 
@@ -161,9 +161,9 @@ EngineBootstrap::Result EngineBootstrap::Run(ResourceManager& resourceManager, E
     Result result;
 
     const auto& shipClasses = SpaceshipCatalog::All();
-    std::cout << "SpaceshipCatalog: loaded " << shipClasses.size() << " class definitions" << std::endl;
+    // std::cout << "SpaceshipCatalog: loaded " << shipClasses.size() << " class definitions" << std::endl;
     for (const auto& def : shipClasses) {
-        std::cout << "  -> " << def.displayName << ": " << def.conceptSummary.elevatorPitch << std::endl;
+        // std::cout << "  -> " << def.displayName << ": " << def.conceptSummary.elevatorPitch << std::endl;
     }
 
     result.hudAssembly = BuildHudAssembly();

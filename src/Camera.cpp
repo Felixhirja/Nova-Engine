@@ -26,7 +26,6 @@ void Camera::LerpTo(double targetX, double targetY, double targetZ, double alpha
 }
 
 void Camera::SetTargetZoom(double z) {
-    if (z < 0.0001) z = 0.0001;
     targetZoom_ = z;
 }
 
@@ -39,9 +38,6 @@ void Camera::UpdateZoom(double dt) {
     double alpha = 1.0 - std::exp(-speed * dt);
     double newZoom = zoom_ + (targetZoom_ - zoom_) * alpha;
     if (!std::isfinite(newZoom)) return;
-    // clamp zoom to reasonable range
-    if (newZoom < 0.0001) newZoom = 0.0001;
-    if (newZoom > 10000.0) newZoom = 10000.0;
     zoom_ = newZoom;
 }
 

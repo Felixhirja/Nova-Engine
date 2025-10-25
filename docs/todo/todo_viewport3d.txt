@@ -4,11 +4,14 @@
 - [ ] Replace legacy OpenGL immediate-mode helpers with retained-mode buffers (VAO/VBO) for cubes, HUD, and debug meshes.
 - [ ] Abstract mesh building so animated sprites and 3D props share a single draw submission path.
 - [ ] Profile GPU state changes during `Render` and batch entities by material/texture to cut redundant binds.
+- [ ] Centralize GL context binding so helpers rely on the `BeginFrame` invariant instead of thrashing make-current calls on hot paths.
+- [ ] Migrate the HUD/tiny-font paths to UIBatcher (or similar) so overlay draws coalesce into a handful of submissions.
 
 ## Window & Context Management
 - [ ] Add graceful fallback from fullscreen to windowed mode without recreating the GLFW context.
 - [ ] Support runtime window resizing (lift `GLFW_RESIZABLE` restriction and handle `framebuffer_size` callbacks).
 - [ ] Centralize SDL/GLFW context creation to eliminate duplicate init/shutdown code paths.
+- [ ] Rework SDL renderer creation so VSync preference maps to renderer flags (or cached renderers) instead of a no-op toggle.
 
 ## Camera & Scene Visualization
 - [ ] Move camera debug mesh generation out of `Init` and cache per camera profile for faster hot-reloads.
@@ -28,8 +31,97 @@
 - [ ] Modernize `CaptureToBMP` to stream to RAM and permit user-selected output paths.
 - [ ] Integrate an on-screen performance overlay (frame time, draw calls, VRAM usage) toggled from the console or UI.
 - [ ] Log GL errors with source locations and provide a developer console command to dump recent events.
+- [ ] Teach the SDL renderer capture path to blit through a target texture before `SDL_RenderReadPixels` so drivers that disallow default-target reads still succeed.
+- [ ] Augment GL error logging with `gluErrorString` (or custom decoder) for human-readable diagnostics when GLU is present.
 
 ## Testing & Tooling
 - [ ] Add headless renderer smoke test that instantiates `Viewport3D` with an off-screen context.
 - [ ] Build automated screenshot comparisons for regression detection in HUD/camera visuals.
 - [ ] Document Viewport3D architecture and lifecycle in the README/design docs.
+- [ ] Add regression coverage for overlay depth clears to ensure the scissor-guarded path keeps main views intact.
+High-impact issues (fix these first)
+
+[x] COMPLETED: Fixed Clear() depth buffer - added GL_DEPTH_BUFFER_BIT to glClear calls (2025-01-10)
+
+[x] COMPLETED: Verified DrawCameraDebug function arity is correct (2025-01-10)
+
+
+[x] COMPLETED: Context creation prioritizes compatibility profiles over core profiles (2025-01-10)
+
+[x] COMPLETED: Added GL context guards in DrawHUD to prevent undefined behavior (2025-01-10)
+
+
+[x] COMPLETED: Removed glutInit call from Init() function (2025-01-10)
+
+GLU dependency
+
+gluPerspective/gluLookAt/gluOrtho2D require GLU, which is often missing on macOS and not present for core contexts. If you must stay compatibility, fine; otherwise replace with your own matrix helpers.
+
+Correctness & stability
+
+[x] COMPLETED: Guarded GetActiveLayout() against empty layout vectors to prevent undefined access (2025-10-24)
+
+VSync toggling
+[x] COMPLETED: Added guarded swap-interval updates so SDL/GLFW only toggle VSync when their GL context is current (2025-10-24)
+
+SDL3/SDL2 WM info
+[x] COMPLETED: Added compat_GetWindowNativeHandle helper for SDL2/SDL3 and updated focus hookups to use it (2025-10-24)
+
+String literal to char*
+char* glutArgv[] = {(char*)"nova-engine"}; is UB. If you keep GLUT (not recommended), use const_cast<char*> with a non-const array, or better, drop GLUT.
+
+Design & portability
+
+Context attempts ordering
+You try 3.3 compat → 2.1 compat → core 4.x, etc. With fixed-function code, stop at the first compat profile and don’t attempt core. Simpler: request 3.3 compat only for now.
+
+Immediate mode everywhere
+glBegin/glEnd per glyph/pixel is expensive. You already have UIBatcher. Convert glyph drawing to batched quads; you started doing that — finish the migration and remove glBegin from HUD paths.
+
+GLU/GLUT headers under SDL/GLFW
+You include GLU/GLUT only when USE_GLFW || USE_SDL, but presence doesn’t equal availability. Guard usage as well, or hide behind a #if USE_GL_COMPAT_PIPELINE.
+
+Performance nits
+
+Per-pixel tiny font (GL path)
+You iterate 5×5 and emit quads per pixel. Cache glyphs into a small atlas (R8) and draw with a single textured quad or at least batch all pixels via UIBatcher.
+
+Multiple state flips
+HUD code toggles blend/depth several times. Wrap with a tiny RAII state helper or push/pop a single time per pass.
+
+Redundant context make-current
+Many functions re-call SDL_GL_MakeCurrent / glfwMakeContextCurrent. If you already do it in BeginFrame, you can trust the invariant and drop extra calls on hot paths.
+
+Logging & UX
+
+Focus hacks on Windows
+The SetWindowPos(HWND_TOPMOST)/NOTOPMOST dance is aggressive. Gate behind a debug flag or remove; it can annoy users with multi-monitor setups.
+
+Diagnostic file path
+Writing sdl_diag.log next to the exe is fine; ensure failure to open the file doesn’t hide other errors (already ok — you check stream).
+
+Security / robustness
+
+BMP writing
+Check fwrite results, and validate path not null. Consider flipping rows without extra buffer by writing per line (minor).
+
+Clamp/format
+std::clamp(percent*100.0, 0.0, 999.0) then %3.0f is fine; consider std::lround and integer format to avoid locale issues.
+
+Nice-to-have improvements (short list)
+
+Replace gluPerspective/lookAt/ortho with your own math (glm or your math) and switch to shader pipeline; then you can safely request core 3.3+ and remove GLU/GLUT entirely.
+
+Consolidate per-frame MakeCurrent into BeginFrame/Present.
+
+Move SDL/GLFW platform toggles behind a single RenderBackend enum and centralize state changes.
+
+Quick test checklist
+
+Windowed GLFW launch → HUD shows, FPS increments, toggling VSync updates “ON/OFF”.
+
+SDL renderer fallback (force no GL) → no GL errors printed; HUD digits render; CaptureToBMP writes a valid file.
+
+Switch layouts → GetActiveLayoutName() and viewports update; minimap overlay clears depth correctly.
+
+Energy panel draws without Z-fighting; warnings color-codes as expected.

@@ -23,8 +23,8 @@ void EnergyManagementSystem::Initialize(int entityId, double totalPower,
     states_[entityId] = state;
     BalancePower(states_[entityId]);
     
-    std::cout << "Initialized energy management for entity " << entityId 
-              << " with " << totalPower << " MW" << std::endl;
+    // std::cout << "Initialized energy management for entity " << entityId 
+    //           << " with " << totalPower << " MW" << std::endl;
 }
 
 void EnergyManagementSystem::Update(int entityId, float deltaTime) {

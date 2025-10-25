@@ -26,6 +26,7 @@ void BulletPhysicsEngine::Initialize(const PhysicsEngineInitParams& params) {
 }
 
 void BulletPhysicsEngine::StepSimulation(PhysicsSystem& system, EntityManager& entityManager, double dt) {
+    physicsSystem_ = &system;
     accumulator_ += dt;
     const double step = params_.fixedTimeStep > 0.0 ? params_.fixedTimeStep : dt;
     const unsigned int maxSteps = std::max(1u, params_.maxSubSteps);
@@ -48,6 +49,24 @@ void BulletPhysicsEngine::StepSimulation(PhysicsSystem& system, EntityManager& e
     }
 
     lastSubStepCount_ = performed;
+}
+
+std::optional<RaycastHit> BulletPhysicsEngine::Raycast(double originX, double originY, double originZ,
+                                                       double dirX, double dirY, double dirZ,
+                                                       double maxDistance) {
+    if (!physicsSystem_) {
+        return std::nullopt;
+    }
+    
+    PhysicsSystem::RaycastHit hit;
+    if (physicsSystem_->Raycast(originX, originY, originZ, dirX, dirY, dirZ, maxDistance, hit)) {
+        return RaycastHit{
+            hit.hitPointX, hit.hitPointY, hit.hitPointZ,
+            hit.normalX, hit.normalY, hit.normalZ,
+            hit.distance
+        };
+    }
+    return std::nullopt;
 }
 
 } // namespace physics

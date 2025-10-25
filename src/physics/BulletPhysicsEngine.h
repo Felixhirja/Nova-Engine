@@ -15,6 +15,10 @@ public:
 
     unsigned int GetLastSubStepCount() const noexcept { return lastSubStepCount_; }
 
+    std::optional<RaycastHit> Raycast(double originX, double originY, double originZ,
+                                      double dirX, double dirY, double dirZ,
+                                      double maxDistance) override;
+
 private:
     PhysicsEngineInitParams params_{};
     double accumulator_ = 0.0;

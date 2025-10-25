@@ -204,7 +204,7 @@ public:
     EntityHandle RemoveEntity(size_t index) {
         assert(index < entities_.size() && "Entity index out of bounds");
         
-        EntityHandle removed = entities_[index];
+        EntityHandle removed = entities_[index]; // not used but could be useful
         EntityHandle swapped = EntityHandle::Null();
         
         // Swap with last entity (if not already last)

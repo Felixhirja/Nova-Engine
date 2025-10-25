@@ -26,6 +26,7 @@ public:
     void UseExternalEngine(std::shared_ptr<physics::IPhysicsEngine> engine);
     void ResetToBuiltin();
     physics::PhysicsBackendType GetActiveBackendType() const noexcept { return activeBackend_; }
+    std::shared_ptr<physics::IPhysicsEngine> GetActiveEngine() const noexcept { return externalEngine_; }
     void StepWithBuiltin(EntityManager& entityManager, double dt);
     
     // Configuration

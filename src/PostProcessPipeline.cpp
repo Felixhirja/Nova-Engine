@@ -188,7 +188,7 @@ void PostProcessPipeline::BeginScene() {
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, sceneFBO_);
     glViewport(0, 0, width_, height_);
     
-    // Clear the framebuffer
+    // Clear the framebuffer - scene FBO always has depth buffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
@@ -278,13 +278,25 @@ void PostProcessPipeline::DeleteFramebuffer(GLuint* fbo, GLuint* texture, GLuint
 }
 
 void PostProcessPipeline::RenderQuad() {
-    // Render a fullscreen quad using immediate mode (compatible with legacy OpenGL)
-    glBegin(GL_QUADS);
-    glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0f, -1.0f);
-    glTexCoord2f(1.0f, 0.0f); glVertex2f( 1.0f, -1.0f);
-    glTexCoord2f(1.0f, 1.0f); glVertex2f( 1.0f,  1.0f);
-    glTexCoord2f(0.0f, 1.0f); glVertex2f(-1.0f,  1.0f);
-    glEnd();
+    // Render a fullscreen quad using client-state arrays (retained mode, no immediate mode)
+    struct V {
+        float x, y;
+        float u, v;
+    };
+    static const V verts[4] = {
+        {-1.0f, -1.0f, 0.0f, 0.0f},
+        { 1.0f, -1.0f, 1.0f, 0.0f},
+        {-1.0f,  1.0f, 0.0f, 1.0f},
+        { 1.0f,  1.0f, 1.0f, 1.0f},
+    };
+
+    glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glVertexPointer(2, GL_FLOAT, sizeof(V), &verts[0].x);
+    glTexCoordPointer(2, GL_FLOAT, sizeof(V), &verts[0].u);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glPopClientAttrib();
 }
 
 void PostProcessPipeline::ApplyBrightPass() {
@@ -443,7 +455,15 @@ void PostProcessPipeline::CompositeToScreen() {
     // Render final composite to screen
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
     glViewport(0, 0, width_, height_);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    // Clear color buffer and depth buffer (if available)
+    GLint depthBits;
+    glGetIntegerv(GL_DEPTH_BITS, &depthBits);
+    if (depthBits > 0) {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    } else {
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
 
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -501,22 +521,27 @@ void PostProcessPipeline::DrawLetterbox() {
 
     float barHeight = height_ * letterboxHeight_;
     
+    auto drawSolidRect = [](float x, float y, float w, float h) {
+        struct P { float x, y; };
+        P v[4] = {
+            {x,     y    },
+            {x + w, y    },
+            {x,     y + h},
+            {x + w, y + h},
+        };
+        glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glVertexPointer(2, GL_FLOAT, sizeof(P), &v[0].x);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glPopClientAttrib();
+    };
+
     // Top bar
     glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
-    glBegin(GL_QUADS);
-    glVertex2f(0.0f, 0.0f);
-    glVertex2f((float)width_, 0.0f);
-    glVertex2f((float)width_, barHeight);
-    glVertex2f(0.0f, barHeight);
-    glEnd();
+    drawSolidRect(0.0f, 0.0f, static_cast<float>(width_), barHeight);
 
     // Bottom bar
-    glBegin(GL_QUADS);
-    glVertex2f(0.0f, height_ - barHeight);
-    glVertex2f((float)width_, height_ - barHeight);
-    glVertex2f((float)width_, (float)height_);
-    glVertex2f(0.0f, (float)height_);
-    glEnd();
+    drawSolidRect(0.0f, static_cast<float>(height_) - barHeight, static_cast<float>(width_), static_cast<float>(height_));
 
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);

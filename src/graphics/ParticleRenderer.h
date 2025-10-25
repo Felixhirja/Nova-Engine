@@ -2,6 +2,7 @@
 
 #include <glad/glad.h>
 #include <vector>
+#include <memory>
 
 // Forward declarations
 struct Particle;
@@ -46,9 +47,13 @@ private:
     GLuint vbo_ = 0;           // Vertex Buffer Object
     size_t vboCapacity_ = 0;   // Current VBO capacity (in vertices)
     
-    // Shader program (for future use)
-    ShaderProgram* shaderProgram_ = nullptr;
+    // Shader program for rendering particles
+    std::unique_ptr<ShaderProgram> shader_;
     
+    // Cached matrices
+    float viewMatrix_[16];
+    float projectionMatrix_[16];
+
     // Statistics
     int lastRenderCount_ = 0;
     

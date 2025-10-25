@@ -51,6 +51,7 @@ struct FrameRuntimeContext {
     double mouseDeltaY = 0.0;
     int lastKey = -1;
     bool targetLocked = false;
+    bool isRelativeMode = false;
 };
 
 } // namespace
@@ -76,7 +77,7 @@ MainLoop::~MainLoop() {
 }
 
 void MainLoop::Init() {
-    std::cout << "DEBUG: MainLoop::Init() STARTED" << std::endl;
+    // std::cout << "DEBUG: MainLoop::Init() STARTED" << std::endl;
     std::cerr << "DEBUG: MainLoop::Init() STARTED (cerr)" << std::endl;
     // Log to file
     std::ofstream log("sdl_diag.log", std::ios::app);
@@ -104,32 +105,42 @@ void MainLoop::Init() {
         }
 
         if (xinputReady) {
-            std::cout << "GamepadManager: XInput available via "
-                      << gamepadManager.ActiveLibraryNameUtf8() << std::endl;
+            // std::cout << "GamepadManager: XInput available via "
+            //           << gamepadManager.ActiveLibraryNameUtf8() << std::endl;
         } else {
             const std::string errorDescription = gamepadManager.LastError();
             if (!errorDescription.empty()) {
-                std::cout << "GamepadManager: XInput unavailable (" << errorDescription << ")" << std::endl;
+                // std::cout << "GamepadManager: XInput unavailable (" << errorDescription << ")" << std::endl;
             } else {
-                std::cout << "GamepadManager: XInput unavailable" << std::endl;
+                // std::cout << "GamepadManager: XInput unavailable" << std::endl;
             }
         }
     }
 
     viewport = std::make_unique<Viewport3D>();
+    {
+        std::ofstream log2("sdl_diag.log", std::ios::app);
+        if (log2) log2 << "Viewport3D constructed" << std::endl;
+    }
     viewport->Init();
-    std::cout << "Viewport3D::Init() completed" << std::endl;
+    {
+        std::ofstream log2("sdl_diag.log", std::ios::app);
+        if (log2) log2 << "Viewport3D::Init returned" << std::endl;
+    }
+    // std::cout << "Viewport3D::Init() completed" << std::endl;
 
     if (viewport) {
         viewport->ConfigureLayouts(Viewport3D::CreateDefaultLayouts());
         viewport->SetFramePacingHint(framePacingController.IsVSyncEnabled(), framePacingController.TargetFPS());
+        std::ofstream log2("sdl_diag.log", std::ios::app);
+        if (log2) log2 << "Layouts configured & frame pacing hint set" << std::endl;
     }
 
-    cameraFollowController.SetConfig(CameraFollowConfig{});
+    cameraFollowController.SetConfig(CameraFollow::CameraFollowConfig{});
     cameraFollowController.ResetState();
 
     // Set up GLFW window resize callback
-    std::cout << "Setting up GLFW window resize callback" << std::endl;
+    // std::cout << "Setting up GLFW window resize callback" << std::endl;
 #ifdef USE_GLFW
     if (viewport->GetGLFWWindow()) {
         glfwSetWindowSizeCallback(static_cast<GLFWwindow*>(viewport->GetGLFWWindow()),
@@ -178,19 +189,25 @@ void MainLoop::Init() {
                     mainLoop->RequestShutdown();
                 }
             });
+        {
+            std::ofstream log2("sdl_diag.log", std::ios::app);
+            if (log2) log2 << "GLFW callbacks set" << std::endl;
+        }
     }
 #endif
 
     // Set GLFW window for input handling
-    std::cout << "About to set GLFW window for input" << std::endl;
+    // std::cout << "About to set GLFW window for input" << std::endl;
 #ifdef USE_GLFW
     void* glfwWindowPtr = viewport->GetGLFWWindow();
-    std::cout << "GLFW window pointer: " << glfwWindowPtr << std::endl;
+    // std::cout << "GLFW window pointer: " << glfwWindowPtr << std::endl;
     if (glfwWindowPtr != nullptr) {
         Input::SetGLFWWindow(glfwWindowPtr);
-        std::cout << "GLFW window set for input" << std::endl;
+        // std::cout << "GLFW window set for input" << std::endl;
+        std::ofstream log2("sdl_diag.log", std::ios::app);
+        if (log2) log2 << "Input set GLFW window" << std::endl;
     } else {
-        std::cout << "GLFW window is null (headless mode?), skipping input setup" << std::endl;
+        // std::cout << "GLFW window is null (headless mode?), skipping input setup" << std::endl;
     }
 #endif
     
@@ -199,13 +216,17 @@ void MainLoop::Init() {
     Input::SetSDLWindow(viewport->GetSDLWindow());
 #endif
 
-    std::cout << "About to create camera" << std::endl;
+    // std::cout << "About to create camera" << std::endl;
     // Camera
     // Position: behind player at (-8, 0, 6), looking toward origin (0,0,0)
     // Yaw of PI/2 (90 degrees) makes camera look in +X direction (toward player)
     camera = std::make_unique<Camera>(-8.0, 0.0, 6.0, -0.1, 1.5708, 45.0); // yaw = π/2 to look toward player
+    {
+        std::ofstream log2("sdl_diag.log", std::ios::app);
+        if (log2) log2 << "Camera created" << std::endl;
+    }
 
-    std::cout << "About to create entity manager" << std::endl;
+    // std::cout << "About to create entity manager" << std::endl;
     // Create canonical ECS manager and initialize simulation with it
     entityManager = std::make_unique<EntityManager>();
     if (!ecsInspector) {
@@ -213,19 +234,27 @@ void MainLoop::Init() {
     }
     ecsInspector->SetEntityManager(entityManager.get());
     simulation = std::make_unique<Simulation>();
-    std::cout << "About to call simulation->Init()" << std::endl;
+    // std::cout << "About to call simulation->Init()" << std::endl;
     simulation->Init(entityManager.get());
-    std::cout << "Simulation::Init() completed" << std::endl;
+    // std::cout << "Simulation::Init() completed" << std::endl;
+    {
+        std::ofstream log2("sdl_diag.log", std::ios::app);
+        if (log2) log2 << "Simulation initialized" << std::endl;
+    }
 
     // Resource manager & demo entity (use unique_ptr ownership)
     resourceManager = std::make_unique<ResourceManager>();
 
     // Initialize feedback systems
-    std::cout << "Initializing feedback systems..." << std::endl;
+    // std::cout << "Initializing feedback systems..." << std::endl;
     visualFeedbackSystem = std::make_unique<VisualFeedbackSystem>();
     audioFeedbackSystem = std::make_unique<AudioFeedbackSystem>();
     hudAlertSystem = std::make_unique<HUDAlertSystem>();
-    std::cout << "Feedback systems initialized" << std::endl;
+    {
+        std::ofstream log2("sdl_diag.log", std::ios::app);
+        if (log2) log2 << "Feedback systems initialized" << std::endl;
+    }
+    // std::cout << "Feedback systems initialized" << std::endl;
     // Bootstrap demo content and HUD assembly
     EngineBootstrap bootstrap;
     auto bootstrapResult = bootstrap.Run(*resourceManager, *entityManager);
@@ -233,13 +262,17 @@ void MainLoop::Init() {
     ConfigureEnergyTelemetry();
 
     stateMachine.TransitionTo(EngineState::Running);
+    {
+        std::ofstream log2("sdl_diag.log", std::ios::app);
+        if (log2) log2 << "MainLoop::Init finished" << std::endl;
+    }
 }
 
 
 void MainLoop::MainLoopFunc(int maxSeconds) {
-    std::cout << "MainLoopFunc started" << std::endl;
+    // std::cout << "MainLoopFunc started" << std::endl;
     if (!running) {
-        std::cout << "Engine not initialized!" << std::endl;
+        // std::cout << "Engine not initialized!" << std::endl;
         return;
     }
 
@@ -266,10 +299,10 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         const char* maxFramesEnv = std::getenv("NOVA_ENGINE_MAX_FRAMES");
         if (maxFramesEnv != nullptr) {
             runtime.maxFrames = std::atoi(maxFramesEnv);
-            std::cout << "Headless mode: will run for " << runtime.maxFrames << " frames then exit" << std::endl;
+            // std::cout << "Headless mode: will run for " << runtime.maxFrames << " frames then exit" << std::endl;
         } else {
             runtime.maxFrames = 300;
-            std::cout << "Headless mode: will run for " << runtime.maxFrames << " frames (default) then exit" << std::endl;
+            // std::cout << "Headless mode: will run for " << runtime.maxFrames << " frames (default) then exit" << std::endl;
         }
     }
 
@@ -315,7 +348,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                 currentState_ = GameState::PLAYING;
                 LoadSavedGame();
             } else if (action == MainMenu::Action::Settings) {
-                std::cout << "Settings menu not implemented yet." << std::endl;
+                // std::cout << "Settings menu not implemented yet." << std::endl;
                 mainMenu_.ClearLastAction();
             } else if (action == MainMenu::Action::Quit) {
 #ifdef USE_GLFW
@@ -330,22 +363,34 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             return;
         }
 
+        if (runtime.targetLocked) {
 #ifdef USE_GLFW
-        if (viewport && viewport->GetGLFWWindow()) {
-            GLFWwindow* window = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
-            if (glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
-                double x, y;
-                glfwGetCursorPos(window, &x, &y);
-                int width, height;
-                glfwGetWindowSize(window, &width, &height);
-                double centerX = width / 2.0;
-                double centerY = height / 2.0;
-                runtime.mouseDeltaX = x - centerX;
-                runtime.mouseDeltaY = y - centerY;
-                glfwSetCursorPos(window, centerX, centerY);
+            if (viewport && viewport->GetGLFWWindow()) {
+                GLFWwindow* window = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
+                if (glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+                    double x, y;
+                    glfwGetCursorPos(window, &x, &y);
+                    int width, height;
+                    glfwGetWindowSize(window, &width, &height);
+                    double centerX = width / 2.0;
+                    double centerY = height / 2.0;
+                    runtime.mouseDeltaX = x - centerX;
+                    runtime.mouseDeltaY = y - centerY;
+                    
+                    // Add deadzone to prevent drift
+                    const double deadzone = 1.0; // pixels
+                    if (std::abs(runtime.mouseDeltaX) < deadzone) runtime.mouseDeltaX = 0.0;
+                    if (std::abs(runtime.mouseDeltaY) < deadzone) runtime.mouseDeltaY = 0.0;
+                    
+                    glfwSetCursorPos(window, centerX, centerY);
+                }
             }
-        }
 #endif
+        } else {
+            runtime.mouseDeltaX = 0.0;
+            runtime.mouseDeltaY = 0.0;
+        }
+
 #ifdef USE_SDL
         if (viewport && viewport->GetSDLWindow()) {
             SDL_Window* window = static_cast<SDL_Window*>(viewport->GetSDLWindow());
@@ -363,18 +408,18 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         int key = Input::PollKey();
         runtime.lastKey = key;
         if (key != -1) {
-            std::cout << "Key pressed: " << key << " ('" << static_cast<char>(key) << "')" << std::endl;
+            // std::cout << "Key pressed: " << key << " ('" << static_cast<char>(key) << "')" << std::endl;
         }
 
         if (key == 'q' || key == 'Q' || Input::IsKeyHeld('q') || Input::IsKeyHeld('Q') || key == 27) {
-            std::cout << "Quit key detected, exiting..." << std::endl;
+            // std::cout << "Quit key detected, exiting..." << std::endl;
             requestShutdown();
             return;
         }
 
         if (key == 'p' || key == 'P') {
             if (stateMachine.TogglePause()) {
-                std::cout << (stateMachine.Is(EngineState::Paused) ? "Engine paused" : "Engine resumed") << std::endl;
+                // std::cout << (stateMachine.Is(EngineState::Paused) ? "Engine paused" : "Engine resumed") << std::endl;
             }
         }
 
@@ -394,12 +439,17 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         if (key == '1' || key == '2' || key == '3') {
             size_t presetIndex = static_cast<size_t>(key - '1');
             ApplyCameraPreset(presetIndex);
+            // Clear input deltas so next tick doesn't rotate
+            runtime.mouseDeltaX = 0.0;
+            runtime.mouseDeltaY = 0.0;
+            // Force target lock off for this frame
+            runtime.targetLocked = false;
         }
 
         if ((key == 't' || key == 'T') && simulation) {
             thrustModeEnabled = !thrustModeEnabled;
             simulation->SetUseThrustMode(thrustModeEnabled);
-            std::cout << "Player vertical mode: " << (thrustModeEnabled ? "thrust" : "jump") << std::endl;
+            // std::cout << "Player vertical mode: " << (thrustModeEnabled ? "thrust" : "jump") << std::endl;
         }
 
         if (key == 9) {
@@ -408,9 +458,12 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                 if (targetLock) {
                     targetLock->isLocked = !targetLock->isLocked;
                     if (targetLock->isLocked) {
-                        std::cout << "Target lock enabled" << std::endl;
+                        // Reset mouse offsets when entering target-lock mode
+                        mouseLookYawOffset = 0.0;
+                        mouseLookPitchOffset = 0.0;
+                        // std::cout << "Target lock enabled" << std::endl;
                     } else {
-                        std::cout << "Target lock disabled" << std::endl;
+                        // std::cout << "Target lock disabled" << std::endl;
                     }
                 }
             }
@@ -419,18 +472,18 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         if ((key == 'b' || key == 'B') && viewport) {
             bool bloomEnabled = viewport->IsBloomEnabled();
             viewport->SetBloomEnabled(!bloomEnabled);
-            std::cout << "Bloom effect: " << (!bloomEnabled ? "ENABLED" : "DISABLED") << std::endl;
+            // std::cout << "Bloom effect: " << (!bloomEnabled ? "ENABLED" : "DISABLED") << std::endl;
         }
 
         if ((key == 'l' || key == 'L') && viewport) {
             bool letterboxEnabled = viewport->IsLetterboxEnabled();
             viewport->SetLetterboxEnabled(!letterboxEnabled);
-            std::cout << "Letterbox overlay: " << (!letterboxEnabled ? "ENABLED" : "DISABLED") << std::endl;
+            // std::cout << "Letterbox overlay: " << (!letterboxEnabled ? "ENABLED" : "DISABLED") << std::endl;
         }
 
         if ((key == 'i' || key == 'I') && ecsInspector) {
             ecsInspector->Toggle();
-            std::cout << "ECS inspector: " << (ecsInspector->IsEnabled() ? "ENABLED" : "DISABLED") << std::endl;
+            // std::cout << "ECS inspector: " << (ecsInspector->IsEnabled() ? "ENABLED" : "DISABLED") << std::endl;
         }
 
         if (ecsInspector && ecsInspector->IsEnabled()) {
@@ -475,6 +528,15 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             }
         }
 
+        bool wantRelative = runtime.targetLocked;
+        if (wantRelative != runtime.isRelativeMode) {
+            if (viewport && viewport->GetGLFWWindow()) {
+                GLFWwindow* window = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
+                glfwSetInputMode(window, GLFW_CURSOR, wantRelative ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
+            }
+            runtime.isRelativeMode = wantRelative;
+        }
+
         double playerInputYaw = 0.0;
         if (simulation) {
             simulation->SetPlayerInput(forward, backward, up, down, strafeLeft, strafeRight, playerInputYaw);
@@ -484,7 +546,36 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             double cameraMoveSpeed = 0.5;
             double deltaTime = deltaSeconds > 0.0 ? deltaSeconds : fixedDt;
 
-            CameraFollowInput followInput;
+            // Process mouse input for camera offsets BEFORE camera update
+            const double mouseDecay = 0.96;
+            if (runtime.targetLocked) {
+                const double targetLockSensitivity = 0.004;
+                double accelerationFactor = 1.0;
+                double mouseSpeed = std::sqrt(runtime.mouseDeltaX * runtime.mouseDeltaX +
+                                              runtime.mouseDeltaY * runtime.mouseDeltaY);
+                if (mouseSpeed > 5.0) {
+                    accelerationFactor = 1.0 + (mouseSpeed - 5.0) * 0.02;
+                }
+
+                if (std::abs(runtime.mouseDeltaX) > 1.0 || std::abs(runtime.mouseDeltaY) > 1.0) {
+                    // For target-lock mode, don't accumulate offsets - pass raw deltas
+                    mouseLookYawOffset = runtime.mouseDeltaX * targetLockSensitivity * accelerationFactor;
+                    mouseLookPitchOffset = -runtime.mouseDeltaY * targetLockSensitivity * accelerationFactor;
+
+                    // Clamp to prevent extreme values
+                    const double maxDelta = 0.5; // radians per frame
+                    mouseLookYawOffset = std::clamp(mouseLookYawOffset, -maxDelta, maxDelta);
+                    mouseLookPitchOffset = std::clamp(mouseLookPitchOffset, -maxDelta, maxDelta);
+                } else {
+                    mouseLookYawOffset = 0.0;
+                    mouseLookPitchOffset = 0.0;
+                }
+            } else {
+                mouseLookYawOffset *= mouseDecay;
+                mouseLookPitchOffset *= mouseDecay;
+            }
+
+            CameraFollow::CameraFollowInput followInput;
             followInput.playerX = simulation ? simulation->GetPlayerX() : 0.0;
             followInput.playerY = simulation ? simulation->GetPlayerY() : 0.0;
             followInput.playerZ = simulation ? simulation->GetPlayerZ() : 0.0;
@@ -501,7 +592,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             movementInput.moveDown = cameraDown;
             movementInput.moveSpeed = cameraMoveSpeed;
 
-            cameraFollowController.Update(*camera, followInput, movementInput, deltaTime);
+            cameraFollowController.Update(*camera, followInput, movementInput, deltaTime, simulation->GetActivePhysicsEngine().get());
         }
     };
 
@@ -534,7 +625,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         double playerZ = simulation ? simulation->GetPlayerZ() : 0.0;
 
         viewport->Clear();
-        viewport->Render(camera.get(), playerX, playerY, playerZ);
+        viewport->Render(camera.get(), playerX, playerY, playerZ, runtime.targetLocked);
         viewport->DrawPlayer(playerX, playerY, playerZ);
 
         if (camera) {
@@ -546,33 +637,6 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                 camera->SetTargetZoom(newZoom);
                 Input::ResetMouseWheelDelta();
             }
-
-            const double mouseDecay = 0.96;
-            if (runtime.targetLocked) {
-                const double targetLockSensitivity = 0.004;
-                double accelerationFactor = 1.0;
-                double mouseSpeed = std::sqrt(runtime.mouseDeltaX * runtime.mouseDeltaX +
-                                              runtime.mouseDeltaY * runtime.mouseDeltaY);
-                if (mouseSpeed > 5.0) {
-                    accelerationFactor = 1.0 + (mouseSpeed - 5.0) * 0.02;
-                }
-
-                if (std::abs(runtime.mouseDeltaX) > 0.1 || std::abs(runtime.mouseDeltaY) > 0.1) {
-                    mouseLookYawOffset += runtime.mouseDeltaX * targetLockSensitivity * accelerationFactor;
-                    mouseLookPitchOffset += runtime.mouseDeltaY * targetLockSensitivity * accelerationFactor;
-
-                    // Removed decay when mouse is actively moving for smoother camera control
-                    // mouseLookYawOffset *= mouseDecay;
-                    // mouseLookPitchOffset *= mouseDecay;
-                } else {
-                    mouseLookYawOffset *= mouseDecay;
-                    mouseLookPitchOffset *= mouseDecay;
-                }
-            } else {
-                mouseLookYawOffset *= mouseDecay;
-                mouseLookPitchOffset *= mouseDecay;
-            }
-
         }
 
         double hudPlayerX = simulation ? simulation->GetPlayerX() : 0.0;
@@ -606,7 +670,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         runtime.framesThisSecond++;
 
         if (runtime.headlessMode && runtime.maxFrames > 0 && runtime.frameCount >= runtime.maxFrames && !runtime.headlessNoticePrinted) {
-            std::cout << "Headless mode: reached " << runtime.frameCount << " frames, exiting..." << std::endl;
+            // std::cout << "Headless mode: reached " << runtime.frameCount << " frames, exiting..." << std::endl;
             runtime.headlessNoticePrinted = true;
             runtime.requestExit = true;
             stateMachine.TransitionTo(EngineState::ShuttingDown);
@@ -614,7 +678,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
         if (runtime.maxSeconds > 0) {
             if (std::chrono::duration<double>(info.frameEnd - runtime.demoStart).count() >= runtime.maxSeconds) {
-                std::cout << "Reached max runtime of " << runtime.maxSeconds << " seconds, exiting..." << std::endl;
+                // std::cout << "Reached max runtime of " << runtime.maxSeconds << " seconds, exiting..." << std::endl;
                 runtime.requestExit = true;
                 stateMachine.TransitionTo(EngineState::ShuttingDown);
             }
@@ -626,9 +690,9 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             double cameraX = camera ? camera->x() : 0.0;
             double cameraY = camera ? camera->y() : 0.0;
             double cameraZ = camera ? camera->z() : 0.0;
-            std::cout << "FPS: " << runtime.framesThisSecond << "  Simulation pos=" << simPos << "  Player x=" << playerX
-                      << "  Camera: (" << cameraX << ", " << cameraY << ", " << cameraZ << ")"
-                      << "  Zoom=" << (camera ? camera->zoom() : 1.0) << std::endl;
+            // std::cout << "FPS: " << runtime.framesThisSecond << "  Simulation pos=" << simPos << "  Player x=" << playerX
+            //           << "  Camera: (" << cameraX << ", " << cameraY << ", " << cameraZ << ")"
+            //           << "  Zoom=" << (camera ? camera->zoom() : 1.0) << std::endl;
             runtime.currentFPS = runtime.framesThisSecond;
             runtime.framesThisSecond = 0;
             runtime.fpsTimer = info.frameEnd;
@@ -922,14 +986,14 @@ void MainLoop::StartNewGame() {
     mainMenu_.SetActive(false);
     mainMenu_.ClearLastAction();
     stateMachine.TransitionTo(EngineState::Running);
-    std::cout << "Starting new game from main menu." << std::endl;
+    // std::cout << "Starting new game from main menu." << std::endl;
 }
 
 void MainLoop::LoadSavedGame() {
     mainMenu_.SetActive(false);
     mainMenu_.ClearLastAction();
     stateMachine.TransitionTo(EngineState::Running);
-    std::cout << "Continuing game from main menu." << std::endl;
+    // std::cout << "Continuing game from main menu." << std::endl;
 }
 
 #ifdef USE_GLFW
@@ -989,41 +1053,60 @@ void MainLoop::HandleCursorPosEvent(double xpos, double ypos) {
 
 void MainLoop::ApplyCameraPreset(size_t index) {
     if (!camera || index >= cameraPresets.size()) {
+#if defined(DEBUG) || defined(_DEBUG)
+        std::cerr << "ApplyCameraPreset: invalid index " << index << std::endl;
+#endif
         return;
     }
 
     ApplyPresetToCamera(*camera, cameraPresets[index]);
 
-    // Reset offsets and target lock smoothing so preset takes effect immediately
+    // Reset offsets & smoothing so the preset is exact this frame
     mouseLookYawOffset = 0.0;
     mouseLookPitchOffset = 0.0;
     cameraFollowController.ResetState();
 
-    // Ensure target lock component is disabled when jumping to a preset
+    // Skip one controller update to prevent re-smoothing tug
+    cameraFollowController.SuppressNextUpdate();
+
+    // Clear target lock immediately
     if (entityManager && simulation) {
-        auto* targetLock = entityManager->GetComponent<TargetLock>(simulation->GetPlayerEntity());
-        if (targetLock) {
+        if (auto* targetLock = entityManager->GetComponent<TargetLock>(simulation->GetPlayerEntity())) {
             targetLock->isLocked = false;
         }
     }
 
-    std::cout << "Camera preset " << (index + 1) << " applied" << std::endl;
+    // std::cout << "Camera preset " << (index + 1) << " applied" << std::endl;
 }
 
 void MainLoop::Shutdown() {
     if (!stateMachine.Is(EngineState::ShuttingDown)) {
         stateMachine.TransitionTo(EngineState::ShuttingDown);
     }
-    if (running) { std::cout << "Nova Engine Shutting down..." << std::endl; running = false; }
+    if (running) { // std::cout << "Nova Engine Shutting down..." << std::endl; running = false; }
+    // std::cout << "DEBUG: About to unset GLFW callbacks" << std::endl;
+#ifdef USE_GLFW
+    if (viewport && viewport->GetGLFWWindow()) {
+        GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
+        glfwSetWindowSizeCallback(glfwWindow, nullptr);
+        glfwSetKeyCallback(glfwWindow, nullptr);
+        glfwSetMouseButtonCallback(glfwWindow, nullptr);
+        glfwSetCursorPosCallback(glfwWindow, nullptr);
+    }
+#endif
+    // std::cout << "DEBUG: GLFW callbacks unset, about to call viewport->Shutdown()" << std::endl;
     if (viewport) { viewport->Shutdown(); }
+    // std::cout << "DEBUG: viewport->Shutdown() completed" << std::endl;
     if (ecsInspector) {
         ecsInspector->SetEntityManager(nullptr);
     }
+    // std::cout << "DEBUG: Shutdown completed" << std::endl;
     // unique_ptr will free sceneManager
+}
 }
 
 void MainLoop::RequestShutdown() {
-    std::cout << "Window close requested, shutting down..." << std::endl;
+    // std::cout << "Window close requested, shutting down..." << std::endl;
     Shutdown();
 }
 

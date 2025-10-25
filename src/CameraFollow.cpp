@@ -1,109 +1,256 @@
 #include "CameraFollow.h"
 #include "Camera.h"
+#include "physics/PhysicsEngine.h"
 #include <algorithm>
-
-namespace CameraFollow {
+#include <cmath>
+#include <iostream>
 
 void UpdateTargetLockCamera(Camera& camera,
-                            CameraFollowState& state,
-                            const CameraFollowConfig& config,
-                            const CameraFollowInput& input,
-                            double deltaTime) {
-    const double PI = std::acos(-1.0);
+                            CameraFollow::CameraFollowState& state,
+                            const CameraFollow::CameraFollowConfig& config,
+                            const CameraFollow::CameraFollowInput& input,
+                            double dt,
+                            physics::IPhysicsEngine* physicsEngine)
+{
+    using std::clamp;
+    using std::remainder;
 
-    if (input.isTargetLocked != state.wasTargetLocked) {
-        state.targetLockTransition = 0.0;
-        state.wasTargetLocked = input.isTargetLocked;
+    // Validate config at runtime to catch bad hot-loads
+    const_cast<CameraFollow::CameraFollowConfig&>(config).Validate();
+
+    constexpr double kTAU       = CameraFollow::kTAU;
+    constexpr double kEps       = 1e-6;
+
+    // Clamp dt safely even if config has nonsense
+    dt = clamp(dt, 0.0, std::max(0.0, config.maxDeltaTimeClamp));
+
+    // Debug: Log input values periodically (every ~5 seconds)
+    static double debugTimer = 0.0;
+    debugTimer += dt;
+    bool shouldDebug = debugTimer > 5.0;
+    if (shouldDebug) {
+        debugTimer = 0.0;
+        // Debug output moved after effectiveOrbitYaw is calculated
     }
 
+    // --- Transition t in [0,1] with exponential smoothing ---
+    const double tTarget = input.isTargetLocked ? 1.0 : 0.0;
+    const double tA      = clamp(CameraFollow::ExpAlpha(config.transitionSpeed, dt), 0.0, 1.0);
+    state.targetLockTransition += (tTarget - state.targetLockTransition) * tA;
+    const double t = CameraFollow::SmoothStep(clamp(state.targetLockTransition, 0.0, 1.0));
+
+    // Optional: keep ticking even when unlocked
+    if (!config.alwaysTickFreeMode) {
+        if (t <= 0.0 && !input.isTargetLocked) return;
+    }
+
+    // --- Player and current cam ---
+    const double px = input.playerX, py = input.playerY, pz = input.playerZ;
+    const double cx = camera.x(),    cy = camera.y(),    cz = camera.z();
+    double camYaw   = camera.yaw();
+    double camPitch = camera.pitch();
+
+    // Bound yaw every frame
+    camYaw = std::remainder(camYaw, kTAU);
+
+    // --- Desired locked orbit (XZ plane, Y up) ---
+    // Use separate orbit offset for locked mode to avoid accumulation issues
+    double effectiveOrbitYaw = 0.0;
     if (input.isTargetLocked) {
-        state.targetLockTransition = std::min(1.0, state.targetLockTransition + deltaTime * config.transitionSpeed);
+        // When locked, accumulate mouse deltas into separate orbit offset only when mouse is moving
+        // Reset offset when first entering locked mode
+        if (!state.wasTargetLocked) {
+            state.lockedOrbitOffset = 0.0;
+        }
+        
+        // For locked mode, treat mouseLookYawOffset as a delta rather than accumulated offset
+        // This assumes the caller resets mouseLookYawOffset each frame when locked
+        double mouseDeltaYaw = input.mouseLookYawOffset;
+        
+        // Only accumulate if there's significant mouse movement
+        if (std::abs(mouseDeltaYaw) > 0.001) { // Increased threshold to prevent drift
+            // Clamp delta to prevent large jumps
+            mouseDeltaYaw = std::clamp(mouseDeltaYaw, -0.1, 0.1); // Max 0.1 radians per frame
+            state.lockedOrbitOffset += mouseDeltaYaw;
+        }
+        
+        // Keep in reasonable range
+        state.lockedOrbitOffset = std::remainder(state.lockedOrbitOffset, 2.0 * CameraFollow::kPI);
+        effectiveOrbitYaw = state.lockedOrbitOffset;
     } else {
-        state.targetLockTransition = std::max(0.0, state.targetLockTransition - deltaTime * config.transitionSpeed);
+        // When unlocked, sync orbit yaw to current camera yaw for smooth transition
+        state.orbitYaw = camYaw;
+        effectiveOrbitYaw = state.orbitYaw;
+    }
+    
+    // Update wasTargetLocked for next frame
+    state.wasTargetLocked = input.isTargetLocked;
+    
+    // Debug output after effectiveOrbitYaw is calculated
+    if (shouldDebug || input.isTargetLocked) {
+        std::cout << "Camera Debug - Player: (" << input.playerX << "," << input.playerY << "," << input.playerZ 
+                  << ") Locked: " << (input.isTargetLocked ? "YES" : "NO")
+                  << " YawOffset: " << input.mouseLookYawOffset 
+                  << " PitchOffset: " << input.mouseLookPitchOffset
+                  << " OrbitYaw: " << state.orbitYaw 
+                  << " LockedOffset: " << state.lockedOrbitOffset
+                  << " EffectiveOrbit: " << effectiveOrbitYaw << std::endl;
+    }
+    
+    const double s = std::sin(effectiveOrbitYaw);
+    const double c = std::cos(effectiveOrbitYaw);
+
+    double lockX = px - s * config.orbitDistance;
+    double lockZ = pz - c * config.orbitDistance;
+    double lockY = py + config.orbitHeight;
+
+    // Shoulder offset (third-person "over the shoulder")
+    // Dynamic adjustment based on mouse yaw offset to keep target visible
+    const double baseShoulder = config.shoulderOffset;
+    const double dynamicAdjust = input.mouseLookYawOffset * config.dynamicShoulderFactor;
+    const double shoulder = std::clamp(baseShoulder - dynamicAdjust, -2.0, 2.0); // reasonable bounds
+    const double rightX = c, rightZ = -s;
+    lockX += rightX * shoulder;
+    lockZ += rightZ * shoulder;
+
+    // --- Blend between free (current) and locked ---
+    const double tx = cx + (lockX - cx) * t;
+    const double ty = cy + (lockY - cy) * t;
+    const double tz = cz + (lockZ - cz) * t;
+
+    // --- Frame-independent smoothing ---
+    const double posA = clamp(CameraFollow::ExpAlpha(config.posResponsiveness, dt), 0.0, 1.0);
+    const double rotA = clamp(CameraFollow::ExpAlpha(config.rotResponsiveness, dt), 0.0, 1.0);
+
+    // --- Position (smooth toward blended target) ---
+    double nx = cx + (tx - cx) * posA;
+    double ny = cy + (ty - cy) * posA;
+    double nz = cz + (tz - cz) * posA;
+
+    // Debug: Log significant position changes
+    const double posChange = std::sqrt((nx-cx)*(nx-cx) + (ny-cy)*(ny-cy) + (nz-cz)*(nz-cz));
+    if (posChange > 1.0) {  // Only log if change is significant
+        std::cout << "Large camera position change: " << posChange << " units" << std::endl;
+        std::cout << "  From: (" << cx << "," << cy << "," << cz << ") To: (" << nx << "," << ny << "," << nz << ")" << std::endl;
+        std::cout << "  Target: (" << tx << "," << ty << "," << tz << ") Alpha: " << posA << " dt: " << dt << std::endl;
     }
 
-    if (!(input.isTargetLocked || state.targetLockTransition > 0.0)) {
-        return;
+    // --- Enforce min distance from player (guard zero) ---
+    {
+        const double dxp = nx - px;
+        const double dyp = ny - py;
+        const double dzp = nz - pz;
+        const double dist = std::sqrt(std::max(0.0, dxp*dxp + dyp*dyp + dzp*dzp));
+        if (dist > kEps && dist < config.minDistanceFromPlayer) {
+            const double k = config.minDistanceFromPlayer / dist;
+            nx = px + dxp * k;
+            ny = py + dyp * k;
+            nz = pz + dzp * k;
+        }
     }
 
-    const double playerX = input.playerX;
-    const double playerY = input.playerY;
-    const double playerZ = input.playerZ;
-
-    double orbitAngle = input.mouseLookYawOffset * 0.5;
-
-    double targetCameraX = playerX + config.orbitDistance * std::sin(orbitAngle);
-    double targetCameraY = playerY + config.orbitDistance * std::cos(orbitAngle);
-    double targetCameraZ = playerZ + config.orbitHeight + input.mouseLookPitchOffset * 2.0;
-
-    // Removed distance calculation and minimum distance clamp for unrestricted camera movement
-    // double camToPlayerX = targetCameraX - playerX;
-    // double camToPlayerY = targetCameraY - playerY;
-    // double camToPlayerZ = targetCameraZ - playerZ;
-    // double distanceFromPlayer = std::sqrt(camToPlayerX * camToPlayerX + camToPlayerY * camToPlayerY + camToPlayerZ * camToPlayerZ);
-
-    // Removed minimum distance clamp for unrestricted camera movement
-    // if (distanceFromPlayer < config.minDistanceFromPlayer && distanceFromPlayer > 0.0) {
-    //     double pullFactor = config.minDistanceFromPlayer / distanceFromPlayer;
-    //     targetCameraX = playerX + camToPlayerX * pullFactor;
-    //     targetCameraY = playerY + camToPlayerY * pullFactor;
-    //     targetCameraZ = playerZ + camToPlayerZ * pullFactor;
-    // }
-
-    // Removed ground level clamp for unrestricted camera movement
-    // if (targetCameraZ < config.groundLevel) {
-    //     targetCameraZ = config.groundLevel;
-    // }
-
-    double terrainFloor = config.terrainBuffer;
-    if (targetCameraZ < terrainFloor) {
-        targetCameraZ = terrainFloor;
+    // --- Ground clamp AFTER min-distance push ---
+    const double groundY = config.groundLevel + config.terrainBuffer;
+    if (config.softGroundClamp && ny < groundY) {
+        // Soft spring-based easing toward ground
+        const double groundA = clamp(CameraFollow::ExpAlpha(config.groundClampHz, dt), 0.0, 1.0);
+        ny += (groundY - ny) * groundA;
+    } else {
+        // Hard clamp as fallback
+        ny = std::max(ny, groundY);
     }
 
-    double currentCameraX = camera.x();
-    double currentCameraY = camera.y();
-    double currentCameraZ = camera.z();
+    // --- Obstacle avoidance ---
+    if (config.enableObstacleAvoidance && physicsEngine) {
+        // Raycast from player to desired camera position
+        const double rayOriginX = px;
+        const double rayOriginY = py;
+        const double rayOriginZ = pz;
+        const double rayDirX = nx - px;
+        const double rayDirY = ny - py;
+        const double rayDirZ = nz - pz;
+        const double rayLength = std::sqrt(rayDirX*rayDirX + rayDirY*rayDirY + rayDirZ*rayDirZ);
+        
+        if (rayLength > 1e-6) {
+            // Normalize direction
+            const double invLength = 1.0 / rayLength;
+            const double normDirX = rayDirX * invLength;
+            const double normDirY = rayDirY * invLength;
+            const double normDirZ = rayDirZ * invLength;
+            
+            // Perform raycast
+            auto hitResult = physicsEngine->Raycast(rayOriginX, rayOriginY, rayOriginZ,
+                                                   normDirX, normDirY, normDirZ,
+                                                   rayLength);
+            
+            if (hitResult) {
+                // Hit detected - move camera to hit point + normal * margin
+                const double margin = config.obstacleMargin;
+                const double oldNx = nx, oldNy = ny, oldNz = nz;
+                nx = hitResult->hitX + hitResult->normalX * margin;
+                ny = hitResult->hitY + hitResult->normalY * margin;
+                nz = hitResult->hitZ + hitResult->normalZ * margin;
+                
+                // Debug output
+                std::cout << "Obstacle avoidance: hit at (" << hitResult->hitX << "," << hitResult->hitY << "," << hitResult->hitZ 
+                          << ") normal (" << hitResult->normalX << "," << hitResult->normalY << "," << hitResult->normalZ 
+                          << ") dist=" << hitResult->distance << " margin=" << margin << std::endl;
+                std::cout << "  Camera moved from (" << oldNx << "," << oldNy << "," << oldNz 
+                          << ") to (" << nx << "," << ny << "," << nz << ")" << std::endl;
+                
+                // Ensure we don't go below ground after obstacle adjustment
+                ny = std::max(ny, groundY);
+            }
+        }
+    }
 
-    double distanceToTarget = std::sqrt(
-        (targetCameraX - currentCameraX) * (targetCameraX - currentCameraX) +
-        (targetCameraY - currentCameraY) * (targetCameraY - currentCameraY) +
-        (targetCameraZ - currentCameraZ) * (targetCameraZ - currentCameraZ)
-    );
+    camera.SetPosition(nx, ny, nz);
 
-    double adaptiveFactor = std::min(1.0, distanceToTarget * 0.1);
-    double positionLerpFactor = config.baseLerpFactor + adaptiveFactor * config.adaptiveLerpScale;
+    // Debug: Log final camera position
+    static double lastNx = 0.0, lastNy = 0.0, lastNz = 0.0;
+    const double finalChange = std::sqrt((nx-lastNx)*(nx-lastNx) + (ny-lastNy)*(ny-lastNy) + (nz-lastNz)*(nz-lastNz));
+    if (finalChange > 5.0) {  // Log large jumps
+        std::cout << "Camera jump detected: " << finalChange << " units to (" << nx << "," << ny << "," << nz << ")" << std::endl;
+    }
+    lastNx = nx; lastNy = ny; lastNz = nz;
 
-    double newCameraX = currentCameraX + (targetCameraX - currentCameraX) * positionLerpFactor;
-    double newCameraY = currentCameraY + (targetCameraY - currentCameraY) * positionLerpFactor;
-    double newCameraZ = currentCameraZ + (targetCameraZ - currentCameraZ) * positionLerpFactor;
+    // --- Orientation: look at player (mouse pitch affects aim, not height) ---
+    const double dx = px - nx;
+    const double dz = pz - nz;
+    const double dy = py - ny;
 
-    camera.SetPosition(newCameraX, newCameraY, newCameraZ);
+    const double horizRaw = std::hypot(dx, dz);
+    const double horiz    = std::max(kEps, horizRaw);
 
-    double dx = playerX - newCameraX;
-    double dy = playerY - newCameraY;
-    double dz = playerZ - newCameraZ;
+    // Angle-based "near vertical" check (in radians)
+    const double elev = std::atan2(dy, horiz); // 0 on horizon, +/- near vertical
+    const double nearVertRad = clamp(config.nearVerticalDeg, 0.0, 89.9) * (CameraFollow::kPI / 180.0);
+    const bool   nearVertical = std::abs(elev) > (CameraFollow::kPI / 2.0 - nearVertRad);
 
-    double targetYaw = std::atan2(dx, dy);
-    double horizontalDistance = std::sqrt(dx * dx + dy * dy);
-    double targetPitch = -std::atan2(dz, horizontalDistance) - 0.2;
+    // yawToTarget = atan2(-dx, -dz) assumes +Z-forward / yaw=0 down -Z convention
+    const double yawToTarget = std::atan2(-dx, -dz);
+    const double yawLocked   = nearVertical ? camYaw : yawToTarget;
 
-    double currentYaw = camera.yaw();
-    double currentPitch = camera.pitch();
+    const double pitchLocked = -std::atan2(dy, horiz) + config.pitchBias + (input.mouseLookPitchOffset * t);
 
-    double yawDiff = targetYaw - currentYaw;
-    while (yawDiff > PI) yawDiff -= 2 * PI;
-    while (yawDiff < -PI) yawDiff += 2 * PI;
+    // Blend orientation target by t (shortest-arc yaw), then smooth by rotA
+    double targetYaw   = camYaw   + remainder(yawLocked - camYaw, kTAU) * t;
+    double targetPitch = camPitch + (pitchLocked - camPitch) * t;
 
-    double rotationLerpFactor = config.rotationLerpFactor;
-    double newYaw = currentYaw + yawDiff * rotationLerpFactor;
-    double newPitch = currentPitch + (targetPitch - currentPitch) * rotationLerpFactor;
+    // Softer near-top pitch blend, scaled from config
+    const double topBlend = clamp(horizRaw * config.topBlendScale, 0.0, 1.0);
+    targetPitch = camPitch + (pitchLocked - camPitch) * (t * topBlend);
 
-    // Removed pitch clamp for unrestricted camera movement
-    // Allow full 180-degree pitch range for better camera control
-    // if (newPitch > PI/2) newPitch = PI/2;
-    // if (newPitch < -PI/2) newPitch = -PI/2;
+    camYaw   = camYaw   + remainder(targetYaw - camYaw, kTAU) * rotA;
+    camPitch = camPitch + (targetPitch - camPitch) * rotA;
 
-    camera.SetOrientation(newPitch, newYaw);
+    // Optional pitch clamp
+    if (config.clampPitch) {
+        camPitch = clamp(camPitch, config.pitchMin, config.pitchMax);
+    }
+
+    // Keep yaw bounded
+    camYaw = std::remainder(camYaw, kTAU);
+
+    camera.SetOrientation(camPitch, camYaw);
 }
-
-} // namespace CameraFollow

@@ -53,7 +53,7 @@ double AudioSystem::rolloffFactor_ = 1.0;
 
 bool AudioSystem::Initialize() {
     if (initialized_) {
-        std::cout << "AudioSystem: Already initialized" << std::endl;
+        // std::cout << "AudioSystem: Already initialized" << std::endl;
         return true;
     }
     
@@ -72,10 +72,10 @@ bool AudioSystem::Initialize() {
     Mix_Volume(-1, MIX_MAX_VOLUME);  // All channels
     Mix_VolumeMusic(MIX_MAX_VOLUME);
     
-    std::cout << "AudioSystem: Initialized successfully" << std::endl;
-    std::cout << "  - Frequency: 44100 Hz" << std::endl;
-    std::cout << "  - Channels: 32 (stereo output)" << std::endl;
-    std::cout << "  - Chunk size: 2048 bytes" << std::endl;
+    // std::cout << "AudioSystem: Initialized successfully" << std::endl;
+    // std::cout << "  - Frequency: 44100 Hz" << std::endl;
+    // std::cout << "  - Channels: 32 (stereo output)" << std::endl;
+    // std::cout << "  - Chunk size: 2048 bytes" << std::endl;
     
     initialized_ = true;
     return true;
@@ -114,7 +114,7 @@ void AudioSystem::Shutdown() {
     // Close SDL_mixer
     Mix_CloseAudio();
     
-    std::cout << "AudioSystem: Shut down successfully" << std::endl;
+    // std::cout << "AudioSystem: Shut down successfully" << std::endl;
 #endif
     
     initialized_ = false;
@@ -151,7 +151,7 @@ int AudioSystem::LoadSound(const std::string& filePath) {
     soundClips_[clipId] = chunk;
     soundPaths_[filePath] = clipId;
     
-    std::cout << "AudioSystem: Loaded sound '" << filePath << "' (clipId=" << clipId << ")" << std::endl;
+    // std::cout << "AudioSystem: Loaded sound '" << filePath << "' (clipId=" << clipId << ")" << std::endl;
     return clipId;
 #else
     std::cerr << "AudioSystem: SDL_mixer not available" << std::endl;
@@ -278,7 +278,7 @@ bool AudioSystem::LoadMusic(const std::string& filePath) {
         
         currentMusic_ = music;
         currentMusicPath_ = filePath;
-        std::cout << "AudioSystem: Loaded music '" << filePath << "'" << std::endl;
+        // std::cout << "AudioSystem: Loaded music '" << filePath << "'" << std::endl;
     }
     
     return true;

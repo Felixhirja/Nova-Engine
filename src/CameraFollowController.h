@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CameraFollow.h"
+#include "physics/PhysicsEngine.h"
 
 struct CameraMovementInput {
     bool moveForward = false;
@@ -10,30 +11,43 @@ struct CameraMovementInput {
     bool moveUp = false;
     bool moveDown = false;
     double moveSpeed = 0.5;
+    bool sprint = false;
+    bool slow = false;
+    double mouseDeltaX = 0.0;
+    double mouseDeltaY = 0.0;
 };
 
 class CameraFollowController {
 public:
     CameraFollowController();
 
-    void SetConfig(const CameraFollowConfig& config);
-    const CameraFollowConfig& GetConfig() const { return config_; }
+    void SetConfig(const CameraFollow::CameraFollowConfig& config);
+    const CameraFollow::CameraFollowConfig& GetConfig() const { return config_; }
 
-    const CameraFollowState& GetState() const { return state_; }
+    const CameraFollow::CameraFollowState& GetState() const { return state_; }
     void ResetState();
+    void SuppressNextUpdate() { suppressNextUpdate_ = true; }
 
     void Update(class Camera& camera,
-                const CameraFollowInput& followInput,
+                const CameraFollow::CameraFollowInput& followInput,
                 const CameraMovementInput& movementInput,
-                double deltaTime);
+                double deltaTime,
+                physics::IPhysicsEngine* physicsEngine = nullptr);
 
 private:
-    CameraFollowConfig config_;
-    CameraFollowState state_;
+    CameraFollow::CameraFollowConfig config_;
+    CameraFollow::CameraFollowState state_;
+    bool suppressNextUpdate_ = false;
+
+    void ApplyFreeLookRotation(class Camera& camera,
+                               const CameraMovementInput& movementInput,
+                               const CameraFollow::CameraFollowConfig& config,
+                               double deltaTime);
 
     void ApplyFreeCameraMovement(class Camera& camera,
-                                 const CameraFollowInput& followInput,
+                                 const CameraFollow::CameraFollowInput& followInput,
                                  const CameraMovementInput& movementInput,
+                                 const CameraFollow::CameraFollowConfig& config,
                                  double deltaTime);
 };
 

@@ -5,10 +5,18 @@
 #include "Transform.h"
 #include "EnergyHUDTelemetry.h"
 #include "graphics/UIBatcher.h"
+#include "graphics/LineBatcher3D.h"
 #include <string>
 #include <iostream>
 #include <memory>
 #include <vector>
+
+enum class RenderBackend {
+    None,
+    SDL_GL,
+    SDL_Renderer,
+    GLFW_GL
+};
 
 class ParticleRenderer;
 struct ParticleRendererDeleter {
@@ -59,7 +67,7 @@ public:
     ~Viewport3D();
 
     void Init();
-    void Render(const class Camera* camera, double playerX, double playerY, double playerZ);
+    void Render(const class Camera* camera, double playerX, double playerY, double playerZ, bool targetLocked = false);
     void BeginFrame();
     void FinishFrame();
     void ActivateView(const class Camera* camera, double playerX, double playerY, double playerZ, size_t viewIndex);
@@ -85,7 +93,7 @@ public:
     void Shutdown();
     
     // If OpenGL is in use this flag will be true and an OpenGL context will be owned
-    bool usingGL() const { return useGL; }
+    bool usingGL() const { return IsUsingGLBackend(); }
 
     // Get the SDL window (returns nullptr if SDL is unavailable)
 #ifdef USE_SDL
@@ -104,10 +112,10 @@ public:
     // Draw 3D coordinate system axes
     void DrawCoordinateSystem();
     // Draw visual representation of camera position and orientation
-    void DrawCameraVisual(const class Camera* camera);
+    void DrawCameraVisual(const class Camera* camera, double playerX = 0.0, double playerY = 0.0, double playerZ = 0.0, bool targetLocked = false);
     // Draw a small crosshair at camera center for debugging
     void DrawCameraMarker(const class Camera* camera);
-    void DrawCameraDebug(const class Camera* camera, double playerX, double playerY, double playerZ, ViewRole role);
+    void DrawCameraDebug(const class Camera* camera, double playerX, double playerY, double playerZ, ViewRole role, bool targetLocked = false);
     // Draw HUD (zoom, fps, player x)
     void DrawHUD(const class Camera* camera,
                  double fps,
@@ -152,13 +160,17 @@ public:
     int GetWidth() const { return width; }
     int GetHeight() const { return height; }
 
+    // Expose UI batcher for external overlays (read-only pointer; may be null if not using GL)
+    UIBatcher* GetUIBatcher() const { return uiBatcher_.get(); }
+
 private:
     int width;
     int height;
-    bool usingSDL;
-    bool useGL;
+    RenderBackend backend_;
     bool vsyncEnabled_;
     double frameRateLimitHint_;
+    bool debugLogging_; // Control verbose debug output
+    bool aggressiveFocus_; // Control aggressive window focus behavior on Windows
 #ifdef USE_SDL
     SDL_Window* sdlWindow;
     SDL_Renderer* sdlRenderer;
@@ -176,6 +188,9 @@ private:
     std::vector<ViewportLayout> layouts_;
     size_t activeLayoutIndex_;
     std::unique_ptr<UIBatcher> uiBatcher_;
+    std::unique_ptr<LineBatcher3D> lineBatcher3D_;
+    struct PrimitiveBuffers;
+    std::unique_ptr<PrimitiveBuffers> primitiveBuffers_;
 
     void EnsureLayoutConfiguration();
     void ApplyViewportView(const ViewportView& view);
@@ -186,4 +201,20 @@ private:
 #ifdef USE_SDL
     void EnsureSpaceshipHudTexture();
 #endif
+    void SetBackend(RenderBackend backend);
+    bool IsUsingSDLBackend() const;
+    bool IsUsingSDLGL() const;
+    bool IsUsingSDLRenderer() const;
+    bool IsUsingGLFWBackend() const;
+    bool IsUsingGLBackend() const;
+    void EnsurePrimitiveBuffers();
+    void DestroyPrimitiveBuffers();
+    void DrawPlayerPatchPrimitive();
+    void DrawCubePrimitive(float r, float g, float b);
+
+    // Tiny 5x5 glyph rendering using UI batcher when available (fallback to immediate mode)
+    void DrawTinyChar2D(float x, float y, char c, float scale, float r, float g, float b);
+
+    // Ensure line batcher exists and initialized
+    void EnsureLineBatcher3D();
 };

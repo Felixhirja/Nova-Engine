@@ -247,6 +247,12 @@ void ECSInspector::DrawOverlay(Viewport3D& viewport) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    // Use UI batcher if available for 2D overlay rendering
+    UIBatcher* batch = viewport.GetUIBatcher();
+    if (batch) {
+        batch->Begin(viewport.GetWidth(), viewport.GetHeight());
+    }
+
     int fontHeight = TextRenderer::GetFontHeight(FontSize::Fixed);
     if (fontHeight <= 0) {
         fontHeight = 14;
@@ -265,21 +271,17 @@ void ECSInspector::DrawOverlay(Viewport3D& viewport) {
     int originX = std::max(16, viewport.GetWidth() - kInspectorPanelWidth - 16);
     int originY = 32;
 
-    glColor4f(0.05f, 0.05f, 0.08f, 0.85f);
-    glBegin(GL_QUADS);
-    glVertex2f(static_cast<float>(originX), static_cast<float>(originY));
-    glVertex2f(static_cast<float>(originX + kInspectorPanelWidth), static_cast<float>(originY));
-    glVertex2f(static_cast<float>(originX + kInspectorPanelWidth), static_cast<float>(originY + panelHeight));
-    glVertex2f(static_cast<float>(originX), static_cast<float>(originY + panelHeight));
-    glEnd();
+    if (batch) {
+        batch->AddQuad(static_cast<float>(originX), static_cast<float>(originY),
+                       static_cast<float>(kInspectorPanelWidth), static_cast<float>(panelHeight),
+                       0.05f, 0.05f, 0.08f, 0.85f);
+    }
 
-    glColor4f(0.2f, 0.6f, 0.9f, 0.9f);
-    glBegin(GL_LINE_LOOP);
-    glVertex2f(static_cast<float>(originX), static_cast<float>(originY));
-    glVertex2f(static_cast<float>(originX + kInspectorPanelWidth), static_cast<float>(originY));
-    glVertex2f(static_cast<float>(originX + kInspectorPanelWidth), static_cast<float>(originY + panelHeight));
-    glVertex2f(static_cast<float>(originX), static_cast<float>(originY + panelHeight));
-    glEnd();
+    if (batch) {
+        batch->AddRectOutline(static_cast<float>(originX), static_cast<float>(originY),
+                               static_cast<float>(kInspectorPanelWidth), static_cast<float>(panelHeight),
+                               1.0f, 0.2f, 0.6f, 0.9f, 0.9f);
+    }
 
     int textX = originX + 16;
     int textY = originY + fontHeight + 12;
@@ -302,6 +304,10 @@ void ECSInspector::DrawOverlay(Viewport3D& viewport) {
         textY += fontHeight + 4;
     }
 
+    // Flush batched overlay if used
+    if (batch) {
+        batch->Flush();
+    }
     glDisable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
 
@@ -321,13 +327,13 @@ void ECSInspector::DrawConsoleFallback() {
     }
     consolePrintedForFrame_ = true;
 
-    std::cout << "[ECS Inspector] " << headerLine_ << std::endl;
+    // std::cout << "[ECS Inspector] " << headerLine_ << std::endl;
     const size_t previewCount = std::min<size_t>(displayRows_.size(), 5);
     for (size_t i = 0; i < previewCount; ++i) {
-        std::cout << "  " << displayRows_[i] << std::endl;
+        // std::cout << "  " << displayRows_[i] << std::endl;
     }
     if (displayRows_.size() > previewCount) {
-        std::cout << "  ... (" << (displayRows_.size() - previewCount) << " more entities)" << std::endl;
+        // std::cout << "  ... (" << (displayRows_.size() - previewCount) << " more entities)" << std::endl;
     }
 }
 

@@ -16,7 +16,7 @@ void stepFrames(Camera& camera,
                 double dt,
                 int frames) {
     for (int i = 0; i < frames; ++i) {
-        CameraFollow::UpdateTargetLockCamera(camera, state, config, input, dt);
+        UpdateTargetLockCamera(camera, state, config, input, dt);
     }
 }
 

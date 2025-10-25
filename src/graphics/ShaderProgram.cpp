@@ -92,11 +92,11 @@ bool ShaderProgram::LoadFromSource(const std::string& vertexSrc, const std::stri
         return false;
     }
 
-    std::cout << "Shader compiled successfully";
+    // std::cout << "Shader compiled successfully";
     if (!vertexPath_.empty()) {
-        std::cout << " (" << vertexPath_ << ", " << fragmentPath_ << ")";
+        // std::cout << " (" << vertexPath_ << ", " << fragmentPath_ << ")";
     }
-    std::cout << std::endl;
+    // std::cout << std::endl;
 
     return true;
 }
@@ -142,40 +142,22 @@ GLuint ShaderProgram::CompileShader(GLenum shaderType, const std::string& source
 }
 
 bool ShaderProgram::LinkProgram() {
-    programID_ = glCreateProgram();
-    if (programID_ == 0) {
-        errorLog_ = "Failed to create shader program";
-        return false;
-    }
-
-    glAttachShader(programID_, vertexShaderID_);
-    glAttachShader(programID_, fragmentShaderID_);
     glLinkProgram(programID_);
 
-    // Check link status
-    GLint success = 0;
+    GLint success;
     glGetProgramiv(programID_, GL_LINK_STATUS, &success);
-
     if (!success) {
-        GLint logLength = 0;
-        glGetProgramiv(programID_, GL_INFO_LOG_LENGTH, &logLength);
-
-        if (logLength > 0) {
-            std::string infoLog(logLength, '\0');
-            glGetProgramInfoLog(programID_, logLength, nullptr, &infoLog[0]);
-            errorLog_ = "Shader linking failed:\n" + infoLog;
-        } else {
-            errorLog_ = "Shader linking failed (no error log available)";
-        }
-
-        glDeleteProgram(programID_);
-        programID_ = 0;
-        std::cerr << errorLog_ << std::endl;
+        GLchar infoLog[1024];
+        glGetProgramInfoLog(programID_, 1024, NULL, infoLog);
+        std::cerr << "Shader program linking failed:\n" << infoLog << std::endl;
         return false;
     }
+    
+    std::cout << "Shader program linked successfully." << std::endl;
 
-    // Shaders can be detached and deleted after successful linking
-    // The program retains the compiled code
+    // Detach and delete shaders after linking
+    glDetachShader(programID_, vertexShaderID_);
+    glDetachShader(programID_, fragmentShaderID_);
     glDeleteShader(vertexShaderID_);
     glDeleteShader(fragmentShaderID_);
     vertexShaderID_ = 0;
@@ -191,9 +173,7 @@ void ShaderProgram::Use() const {
 }
 
 void ShaderProgram::Unuse() {
-    if (glUseProgram != nullptr) {
-        glUseProgram(0);
-    }
+    glUseProgram(0);
 }
 
 bool ShaderProgram::Reload() {

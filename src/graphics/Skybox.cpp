@@ -123,7 +123,7 @@ void Skybox::InitCubeMesh() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    std::cout << "Skybox cube mesh initialized" << std::endl;
+    // std::cout << "Skybox cube mesh initialized" << std::endl;
 }
 
 bool Skybox::LoadCubemap(const std::string faces[6]) {
@@ -184,7 +184,7 @@ bool Skybox::LoadCubemap(const std::string faces[6]) {
     }
 
     useProceduralStarfield_ = false;
-    std::cout << "Cubemap skybox loaded successfully" << std::endl;
+    // std::cout << "Cubemap skybox loaded successfully" << std::endl;
     return true;
 }
 
@@ -205,7 +205,7 @@ bool Skybox::LoadProceduralStarfield(float starDensity, float starBrightness) {
     }
 
     useProceduralStarfield_ = true;
-    std::cout << "Procedural starfield skybox initialized" << std::endl;
+    // std::cout << "Procedural starfield skybox initialized" << std::endl;
     return true;
 }
 

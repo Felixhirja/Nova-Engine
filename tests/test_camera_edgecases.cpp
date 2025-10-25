@@ -74,7 +74,7 @@ int main() {
 
         for (int frame = 0; frame < 600; ++frame) {
             input.isTargetLocked = (frame % 3 != 0); // toggle rapidly: lock for two frames, unlock for one
-            CameraFollow::UpdateTargetLockCamera(camera, state, config, input, dt);
+            UpdateTargetLockCamera(camera, state, config, input, dt);
 
             if (state.targetLockTransition < -kEpsilon || state.targetLockTransition > 1.0 + kEpsilon) {
                 std::cerr << "Target lock transition out of bounds at frame " << frame

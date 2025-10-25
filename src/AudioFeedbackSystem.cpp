@@ -24,7 +24,7 @@ bool AudioFeedbackSystem::Initialize() {
     RegisterDefaultClips();
     
     initialized_ = true;
-    std::cout << "Audio feedback system initialized" << std::endl;
+    // std::cout << "Audio feedback system initialized" << std::endl;
     return true;
 }
 
@@ -40,7 +40,7 @@ void AudioFeedbackSystem::Shutdown() {
     // We don't shut it down here in case other systems need it
     
     initialized_ = false;
-    std::cout << "Audio feedback system shut down" << std::endl;
+    // std::cout << "Audio feedback system shut down" << std::endl;
 }
 
 void AudioFeedbackSystem::RegisterDefaultClips() {

@@ -181,9 +181,9 @@ void GamepadManager::InitializeInternal() {
             continue;
         }
 
-        auto getState = reinterpret_cast<decltype(&XInputGetState)>(
+        auto getState = reinterpret_cast<DWORD (*)(DWORD, XINPUT_STATE*)>(
             GetProcAddress(handle, "XInputGetState"));
-        auto getCapabilities = reinterpret_cast<decltype(&XInputGetCapabilities)>(
+        auto getCapabilities = reinterpret_cast<DWORD (*)(DWORD, DWORD, XINPUT_CAPABILITIES*)>(
             GetProcAddress(handle, "XInputGetCapabilities"));
 
         if (!getState || !getCapabilities) {

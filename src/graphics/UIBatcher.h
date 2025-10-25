@@ -27,6 +27,18 @@ public:
     // r, g, b, a: Color (0.0-1.0 range)
     void AddQuad(float x, float y, float width, float height,
                 float r, float g, float b, float a = 1.0f);
+
+    // Add a rectangle outline (border) using 4 thin quads
+    // thickness: border thickness in pixels
+    void AddRectOutline(float x, float y, float width, float height,
+                        float thickness,
+                        float r, float g, float b, float a = 1.0f);
+
+    // Add a triangle (2D) to the batch
+    void AddTriangle(float x1, float y1,
+                     float x2, float y2,
+                     float x3, float y3,
+                     float r, float g, float b, float a = 1.0f);
     
     // Render all accumulated quads and clear batch (call at end of frame)
     void Flush();
