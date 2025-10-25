@@ -113,7 +113,7 @@ int main() {
             }
 
             if (((frame + static_cast<int>(i)) % 3) == 0) {
-                double overflow = shieldSystem.ApplyDamage(target, damageDist(rng));
+                double overflow = shieldSystem.ApplyDamage(target, damageDist(rng), &entityManager);
                 accumulatedHullOverflow += overflow;
                 if (overflow > 0.0) {
                     energySystem.DivertPower(target, PowerPriority::Shields, overflow * 0.1);

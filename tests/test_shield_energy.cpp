@@ -35,7 +35,7 @@ int main() {
     }
     
     // Test damage absorption
-    double hullDamage = shieldSys.ApplyDamage(entityId, 50.0);
+    double hullDamage = shieldSys.ApplyDamage(entityId, 50.0, &entityManager);
     // 50 damage * 0.8 absorption = 40 to shield, 10 to hull
     if (!approxEqual(hullDamage, 10.0)) {
         std::cerr << "Hull damage incorrect: expected 10.0, got " << hullDamage << std::endl;
@@ -49,7 +49,7 @@ int main() {
     }
     
     // Test shield depletion and overflow
-    hullDamage = shieldSys.ApplyDamage(entityId, 200.0);
+    hullDamage = shieldSys.ApplyDamage(entityId, 200.0, &entityManager);
     // 200 * 0.8 = 160 absorbed, but only 110 available
     // 50 overflow + 40 unabsorbed = 90 to hull
     if (!approxEqual(hullDamage, 90.0)) {
