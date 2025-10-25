@@ -1,13 +1,37 @@
 #include "ShieldSystem.h"
 #include "ecs/EntityManager.h"
+#include "ecs/Components.h"
 #include "FeedbackEvent.h"
 #include <algorithm>
 #include <iostream>
 
 ShieldSystem::ShieldSystem() {}
 
+namespace {
+
+void PopulateEventPosition(int entityId, FeedbackEvent& event, EntityManager* manager) {
+    if (!manager) {
+        return;
+    }
+
+    if (auto* position = manager->GetComponent<Position>(entityId)) {
+        event.x = position->x;
+        event.y = position->y;
+        event.z = position->z;
+        return;
+    }
+
+    if (auto* transform2D = manager->GetComponent<Transform2D>(entityId)) {
+        event.x = transform2D->x;
+        event.y = transform2D->y;
+        event.z = 0.0;
+    }
+}
+
+} // namespace
+
 void ShieldSystem::Update(EntityManager& entityManager, double dt) {
-    (void)entityManager; // Unused for now
+    lastKnownEntityManager_ = &entityManager;
     float deltaTime = static_cast<float>(dt);
     for (auto& entry : shieldStates_) {
         int entityId = entry.first;
@@ -32,26 +56,29 @@ void ShieldSystem::Update(EntityManager& entityManager, double dt) {
             );
             
             // Emit recharge event if shield is recharging
-            if (prevCapacity > 0.0 && prevCapacity < shield.maxCapacityMJ && 
+            if (prevCapacity > 0.0 && prevCapacity < shield.maxCapacityMJ &&
                 shield.currentCapacityMJ > prevCapacity) {
                 FeedbackEvent event(FeedbackEventType::ShieldRecharging, entityId);
                 event.magnitude = shield.currentCapacityMJ / shield.maxCapacityMJ * 100.0;
+                PopulateEventPosition(entityId, event, lastKnownEntityManager_);
                 FeedbackEventManager::Get().Emit(event);
             }
-            
+
             // Emit fully charged event
-            if (prevCapacity < shield.maxCapacityMJ && 
+            if (prevCapacity < shield.maxCapacityMJ &&
                 shield.currentCapacityMJ >= shield.maxCapacityMJ) {
                 FeedbackEvent event(FeedbackEventType::ShieldFullyCharged, entityId);
+                PopulateEventPosition(entityId, event, lastKnownEntityManager_);
                 FeedbackEventManager::Get().Emit(event);
             }
         }
-        
+
         // Check for low shield warning
         double shieldPercent = shield.currentCapacityMJ / shield.maxCapacityMJ;
         if (shieldPercent < 0.25 && shieldPercent > 0.0) {
             FeedbackEvent event(FeedbackEventType::WarningLowShields, entityId, AlertSeverity::Warning);
             event.magnitude = shieldPercent * 100.0;
+            PopulateEventPosition(entityId, event, lastKnownEntityManager_);
             FeedbackEventManager::Get().Emit(event);
         }
     }
@@ -74,13 +101,14 @@ void ShieldSystem::InitializeShield(int entityId, double capacity, double rechar
               << " with capacity " << capacity << " MJ" << std::endl;
 }
 
-double ShieldSystem::ApplyDamage(int entityId, double damage) {
+double ShieldSystem::ApplyDamage(int entityId, double damage, EntityManager* entityManager) {
     auto it = shieldStates_.find(entityId);
     if (it == shieldStates_.end() || !it->second.isActive) {
         // No shield or inactive, full damage to hull
         FeedbackEvent event(FeedbackEventType::HullDamage, entityId, AlertSeverity::Warning);
         event.magnitude = damage;
-        // TODO: Get entity position for 3D audio
+        auto* manager = entityManager ? entityManager : lastKnownEntityManager_;
+        PopulateEventPosition(entityId, event, manager);
         FeedbackEventManager::Get().Emit(event);
         return damage;
     }
@@ -94,7 +122,8 @@ double ShieldSystem::ApplyDamage(int entityId, double damage) {
     // Emit shield hit event
     FeedbackEvent hitEvent(FeedbackEventType::ShieldHit, entityId);
     hitEvent.magnitude = absorbedDamage;
-    // TODO: Get entity position for 3D audio
+    auto* manager = entityManager ? entityManager : lastKnownEntityManager_;
+    PopulateEventPosition(entityId, hitEvent, manager);
     FeedbackEventManager::Get().Emit(hitEvent);
 
     // Apply damage to shield
@@ -108,6 +137,7 @@ double ShieldSystem::ApplyDamage(int entityId, double damage) {
         
         // Emit shield depleted event
         FeedbackEvent depletedEvent(FeedbackEventType::ShieldDepleted, entityId, AlertSeverity::Critical);
+        PopulateEventPosition(entityId, depletedEvent, manager);
         FeedbackEventManager::Get().Emit(depletedEvent);
     }
 

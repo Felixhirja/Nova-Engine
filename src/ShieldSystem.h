@@ -28,7 +28,7 @@ public:
                          double rechargeDelay, double absorption, const std::string& componentId);
 
     // Apply damage to shield, returns actual damage dealt to hull (overflow)
-    double ApplyDamage(int entityId, double damage);
+    double ApplyDamage(int entityId, double damage, EntityManager* entityManager = nullptr);
 
     // Get shield percentage (0.0-1.0)
     double GetShieldPercentage(int entityId) const;
@@ -44,4 +44,5 @@ public:
 
 private:
     std::unordered_map<int, ShieldState> shieldStates_;
+    EntityManager* lastKnownEntityManager_ = nullptr;
 };

@@ -48,7 +48,7 @@ int main() {
         for (std::size_t idx = 0; idx < ships.size(); ++idx) {
             Entity entity = ships[idx];
             if (((step + static_cast<int>(idx)) % 2) == 0) {
-                double overflow = shieldSystem.ApplyDamage(entity, damageDist(rng));
+                double overflow = shieldSystem.ApplyDamage(entity, damageDist(rng), &entityManager);
                 accumulatedHullOverflow += overflow;
                 if (overflow > 0.0) {
                     energySystem.DivertPower(entity, PowerPriority::Shields, overflow * 0.1);
