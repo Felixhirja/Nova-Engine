@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
+#include <vector>
 
 struct SDL_Surface;
 
@@ -28,3 +30,11 @@ struct SvgRasterizationOptions {
 // version.
 SDL_Surface* LoadSVGSurface(const std::string& path,
                             SvgRasterizationOptions options = {});
+
+// Rasterizes an SVG file into a tightly packed RGBA buffer.
+// Returns true on success and fills outPixels with width*height*4 bytes.
+bool LoadSvgToRgba(const std::string& path,
+                   std::vector<std::uint8_t>& outPixels,
+                   int& outWidth,
+                   int& outHeight,
+                   SvgRasterizationOptions options = {});

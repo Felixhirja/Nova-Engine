@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <iostream>
 #include <cmath>
+#include <chrono>
+#include <cstdlib>
 
 EnergyManagementSystem::EnergyManagementSystem() {}
 
@@ -155,7 +157,24 @@ void EnergyManagementSystem::BalancePower(EnergyManagementState& state) {
     // Check overload
     double totalDemand = state.shieldRequirementMW + state.weaponRequirementMW + state.thrusterRequirementMW;
     if (state.overloadProtection && totalDemand > state.totalPowerMW * state.overloadThreshold) {
-        std::cerr << "Warning: Power overload detected, reducing output" << std::endl;
+        // Rate-limit warning to avoid console spam
+        using clock = std::chrono::steady_clock;
+        static clock::time_point lastWarn;
+        const auto now = clock::now();
+        // Allow environment variable override (milliseconds)
+        static int minMs = [](){
+            const char* v = std::getenv("NOVA_OVERLOAD_WARN_MS");
+            if (!v) return 500; // default 500ms
+            char* endp = nullptr;
+            long parsed = std::strtol(v, &endp, 10);
+            if (endp == v || parsed <= 0 || parsed > 60000) return 500;
+            return static_cast<int>(parsed);
+        }();
+        const auto minInterval = std::chrono::milliseconds(minMs);
+        if (lastWarn.time_since_epoch().count() == 0 || (now - lastWarn) > minInterval) {
+            std::cerr << "Warning: Power overload detected, reducing output" << std::endl;
+            lastWarn = now;
+        }
         // Scale down all allocations proportionally
         double scaleFactor = (state.totalPowerMW * state.overloadThreshold) / totalDemand;
         state.shieldPowerMW *= scaleFactor;

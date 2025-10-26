@@ -4,11 +4,17 @@
 #include <vector>
 #include <cstdint>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <algorithm>
 #include <utility>
 #include <cstdio>
+#include <cstring>
+#include <chrono>
+#include <functional>
+#include <sstream>
+#include "SVGSurfaceLoader.h"
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -32,7 +38,6 @@
 #include "sdl_compat.h"
 #endif
 #include "ResourceManager.h"
-#include "SVGSurfaceLoader.h"
 #include "Camera.h"
 #endif
 #ifdef USE_GLFW
@@ -51,31 +56,6 @@ struct Viewport3D::PrimitiveBuffers {
     GLuint cubeVBO = 0;
     GLsizei cubeVertexCount = 0;
 };
-
-static const uint8_t tinyFont[][5] = {
-    {0x1F,0x11,0x11,0x11,0x1F}, // 0
-    {0x04,0x06,0x04,0x04,0x07}, // 1
-    {0x1F,0x01,0x1F,0x10,0x1F}, // 2
-    {0x1F,0x01,0x1F,0x01,0x1F}, // 3
-    {0x11,0x11,0x1F,0x01,0x01}, // 4
-    {0x1F,0x10,0x1F,0x01,0x1F}, // 5
-    {0x1F,0x10,0x1F,0x11,0x1F}, // 6
-    {0x1F,0x01,0x02,0x04,0x04}, // 7
-    {0x1F,0x11,0x1F,0x11,0x1F}, // 8
-    {0x1F,0x11,0x1F,0x01,0x1F}, // 9
-};
-
-static const uint8_t glyphV[5] = {0x11, 0x11, 0x0A, 0x0A, 0x04};
-static const uint8_t glyphY[5] = {0x11, 0x0A, 0x04, 0x04, 0x04};
-static const uint8_t glyphN[5] = {0x11, 0x19, 0x15, 0x13, 0x11};
-static const uint8_t glyphC[5] = {0x0E, 0x10, 0x10, 0x10, 0x0E};
-static const uint8_t glyphO[5] = {0x0E, 0x11, 0x11, 0x11, 0x0E};
-static const uint8_t glyphF[5] = {0x1F, 0x10, 0x1E, 0x10, 0x10};
-static const uint8_t glyphA[5] = {0x0E, 0x11, 0x1F, 0x11, 0x11};
-static const uint8_t glyphP[5] = {0x1E, 0x11, 0x1E, 0x10, 0x10};
-static const uint8_t glyphT[5] = {0x1F, 0x04, 0x04, 0x04, 0x04};
-static const uint8_t glyphG[5] = {0x0E, 0x10, 0x17, 0x11, 0x0E};
-static const uint8_t glyphLtrS[5] = {0x1F, 0x10, 0x1F, 0x01, 0x1F};
 
 namespace {
 
@@ -107,10 +87,151 @@ const char* RenderBackendToString(RenderBackend backend) {
     return "Unknown";
 }
 
+struct SvgCacheHeader {
+    char magic[4];
+    std::uint32_t version;
+    std::uint32_t width;
+    std::uint32_t height;
+};
+
+constexpr std::uint32_t kSvgCacheVersion = 1;
+
+std::filesystem::path BuildSvgCachePath(const std::filesystem::path& svgPath,
+                                        const SvgRasterizationOptions& options) {
+    namespace fs = std::filesystem;
+    fs::path svgAbsolute = svgPath;
+    fs::path cacheDir = svgAbsolute.parent_path() / "cache";
+    std::ostringstream key;
+    key << svgAbsolute.string()
+        << "|w=" << options.targetWidth
+        << "|h=" << options.targetHeight
+        << "|scale=" << options.scale
+        << "|aspect=" << (options.preserveAspectRatio ? 1 : 0);
+    std::size_t hashValue = std::hash<std::string>{}(key.str());
+    std::ostringstream fileName;
+    fileName << svgAbsolute.stem().string() << "_" << std::hex << hashValue << ".rgba";
+    return cacheDir / fileName.str();
+}
+
+bool TryLoadSvgCache(const std::filesystem::path& cachePath,
+                     std::vector<std::uint8_t>& outPixels,
+                     int& outWidth,
+                     int& outHeight) {
+    namespace fs = std::filesystem;
+    std::ifstream in(cachePath, std::ios::binary);
+    if (!in) {
+        return false;
+    }
+
+    SvgCacheHeader header{};
+    if (!in.read(reinterpret_cast<char*>(&header), sizeof(header))) {
+        return false;
+    }
+
+    if (std::memcmp(header.magic, "SVGC", 4) != 0 || header.version != kSvgCacheVersion) {
+        return false;
+    }
+
+    const std::size_t pixelCount = static_cast<std::size_t>(header.width) * static_cast<std::size_t>(header.height);
+    const std::size_t expectedBytes = pixelCount * 4;
+
+    in.seekg(0, std::ios::end);
+    const std::streamoff fileSize = in.tellg();
+    if (fileSize < static_cast<std::streamoff>(sizeof(header)) + static_cast<std::streamoff>(expectedBytes)) {
+        return false;
+    }
+    in.seekg(sizeof(header), std::ios::beg);
+
+    outPixels.resize(expectedBytes);
+    if (!in.read(reinterpret_cast<char*>(outPixels.data()), static_cast<std::streamsize>(expectedBytes))) {
+        return false;
+    }
+
+    outWidth = static_cast<int>(header.width);
+    outHeight = static_cast<int>(header.height);
+    return true;
+}
+
+void SaveSvgCache(const std::filesystem::path& cachePath,
+                  const std::vector<std::uint8_t>& pixels,
+                  int width,
+                  int height) {
+    namespace fs = std::filesystem;
+    SvgCacheHeader header{{'S','V','G','C'}, kSvgCacheVersion,
+                          static_cast<std::uint32_t>(width),
+                          static_cast<std::uint32_t>(height)};
+
+    const fs::path parentDir = cachePath.parent_path();
+    if (!parentDir.empty()) {
+        std::error_code ec;
+        fs::create_directories(parentDir, ec);
+    }
+
+    std::ofstream out(cachePath, std::ios::binary);
+    if (!out) {
+        return;
+    }
+
+    out.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    if (!out) {
+        return;
+    }
+
+    out.write(reinterpret_cast<const char*>(pixels.data()), static_cast<std::streamsize>(pixels.size()));
+}
+
+bool LoadSvgToRgbaCached(const std::string& svgPath,
+                         std::vector<std::uint8_t>& outPixels,
+                         int& outWidth,
+                         int& outHeight,
+                         SvgRasterizationOptions options) {
+    namespace fs = std::filesystem;
+    std::error_code absEc;
+    fs::path svgAbsolute = fs::absolute(svgPath, absEc);
+    if (absEc) {
+        svgAbsolute = fs::path(svgPath);
+    }
+    const fs::path cachePath = BuildSvgCachePath(svgAbsolute, options);
+
+    std::error_code svgEc;
+    const auto svgWriteTime = fs::last_write_time(svgAbsolute, svgEc);
+
+    std::error_code cacheEc;
+    if (fs::exists(cachePath, cacheEc)) {
+        const auto cacheWriteTime = fs::last_write_time(cachePath, cacheEc);
+        if (!cacheEc && !svgEc && cacheWriteTime >= svgWriteTime) {
+            if (TryLoadSvgCache(cachePath, outPixels, outWidth, outHeight)) {
+                return true;
+            }
+        }
+    }
+
+    if (!LoadSvgToRgba(svgPath, outPixels, outWidth, outHeight, options)) {
+        return false;
+    }
+
+    SaveSvgCache(cachePath, outPixels, outWidth, outHeight);
+    return true;
+}
+
 } // namespace
 
-#if defined(USE_GLFW) || defined(USE_SDL)
-// Legacy immediate-mode tiny font renderer removed; UI text pixels are batched via UIBatcher.
+#ifndef NDEBUG
+// Debug-draw configuration (file-scope, editable at runtime if you wire inputs)
+namespace {
+    bool g_ShowWorldAxes = true;              // Toggle world-origin axes in 3D
+    bool g_ShowMiniAxesGizmo = false;         // Toggle 2D mini axes gizmo in HUD (default off)
+    float g_WorldAxisLength = 10.0f;          // Length of world axes in scene units
+    float g_WorldAxisLineWidth = 3.0f;        // Line width for world axes
+    float g_MiniGizmoSize = 56.0f;            // Pixel length of mini gizmo X/Y arms
+    float g_MiniGizmoThickness = 3.0f;        // Pixel thickness for mini gizmo arms
+    float g_MiniGizmoMargin = 16.0f;          // Margin from screen corner
+}
+
+bool Viewport3D::IsWorldAxesShown() const { return g_ShowWorldAxes; }
+bool Viewport3D::IsMiniAxesGizmoShown() const { return g_ShowMiniAxesGizmo; }
+void Viewport3D::ToggleWorldAxes() { g_ShowWorldAxes = !g_ShowWorldAxes; }
+void Viewport3D::ToggleMiniAxesGizmo() { g_ShowMiniAxesGizmo = !g_ShowMiniAxesGizmo; }
 #endif
 
 #if defined(USE_GLFW)
@@ -156,6 +277,54 @@ Color4 WarningColorForLabel(const std::string& warning) {
     return MakeColor(0.6f, 0.8f, 0.95f, 1.0f);
 }
 
+struct HudAnchorRect {
+    float x = 0.0f;
+    float y = 0.0f;
+    float width = 0.0f;
+    float height = 0.0f;
+    bool valid = false;
+};
+
+#if defined(USE_GLFW) || defined(USE_SDL)
+void DrawHudTextureOverlay(unsigned int texture,
+                           float x,
+                           float y,
+                           float width,
+                           float height) {
+    if (texture == 0) {
+        return;
+    }
+
+    const GLfloat vertices[] = {
+        x,          y,
+        x + width,  y,
+        x + width,  y + height,
+        x,          y + height
+    };
+    const GLfloat uvs[] = {
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+        1.0f, 1.0f,
+        0.0f, 1.0f
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 0, uvs);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
+}
+#endif
+
 void DrawQuad2D(UIBatcher* batch, float x, float y, float w, float h, const Color4& color) {
     if (!batch) return; // UIBatcher is required for 2D UI rendering
     batch->AddQuad(x, y, w, h, color.r, color.g, color.b, color.a);
@@ -181,16 +350,41 @@ void DrawFillBar(UIBatcher* batch, float x, float y, float w, float h, double fi
     DrawBorder2D(batch, x, y, w, h, MakeColor(0.35f, 0.35f, 0.4f, 0.9f));
 }
 
-void RenderEnergyPanel(UIBatcher* batch, const EnergyHUDTelemetry& telemetry, int screenWidth, int screenHeight) {
+void RenderEnergyPanel(UIBatcher* batch,
+                       const EnergyHUDTelemetry& telemetry,
+                       int screenWidth,
+                       int screenHeight,
+                       const HudAnchorRect* anchor) {
     (void)screenHeight; // currently unused
-    const float panelWidth = 420.0f;
-    const float panelHeight = 300.0f;
-    const float margin = 18.0f;
-    const float panelX = static_cast<float>(screenWidth) - panelWidth - margin;
-    const float panelY = margin;
+    const float nativeWidth = 420.0f;
+    const float nativeHeight = 300.0f;
+    const float nativeMargin = 18.0f;
 
-    DrawQuad2D(batch, panelX, panelY, panelWidth, panelHeight, MakeColor(0.02f, 0.02f, 0.04f, 0.82f));
-    DrawBorder2D(batch, panelX, panelY, panelWidth, panelHeight, MakeColor(0.45f, 0.55f, 0.75f, 0.8f));
+    float panelWidth = nativeWidth;
+    float panelHeight = nativeHeight;
+    float margin = nativeMargin;
+    float panelX = static_cast<float>(screenWidth) - panelWidth - margin;
+    float panelY = margin;
+    bool useAnchor = anchor && anchor->valid;
+
+    if (useAnchor) {
+        const float anchorMargin = 12.0f;
+        const float maxWidth = std::max(120.0f, anchor->width - anchorMargin * 2.0f);
+        const float maxHeight = std::max(120.0f, anchor->height - anchorMargin * 2.0f);
+        panelWidth = std::min(nativeWidth, maxWidth);
+        panelHeight = std::min(nativeHeight, maxHeight);
+        panelX = anchor->x + (anchor->width - panelWidth) * 0.5f;
+        panelY = anchor->y + (anchor->height - panelHeight) * 0.5f;
+        margin = nativeMargin;
+    }
+
+    const Color4 panelBg = useAnchor ? MakeColor(0.01f, 0.02f, 0.05f, 0.6f)
+                                     : MakeColor(0.02f, 0.02f, 0.04f, 0.82f);
+    const Color4 panelBorder = useAnchor ? MakeColor(0.25f, 0.45f, 0.75f, 0.75f)
+                                         : MakeColor(0.45f, 0.55f, 0.75f, 0.8f);
+
+    DrawQuad2D(batch, panelX, panelY, panelWidth, panelHeight, panelBg);
+    DrawBorder2D(batch, panelX, panelY, panelWidth, panelHeight, panelBorder);
 
     TextRenderer::RenderText("SHIP STATUS HUD",
                              static_cast<int>(panelX + 18.0f),
@@ -216,49 +410,43 @@ void RenderEnergyPanel(UIBatcher* batch, const EnergyHUDTelemetry& telemetry, in
                                 bool rechargingHighlight) {
         float bx = panelX + margin + boxIndex * (boxWidth + boxGap);
         float by = boxTop;
-    DrawQuad2D(batch, bx, by, boxWidth, boxHeight, MakeColor(0.05f, 0.05f, 0.09f, 0.85f));
-    DrawBorder2D(batch, bx, by, boxWidth, boxHeight, MakeColor(0.25f, 0.35f, 0.55f, 0.9f));
+        DrawQuad2D(batch, bx, by, boxWidth, boxHeight, MakeColor(0.05f, 0.05f, 0.09f, 0.85f));
+        DrawBorder2D(batch, bx, by, boxWidth, boxHeight, MakeColor(0.25f, 0.35f, 0.55f, 0.9f));
 
         TextRenderer::RenderText(label,
                                  static_cast<int>(bx + 12.0f),
                                  static_cast<int>(by + 20.0f),
                                  TextColor::White(),
-                                 FontSize::Medium);
+                                 FontSize::Small);
 
-        Color4 statusColor = StatusColor(percent, rechargingHighlight);
-    DrawFillBar(batch, bx + 12.0f,
-                    by + 34.0f,
-                    boxWidth - 24.0f,
-                    14.0f,
-                    percent,
-                    statusColor);
-
+        Color4 fillColor = StatusColor(percent, rechargingHighlight);
+        DrawFillBar(batch, bx + 12.0f, by + 32.0f, boxWidth - 24.0f, 12.0f, percent, fillColor);
         TextRenderer::RenderTextF(static_cast<int>(bx + boxWidth - 60.0f),
-                                  static_cast<int>(by + 28.0f),
-                                  TextColor::White(),
+                                  static_cast<int>(by + 32.0f),
+                                  TextColor::Gray(0.9f),
                                   FontSize::Small,
-                                  "%3.0f%%",
-                                  std::clamp(percent * 100.0, 0.0, 999.0));
+                                  "%02.0f%%",
+                                  percent * 100.0);
+
+        if (valueUnits && valueUnits[0] != '\0') {
+            TextRenderer::RenderTextF(static_cast<int>(bx + 12.0f),
+                                      static_cast<int>(by + 58.0f),
+                                      TextColor::Gray(0.85f),
+                                      FontSize::Small,
+                                      "%0.1f/%0.1f %s",
+                                      value,
+                                      valueMax,
+                                      valueUnits);
+        }
 
         if (requirement > 0.0) {
             TextRenderer::RenderTextF(static_cast<int>(bx + 12.0f),
-                                      static_cast<int>(by + 56.0f),
-                                      TextColor::Gray(0.85f),
+                                      static_cast<int>(by + 74.0f),
+                                      TextColor::Gray(0.7f),
                                       FontSize::Small,
                                       "%0.1f/%0.1f MW",
                                       delivered,
                                       requirement);
-        }
-
-        if (valueMax > 0.0 && valueUnits) {
-            TextRenderer::RenderTextF(static_cast<int>(bx + 12.0f),
-                                      static_cast<int>(by + 72.0f),
-                                      TextColor::Gray(0.9f),
-                                      FontSize::Small,
-                                      "%0.0f/%0.0f %s",
-                                      value,
-                                      valueMax,
-                                      valueUnits);
         }
 
         if (auxLabel && auxLabel[0] != '\0') {
@@ -335,7 +523,7 @@ void RenderEnergyPanel(UIBatcher* batch, const EnergyHUDTelemetry& telemetry, in
                                  FontSize::Small);
         float barX = panelX + margin + 90.0f;
         float barWidth = warningColumnX - barX - 12.0f;
-    DrawFillBar(batch, barX, rowY - 12.0f, barWidth, 12.0f, allocation, MakeColor(0.35f, 0.75f, 0.95f, 0.9f));
+        DrawFillBar(batch, barX, rowY - 12.0f, barWidth, 12.0f, allocation, MakeColor(0.35f, 0.75f, 0.95f, 0.9f));
         TextRenderer::RenderTextF(static_cast<int>(barX + barWidth + 6.0f),
                                   static_cast<int>(rowY),
                                   TextColor::Gray(0.9f),
@@ -403,6 +591,104 @@ void RenderEnergyPanel(UIBatcher* batch, const EnergyHUDTelemetry& telemetry, in
                               telemetry.drainRateMW);
 }
 
+// Lightweight player HUD elements (reticle + bottom status rail)
+void DrawReticle2D(UIBatcher* batch, int screenWidth, int screenHeight, float scaleFactor) {
+    if (!batch) return;
+    const float cx = static_cast<float>(screenWidth) * 0.5f;
+    const float cy = static_cast<float>(screenHeight) * 0.5f;
+    const float clampedScale = std::clamp(scaleFactor, 0.6f, 1.6f);
+    const float len = 14.0f * clampedScale;
+    const float gap = 6.0f * clampedScale;
+    const float thick = 2.0f * std::max(0.75f, clampedScale * 0.9f);
+    const Color4 c = MakeColor(0.95f, 0.95f, 0.98f, 0.95f);
+    // Horizontal
+    DrawQuad2D(batch, cx - len - gap, cy - thick * 0.5f, len, thick, c);
+    DrawQuad2D(batch, cx + gap,        cy - thick * 0.5f, len, thick, c);
+    // Vertical
+    DrawQuad2D(batch, cx - thick * 0.5f, cy - len - gap, thick, len, c);
+    DrawQuad2D(batch, cx - thick * 0.5f, cy + gap,        thick, len, c);
+}
+
+void RenderPlayerStatusRail(UIBatcher* batch,
+                            const EnergyHUDTelemetry* tel,
+                            int screenWidth,
+                            int screenHeight,
+                            double speedUnitsPerSec,
+                            int ammoCurrent,
+                            int ammoMax,
+                            const HudAnchorRect* anchor) {
+    if (!batch) return;
+    float margin = 10.0f;
+    float railH = 56.0f;
+    float railW = std::max(360.0f, static_cast<float>(screenWidth) * 0.6f);
+    float railX = (static_cast<float>(screenWidth) - railW) * 0.5f;
+    float railY = static_cast<float>(screenHeight) - railH - margin;
+    Color4 railBackground = MakeColor(0.02f, 0.02f, 0.03f, 0.78f);
+    Color4 railBorder = MakeColor(0.25f, 0.35f, 0.55f, 0.85f);
+
+    if (anchor && anchor->valid) {
+    const float anchorPadding = 24.0f;
+    const float innerWidth = std::max(anchor->width - anchorPadding * 2.0f, 180.0f);
+    const float innerHeight = std::max(anchor->height - anchorPadding * 2.0f, 48.0f);
+    railW = std::min(std::max(railW, 420.0f), innerWidth);
+    railH = std::min(std::max(railH, 48.0f), innerHeight);
+    railX = anchor->x + (anchor->width - railW) * 0.5f;
+    railY = anchor->y + anchor->height - railH - anchorPadding * 0.5f;
+        margin = 12.0f;
+        railBackground = MakeColor(0.01f, 0.02f, 0.05f, 0.6f);
+        railBorder = MakeColor(0.2f, 0.35f, 0.55f, 0.7f);
+    }
+
+    // Background
+    DrawQuad2D(batch, railX, railY, railW, railH, railBackground);
+    DrawBorder2D(batch, railX, railY, railW, railH, railBorder, 1.2f);
+
+    const float pad = (anchor && anchor->valid) ? 18.0f : 12.0f;
+    const float colGap = (anchor && anchor->valid) ? 18.0f : 12.0f;
+    const float colW = (railW - pad * 2.0f - colGap * 2.0f) / 3.0f;
+    const float colY = railY + 8.0f;
+    const float barH = railH - 26.0f;
+
+    auto drawLabeledBar = [&](float idx, const char* label, double pct, const Color4& fill, const char* rightText){
+        const float x = railX + pad + idx * (colW + colGap);
+        TextRenderer::RenderText(label, static_cast<int>(x), static_cast<int>(railY + 18.0f), TextColor::Gray(0.85f), FontSize::Small);
+        DrawFillBar(batch, x, colY + 10.0f, colW, barH - 8.0f, pct, fill);
+        if (rightText && rightText[0] != '\0') {
+            TextRenderer::RenderTextAligned(rightText,
+                                            static_cast<int>(x + colW - 2.0f),
+                                            static_cast<int>(railY + 18.0f),
+                                            TextAlign::Right,
+                                            TextColor::Gray(0.9f),
+                                            FontSize::Small);
+        }
+    };
+
+    // HEALTH from shields percent if available; otherwise full
+    double healthPct = tel ? std::clamp(tel->shieldPercent, 0.0, 1.0) : 1.0;
+    drawLabeledBar(0.0f, "HEALTH", healthPct, StatusColor(healthPct, false), "");
+
+    // ENERGY from efficiency percent if available
+    double energyPct = tel ? std::clamp(tel->efficiencyPercent / 100.0, 0.0, 1.0) : 1.0;
+    char spd[32] = {0};
+    snprintf(spd, sizeof(spd), "SPD %.1f", speedUnitsPerSec);
+    drawLabeledBar(1.0f, "ENERGY", energyPct, MakeColor(0.3f, 0.75f, 0.95f, 0.95f), spd);
+
+    // AMMO from weapon ammo if available
+    double ammoPct = 1.0;
+    char ammoTxt[32] = {0};
+    if (ammoMax > 0) {
+        ammoPct = std::clamp(static_cast<double>(ammoCurrent) / static_cast<double>(ammoMax), 0.0, 1.0);
+    }
+    if (ammoCurrent >= 0 && ammoMax > 0) {
+        snprintf(ammoTxt, sizeof(ammoTxt), "%d/%d", ammoCurrent, ammoMax);
+    } else if (ammoCurrent >= 0) {
+        snprintf(ammoTxt, sizeof(ammoTxt), "%d", ammoCurrent);
+    } else {
+        snprintf(ammoTxt, sizeof(ammoTxt), "N/A");
+    }
+    drawLabeledBar(2.0f, "AMMO", ammoPct, MakeColor(0.95f, 0.75f, 0.25f, 0.95f), ammoTxt);
+}
+
 } // namespace
 #endif // defined(USE_GLFW)
 
@@ -436,10 +722,28 @@ Viewport3D::Viewport3D()
 #endif
     , activeLayoutIndex_(0)
     , uiBatcher_(nullptr)
+#if defined(USE_GLFW) || defined(USE_SDL)
+    , playerHudTextureGL_(0)
+    , playerHudTextureGLWidth_(0)
+    , playerHudTextureGLHeight_(0)
+    , playerHudTextureGLFailed_(false)
+    , playerMesh_()
+    , playerMeshInitialized_(false)
+#endif
 {
+    // ctor trace
+    try {
+        std::ofstream f("v3d_ctor.log", std::ios::app);
+        if (f) f << "Viewport3D ctor begin" << std::endl;
+    } catch (...) {}
 }
 
-Viewport3D::~Viewport3D() {}
+Viewport3D::~Viewport3D() {
+    try {
+        std::ofstream f("v3d_ctor.log", std::ios::app);
+        if (f) f << "Viewport3D dtor" << std::endl;
+    } catch (...) {}
+}
 
 void Viewport3D::EnsurePrimitiveBuffers() {
 #if defined(USE_GLFW) || defined(USE_SDL)
@@ -613,6 +917,232 @@ void Viewport3D::DrawPlayerPatchPrimitive() {
 #endif
 }
 
+void Viewport3D::EnsurePlayerMesh() {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (playerMeshInitialized_) {
+        return;
+    }
+
+    MeshBuilder builder(GL_TRIANGLES);
+    builder.ReserveVertices(128);
+    builder.ReserveIndices(192);
+
+    auto addQuad = [&](const MeshVertex& a,
+                       const MeshVertex& b,
+                       const MeshVertex& c,
+                       const MeshVertex& d) {
+        const GLuint base = builder.CurrentIndex();
+        builder.AddVertex(a);
+        builder.AddVertex(b);
+        builder.AddVertex(c);
+        builder.AddVertex(d);
+        builder.AddQuad(base, base + 1, base + 2, base + 3);
+    };
+
+    auto addTriangle = [&](const MeshVertex& a,
+                           const MeshVertex& b,
+                           const MeshVertex& c) {
+        const GLuint base = builder.CurrentIndex();
+        builder.AddVertex(a);
+        builder.AddVertex(b);
+        builder.AddVertex(c);
+        builder.AddTriangle(base, base + 1, base + 2);
+    };
+
+    const GLfloat mainTopR = 0.24f;
+    const GLfloat mainTopG = 0.78f;
+    const GLfloat mainTopB = 0.98f;
+    const GLfloat mainMidR = 0.18f;
+    const GLfloat mainMidG = 0.60f;
+    const GLfloat mainMidB = 0.92f;
+    const GLfloat mainBottomR = 0.06f;
+    const GLfloat mainBottomG = 0.30f;
+    const GLfloat mainBottomB = 0.58f;
+    const GLfloat accentBrightR = 0.95f;
+    const GLfloat accentBrightG = 0.98f;
+    const GLfloat accentBrightB = 1.00f;
+    const GLfloat accentShadowR = 0.08f;
+    const GLfloat accentShadowG = 0.20f;
+    const GLfloat accentShadowB = 0.45f;
+    const GLfloat eyeInnerR = 0.12f;
+    const GLfloat eyeInnerG = 0.18f;
+    const GLfloat eyeInnerB = 0.28f;
+    const GLfloat eyeGlowR = 0.76f;
+    const GLfloat eyeGlowG = 0.96f;
+    const GLfloat eyeGlowB = 1.00f;
+
+    const GLfloat halfWidth = 1.05f;
+    const GLfloat halfHeight = 0.82f;
+    const GLfloat halfDepth = 0.96f;
+    const GLfloat visorInset = 0.72f;
+
+    // Front face
+    addQuad(
+        MeshVertex(-halfWidth,  halfHeight, halfDepth, mainTopR, mainTopG, mainTopB),
+        MeshVertex( halfWidth,  halfHeight, halfDepth, mainTopR, mainTopG, mainTopB),
+        MeshVertex( halfWidth, -halfHeight, halfDepth, mainMidR, mainMidG, mainMidB),
+        MeshVertex(-halfWidth, -halfHeight, halfDepth, mainMidR, mainMidG, mainMidB));
+
+    // Back face
+    addQuad(
+        MeshVertex(-halfWidth,  halfHeight, -halfDepth, mainMidR, mainMidG, mainMidB),
+        MeshVertex( halfWidth,  halfHeight, -halfDepth, mainMidR, mainMidG, mainMidB),
+        MeshVertex( halfWidth, -halfHeight, -halfDepth, mainBottomR, mainBottomG, mainBottomB),
+        MeshVertex(-halfWidth, -halfHeight, -halfDepth, mainBottomR, mainBottomG, mainBottomB));
+
+    // Left face
+    addQuad(
+        MeshVertex(-halfWidth,  halfHeight, -halfDepth, mainTopR, mainTopG, mainTopB),
+        MeshVertex(-halfWidth,  halfHeight,  halfDepth, mainTopR, mainTopG, mainTopB),
+        MeshVertex(-halfWidth, -halfHeight,  halfDepth, mainBottomR, mainBottomG, mainBottomB),
+        MeshVertex(-halfWidth, -halfHeight, -halfDepth, mainBottomR, mainBottomG, mainBottomB));
+
+    // Right face
+    addQuad(
+        MeshVertex(halfWidth,  halfHeight,  halfDepth, mainTopR, mainTopG, mainTopB),
+        MeshVertex(halfWidth,  halfHeight, -halfDepth, mainTopR, mainTopG, mainTopB),
+        MeshVertex(halfWidth, -halfHeight, -halfDepth, mainBottomR, mainBottomG, mainBottomB),
+        MeshVertex(halfWidth, -halfHeight,  halfDepth, mainBottomR, mainBottomG, mainBottomB));
+
+    // Bottom face
+    addQuad(
+        MeshVertex(-halfWidth, -halfHeight,  halfDepth, mainBottomR, mainBottomG, mainBottomB),
+        MeshVertex( halfWidth, -halfHeight,  halfDepth, mainBottomR, mainBottomG, mainBottomB),
+        MeshVertex( halfWidth, -halfHeight, -halfDepth, accentShadowR, accentShadowG, accentShadowB),
+        MeshVertex(-halfWidth, -halfHeight, -halfDepth, accentShadowR, accentShadowG, accentShadowB));
+
+    // Rounded top cap (simple pyramid fan)
+    const MeshVertex topCenter(0.0f, halfHeight + 0.52f, 0.0f, mainTopR, mainTopG, mainTopB);
+    const MeshVertex topFront(-halfWidth * 0.65f, halfHeight, halfDepth * 0.78f, mainTopR, mainTopG, mainTopB);
+    const MeshVertex topBack(-halfWidth * 0.65f, halfHeight, -halfDepth * 0.78f, mainMidR, mainMidG, mainMidB);
+    const MeshVertex topFrontR(halfWidth * 0.65f, halfHeight, halfDepth * 0.78f, mainTopR, mainTopG, mainTopB);
+    const MeshVertex topBackR(halfWidth * 0.65f, halfHeight, -halfDepth * 0.78f, mainMidR, mainMidG, mainMidB);
+    addTriangle(topCenter, topFront, topFrontR);
+    addTriangle(topCenter, topFrontR, topBackR);
+    addTriangle(topCenter, topBackR, topBack);
+    addTriangle(topCenter, topBack, topFront);
+
+    // Visor recess frame
+    addQuad(
+        MeshVertex(-halfWidth * 0.78f, halfHeight * 0.45f, visorInset, mainMidR, mainMidG, mainMidB),
+        MeshVertex( halfWidth * 0.78f, halfHeight * 0.45f, visorInset, mainMidR, mainMidG, mainMidB),
+        MeshVertex( halfWidth * 0.88f, -halfHeight * 0.05f, visorInset, mainBottomR, mainBottomG, mainBottomB),
+        MeshVertex(-halfWidth * 0.88f, -halfHeight * 0.05f, visorInset, mainBottomR, mainBottomG, mainBottomB));
+
+    addQuad(
+        MeshVertex(-halfWidth * 0.88f, -halfHeight * 0.05f, visorInset, mainBottomR, mainBottomG, mainBottomB),
+        MeshVertex( halfWidth * 0.88f, -halfHeight * 0.05f, visorInset, mainBottomR, mainBottomG, mainBottomB),
+        MeshVertex( halfWidth * 0.70f, -halfHeight * 0.62f, visorInset, accentShadowR, accentShadowG, accentShadowB),
+        MeshVertex(-halfWidth * 0.70f, -halfHeight * 0.62f, visorInset, accentShadowR, accentShadowG, accentShadowB));
+
+    // Eyes (slight extrusion)
+    const GLfloat eyeHalfWidth = 0.42f;
+    const GLfloat eyeHalfHeight = 0.30f;
+    const GLfloat eyeDepthOffset = halfDepth + 0.08f;
+    const GLfloat eyeInsetDepth = halfDepth;
+
+    auto addEye = [&](GLfloat centerX) {
+        MeshVertex tl(centerX - eyeHalfWidth,  eyeHalfHeight, eyeDepthOffset, eyeGlowR, eyeGlowG, eyeGlowB);
+        MeshVertex tr(centerX + eyeHalfWidth,  eyeHalfHeight, eyeDepthOffset, eyeGlowR, eyeGlowG, eyeGlowB);
+        MeshVertex br(centerX + eyeHalfWidth, -eyeHalfHeight, eyeDepthOffset, eyeInnerR, eyeInnerG, eyeInnerB);
+        MeshVertex bl(centerX - eyeHalfWidth, -eyeHalfHeight, eyeDepthOffset, eyeInnerR, eyeInnerG, eyeInnerB);
+        addQuad(tl, tr, br, bl);
+
+        // Side walls for each eye block
+        addQuad(
+            MeshVertex(centerX - eyeHalfWidth,  eyeHalfHeight, eyeInsetDepth, mainMidR, mainMidG, mainMidB),
+            MeshVertex(centerX - eyeHalfWidth,  eyeHalfHeight, eyeDepthOffset, eyeGlowR, eyeGlowG, eyeGlowB),
+            MeshVertex(centerX - eyeHalfWidth, -eyeHalfHeight, eyeDepthOffset, eyeInnerR, eyeInnerG, eyeInnerB),
+            MeshVertex(centerX - eyeHalfWidth, -eyeHalfHeight, eyeInsetDepth, mainBottomR, mainBottomG, mainBottomB));
+
+        addQuad(
+            MeshVertex(centerX + eyeHalfWidth,  eyeHalfHeight, eyeDepthOffset, eyeGlowR, eyeGlowG, eyeGlowB),
+            MeshVertex(centerX + eyeHalfWidth,  eyeHalfHeight, eyeInsetDepth, mainMidR, mainMidG, mainMidB),
+            MeshVertex(centerX + eyeHalfWidth, -eyeHalfHeight, eyeInsetDepth, mainBottomR, mainBottomG, mainBottomB),
+            MeshVertex(centerX + eyeHalfWidth, -eyeHalfHeight, eyeDepthOffset, eyeInnerR, eyeInnerG, eyeInnerB));
+
+        addQuad(
+            MeshVertex(centerX - eyeHalfWidth, -eyeHalfHeight, eyeInsetDepth, mainBottomR, mainBottomG, mainBottomB),
+            MeshVertex(centerX + eyeHalfWidth, -eyeHalfHeight, eyeInsetDepth, mainBottomR, mainBottomG, mainBottomB),
+            MeshVertex(centerX + eyeHalfWidth, -eyeHalfHeight, eyeDepthOffset, eyeInnerR, eyeInnerG, eyeInnerB),
+            MeshVertex(centerX - eyeHalfWidth, -eyeHalfHeight, eyeDepthOffset, eyeInnerR, eyeInnerG, eyeInnerB));
+    };
+
+    addEye(-0.55f);
+    addEye(0.55f);
+
+    // Lower accent ring
+    addQuad(
+        MeshVertex(-halfWidth * 0.60f, -halfHeight * 0.80f,  halfDepth * 0.70f, accentShadowR, accentShadowG, accentShadowB),
+        MeshVertex( halfWidth * 0.60f, -halfHeight * 0.80f,  halfDepth * 0.70f, accentShadowR, accentShadowG, accentShadowB),
+        MeshVertex( halfWidth * 0.45f, -halfHeight * 0.95f, -halfDepth * 0.10f, mainBottomR, mainBottomG, mainBottomB),
+        MeshVertex(-halfWidth * 0.45f, -halfHeight * 0.95f, -halfDepth * 0.10f, mainBottomR, mainBottomG, mainBottomB));
+
+    // Back thruster highlight
+    addQuad(
+        MeshVertex(-halfWidth * 0.55f, halfHeight * 0.15f, -halfDepth - 0.06f, accentBrightR, accentBrightG, accentBrightB),
+        MeshVertex( halfWidth * 0.55f, halfHeight * 0.15f, -halfDepth - 0.06f, accentBrightR, accentBrightG, accentBrightB),
+        MeshVertex( halfWidth * 0.35f, -halfHeight * 0.35f, -halfDepth - 0.12f, accentShadowR, accentShadowG, accentShadowB),
+        MeshVertex(-halfWidth * 0.35f, -halfHeight * 0.35f, -halfDepth - 0.12f, accentShadowR, accentShadowG, accentShadowB));
+
+    playerMesh_ = builder.Build(true);
+    playerMesh_.SetAttributes(MeshAttribute_Position | MeshAttribute_Color);
+    playerMeshInitialized_ = true;
+#endif
+}
+
+void Viewport3D::ToggleFullscreen() {
+#if defined(USE_SDL)
+    if (IsUsingSDLBackend() && sdlWindow) {
+        const bool togglingToFullscreen = !isFullscreen_;
+        if (togglingToFullscreen) {
+            SDL_GetWindowPosition(sdlWindow, &windowedPosX_, &windowedPosY_);
+            SDL_GetWindowSize(sdlWindow, &windowedWidth_, &windowedHeight_);
+            if (SDL_SetWindowFullscreen(sdlWindow, SDL_WINDOW_FULLSCREEN_DESKTOP) == 0) {
+                isFullscreen_ = true;
+            }
+        } else {
+            if (SDL_SetWindowFullscreen(sdlWindow, 0) == 0) {
+                SDL_SetWindowPosition(sdlWindow, windowedPosX_, windowedPosY_);
+                SDL_SetWindowSize(sdlWindow, windowedWidth_, windowedHeight_);
+                isFullscreen_ = false;
+            }
+        }
+
+        int newW = 0;
+        int newH = 0;
+        SDL_GetWindowSize(sdlWindow, &newW, &newH);
+        Resize(newW, newH);
+        return;
+    }
+#endif
+#if defined(USE_GLFW)
+    if (IsUsingGLFWBackend() && glfwWindow) {
+        glfwMakeContextCurrent(glfwWindow);
+        if (!isFullscreen_) {
+            glfwGetWindowPos(glfwWindow, &windowedPosX_, &windowedPosY_);
+            glfwGetWindowSize(glfwWindow, &windowedWidth_, &windowedHeight_);
+            GLFWmonitor* monitor = glfwGetWindowMonitor(glfwWindow);
+            if (!monitor) {
+                monitor = glfwGetPrimaryMonitor();
+            }
+            if (monitor) {
+                const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+                if (mode) {
+                    glfwSetWindowMonitor(glfwWindow, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+                    isFullscreen_ = true;
+                    Resize(mode->width, mode->height);
+                }
+            }
+        } else {
+            glfwSetWindowMonitor(glfwWindow, nullptr, windowedPosX_, windowedPosY_, windowedWidth_, windowedHeight_, 0);
+            isFullscreen_ = false;
+            Resize(windowedWidth_, windowedHeight_);
+        }
+    }
+#endif
+}
+
 void Viewport3D::DrawCubePrimitive(float r, float g, float b) {
 #if defined(USE_GLFW) || defined(USE_SDL)
     if (!IsUsingGLBackend()) {
@@ -660,6 +1190,12 @@ void Viewport3D::SetBackend(RenderBackend backend) {
         DestroyPrimitiveBuffers();
         if (uiBatcher_) { uiBatcher_->Cleanup(); uiBatcher_.reset(); }
         if (lineBatcher3D_) { lineBatcher3D_->Cleanup(); lineBatcher3D_.reset(); }
+#if defined(USE_GLFW) || defined(USE_SDL)
+        if (playerMeshInitialized_) {
+            playerMesh_.Clear();
+            playerMeshInitialized_ = false;
+        }
+#endif
     }
     if (debugLogging_) {
         std::cout << "Viewport3D: render backend set to " << RenderBackendToString(backend_) << std::endl;
@@ -971,12 +1507,7 @@ void Viewport3D::ActivateOpenGLView(const ViewportView& view, const Camera* came
                   playerX, playerY, playerZ,
                   0.0, 1.0, 0.0);
     } else {
-        double yaw = camera->yaw();
-        double offsetX = 5.0 * sin(yaw);
-        double offsetY = -5.0 * cos(yaw);
-        gluLookAt(camera->x() + offsetX, camera->y() + offsetY, camera->z() + 5.0,
-                  playerX, playerY, playerZ,
-                  0.0, 0.0, 1.0);
+        camera->ApplyToOpenGL();
     }
 #else
     (void)view;
@@ -996,64 +1527,6 @@ void Viewport3D::ActivateSDLView(const ViewportView& view) {
 #endif
 }
 
-void Viewport3D::DrawTinyChar2D(float x, float y, char c, float scale, float r, float g, float b) {
-#if defined(USE_GLFW) || defined(USE_SDL)
-    if (uiBatcher_) {
-        auto addPixel = [&](float px, float py) {
-            uiBatcher_->AddQuad(x + px * scale, y + py * scale, scale, scale, r, g, b, 1.0f);
-        };
-
-        auto drawGlyph = [&](const uint8_t* glyph) {
-            for (int col = 0; col < 5; ++col) {
-                uint8_t bits = glyph[col];
-                for (int row = 0; row < 5; ++row) {
-                    if (bits & (1 << (4 - row))) {
-                        addPixel(static_cast<float>(col), static_cast<float>(row));
-                    }
-                }
-            }
-        };
-
-        if (c >= '0' && c <= '9') {
-            drawGlyph(tinyFont[c - '0']);
-        } else if (c == '-') {
-            addPixel(0.0f, 2.0f);
-            addPixel(1.0f, 2.0f);
-            addPixel(2.0f, 2.0f);
-            addPixel(3.0f, 2.0f);
-            addPixel(4.0f, 2.0f);
-        } else if (c == '.') {
-            addPixel(4.0f, 4.0f);
-        } else if (c == 'V') {
-            drawGlyph(glyphV);
-        } else if (c == 'Y') {
-            drawGlyph(glyphY);
-        } else if (c == 'N') {
-            drawGlyph(glyphN);
-        } else if (c == 'C') {
-            drawGlyph(glyphC);
-        } else if (c == 'O') {
-            drawGlyph(glyphO);
-        } else if (c == 'F') {
-            drawGlyph(glyphF);
-        } else if (c == 'A') {
-            drawGlyph(glyphA);
-        } else if (c == 'P') {
-            drawGlyph(glyphP);
-        } else if (c == 'T') {
-            drawGlyph(glyphT);
-        } else if (c == 'G') {
-            drawGlyph(glyphG);
-        } else if (c == 'S') {
-            drawGlyph(glyphLtrS);
-        }
-    } else {
-        // No UIBatcher available; skip tiny char rendering.
-    }
-#else
-    (void)x; (void)y; (void)c; (void)scale; (void)r; (void)g; (void)b;
-#endif
-}
 
 void Viewport3D::Init() {
     if (debugLogging_) std::cout << "Viewport3D::Init() starting" << std::endl;
@@ -1086,81 +1559,22 @@ void Viewport3D::Init() {
         std::ofstream f("glfw_diag.log", std::ios::app);
         if (f) f << "glfwInit succeeded" << std::endl;
     }
-
-    struct GLContextAttempt {
-        int major;
-        int minor;
-        bool coreProfile;
-        bool forwardCompatible;
-        const char* description;
+    // Try a few common OpenGL context configurations
+    struct Attempt { int major; int minor; bool forwardCompatible; const char* description; };
+    const Attempt attempts[] = {
+        {3, 3, true,  "OpenGL 3.3 compat"},
+        {3, 0, true,  "OpenGL 3.0 compat"},
+        {2, 1, false, "OpenGL 2.1 any"},
+        {0, 0, false, "Default profile"}
     };
-
-    const std::vector<GLContextAttempt> contextAttempts = {
-        {3, 3, false, false, "OpenGL 3.3 Compatibility"},
-        {2, 1, false, false, "OpenGL 2.1 Compatibility"},
-    };
-
-    // Get primary monitor for fullscreen
-    GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
-    const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
-
-    // Update width and height to match fullscreen resolution
-    width = mode->width;
-    height = mode->height;
-
-    // Create windowed window for development (easier to close when testing)
-    // Comment out the fullscreen lines below and uncomment windowed lines for fullscreen
-    /*
-    // Get primary monitor for fullscreen
-    GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
-    const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
-
-    // Update width and height to match fullscreen resolution
-    width = mode->width;
-    height = mode->height;
-
-    const GLContextAttempt* chosenAttempt = nullptr;
-    for (const auto& attempt : contextAttempts) {
+    const Attempt* chosenAttempt = nullptr;
+    for (const Attempt& attempt : attempts) {
         glfwDefaultWindowHints();
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, attempt.major);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, attempt.minor);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // Disable resizing for fullscreen
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-        if (attempt.coreProfile) {
-            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        } else if (attempt.major >= 3) {
-            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
-        } else {
-            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
+        if (attempt.major > 0) {
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, attempt.major);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, attempt.minor);
         }
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, attempt.forwardCompatible ? GL_TRUE : GL_FALSE);
-
-        if (debugLogging_) std::cout << "Viewport3D: Trying " << attempt.description << " context" << std::endl;
-        glfwWindow = glfwCreateWindow(width, height, "Nova Engine", primaryMonitor, nullptr);
-        if (glfwWindow) {
-            chosenAttempt = &attempt;
-            break;
-        }
-
-        std::cerr << "Viewport3D: GLFW window creation failed for " << attempt.description << std::endl;
-    }
-    */
-
-    // Windowed mode for development
-    // Set reasonable default window size (don't use fullscreen resolution for windowed mode)
-    width = 1280;
-    height = 720;
-    const GLContextAttempt* chosenAttempt = nullptr;
-    for (const auto& attempt : contextAttempts) {
-        glfwDefaultWindowHints();
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, attempt.major);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, attempt.minor);
-        glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE); // Explicitly request window to be visible
-        glfwWindowHint(GLFW_FOCUSED, GLFW_TRUE); // Request focus
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-        if (attempt.coreProfile) {
-            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        } else if (attempt.major >= 3) {
+        if (attempt.major >= 3) {
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
         } else {
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
@@ -1534,10 +1948,18 @@ void Viewport3D::Clear() {
 #ifdef GL_FRAMEBUFFER
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 #endif
+            // Clear any previous GL error to avoid reporting unrelated issues
+            (void)glGetError();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear both color and depth buffers
             GLenum err = glGetError();
             if (err != GL_NO_ERROR) {
-                std::cerr << "OpenGL error in Clear(): " << err << " (GL_INVALID_OPERATION=" << GL_INVALID_OPERATION << ")" << std::endl;
+                // rate-limit to avoid spam if persistent
+                static auto lastLog = std::chrono::steady_clock::time_point{};
+                auto now = std::chrono::steady_clock::now();
+                if (lastLog.time_since_epoch().count() == 0 || (now - lastLog) > std::chrono::seconds(1)) {
+                    std::cerr << "OpenGL error in Clear(): " << err << " (GL_INVALID_OPERATION=" << GL_INVALID_OPERATION << ")" << std::endl;
+                    lastLog = now;
+                }
                 if (debugLogging_) {
                     // Capture a bit more GL state to help diagnose
                     GLint drawFbo = 0, readFbo = 0, viewportVals[4] = {0,0,0,0};
@@ -1575,10 +1997,17 @@ void Viewport3D::Clear() {
 #ifdef GL_FRAMEBUFFER
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 #endif
+            // Clear any previous GL error to avoid reporting unrelated issues
+            (void)glGetError();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear both color and depth buffers
             GLenum err = glGetError();
             if (err != GL_NO_ERROR) {
-                std::cerr << "OpenGL error in Clear(): " << err << " (GL_INVALID_OPERATION=" << GL_INVALID_OPERATION << ")" << std::endl;
+                static auto lastLog = std::chrono::steady_clock::time_point{};
+                auto now = std::chrono::steady_clock::now();
+                if (lastLog.time_since_epoch().count() == 0 || (now - lastLog) > std::chrono::seconds(1)) {
+                    std::cerr << "OpenGL error in Clear(): " << err << " (GL_INVALID_OPERATION=" << GL_INVALID_OPERATION << ")" << std::endl;
+                    lastLog = now;
+                }
                 if (debugLogging_) {
                     GLint drawFbo = 0, readFbo = 0, viewportVals[4] = {0,0,0,0};
 #ifdef GL_DRAW_FRAMEBUFFER_BINDING
@@ -1630,9 +2059,19 @@ void Viewport3D::DrawPlayer(double x, double y, double z) {
 #ifdef USE_SDL
         if (IsUsingSDLGL()) {
             SDL_GL_MakeCurrent(sdlWindow, sdlGLContext);
+            EnsurePlayerMesh();
             glPushMatrix();
             glTranslatef((GLfloat)x, (GLfloat)y, (GLfloat)z);
-            DrawPlayerPatchPrimitive();
+            constexpr GLfloat playerScale = 0.85f;
+            glScalef(playerScale, playerScale, playerScale);
+            const GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
+            if (cullEnabled) {
+                glDisable(GL_CULL_FACE);
+            }
+            playerMesh_.Draw();
+            if (cullEnabled) {
+                glEnable(GL_CULL_FACE);
+            }
             glPopMatrix();
         } else {
             int px = static_cast<int>(((x + 5.0) / 10.0) * width);
@@ -1658,9 +2097,19 @@ void Viewport3D::DrawPlayer(double x, double y, double z) {
 #ifdef USE_GLFW
     else if (IsUsingGLFWBackend() && glfwWindow) {
         glfwMakeContextCurrent(glfwWindow);
+        EnsurePlayerMesh();
         glPushMatrix();
         glTranslatef((GLfloat)x, (GLfloat)y, (GLfloat)z);
-        DrawPlayerPatchPrimitive();
+    constexpr GLfloat playerScale = 0.85f;
+        glScalef(playerScale, playerScale, playerScale);
+        const GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
+        if (cullEnabled) {
+            glDisable(GL_CULL_FACE);
+        }
+        playerMesh_.Draw();
+        if (cullEnabled) {
+            glEnable(GL_CULL_FACE);
+        }
         glPopMatrix();
     }
 #endif
@@ -1689,12 +2138,10 @@ void Viewport3D::DrawEntity(const Transform &t, int textureHandle, class Resourc
 #if !defined(USE_SDL)
     (void)textureHandle;
     (void)resourceManager;
-    (void)camera;
     (void)currentFrame;
 #endif
     if (IsUsingSDLBackend()) {
 #ifdef USE_SDL
-        int px, py;
         if (camera) {
             camera->WorldToScreen(t.x, t.y, t.z, width, height, px, py);
         } else {
@@ -1749,6 +2196,12 @@ void Viewport3D::DrawEntity(const Transform &t, int textureHandle, class Resourc
 
 void Viewport3D::Resize(int w, int h) {
     width = w; height = h;
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (!isFullscreen_) {
+        windowedWidth_ = w;
+        windowedHeight_ = h;
+    }
+#endif
     if (debugLogging_) std::cout << "Viewport3D Resized to " << width << "x" << height << std::endl;
 }
 
@@ -1771,6 +2224,17 @@ void Viewport3D::Shutdown() {
     if (particleRenderer_) {
         particleRenderer_->Cleanup();
         particleRenderer_.reset();
+    }
+    if (playerHudTextureGL_ != 0) {
+        glDeleteTextures(1, &playerHudTextureGL_);
+        playerHudTextureGL_ = 0;
+        playerHudTextureGLWidth_ = 0;
+        playerHudTextureGLHeight_ = 0;
+        playerHudTextureGLFailed_ = false;
+    }
+    if (playerMeshInitialized_) {
+        playerMesh_.Clear();
+        playerMeshInitialized_ = false;
     }
 #endif
 #ifdef USE_SDL
@@ -1810,6 +2274,12 @@ void Viewport3D::Shutdown() {
 }
 
 void Viewport3D::DrawCoordinateSystem() {
+    // Optional toggle
+#ifndef NDEBUG
+    if (!g_ShowWorldAxes) {
+        return;
+    }
+#endif
     if (IsUsingSDLGL()) {
 #ifdef USE_SDL
         SDL_GL_MakeCurrent(sdlWindow, sdlGLContext);
@@ -1829,15 +2299,21 @@ void Viewport3D::DrawCoordinateSystem() {
         glMatrixMode(GL_MODELVIEW);
         glPushMatrix();
 
-        // Disable depth test so axes draw on top
-        glDisable(GL_DEPTH_TEST);
+    // Keep depth testing enabled so axes are drawn in world space and can be occluded
         // Draw coordinate system axes using the line batcher
         // Use current perspective projection instead of orthographic
-        const float axisLength = 10.0f; // Longer axes for better visibility
+    float axisLength = 10.0f;
+#ifndef NDEBUG
+    axisLength = g_WorldAxisLength;
+#endif
         EnsureLineBatcher3D();
         if (lineBatcher3D_) {
             lineBatcher3D_->Begin();
-            lineBatcher3D_->SetLineWidth(3.0f);
+        float lw = 3.0f;
+#ifndef NDEBUG
+        lw = g_WorldAxisLineWidth;
+#endif
+        lineBatcher3D_->SetLineWidth(lw);
             // X axis (red)
             lineBatcher3D_->AddLine(0.0f, 0.0f, 0.0f, axisLength, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f);
             // Y axis (green)
@@ -1847,28 +2323,9 @@ void Viewport3D::DrawCoordinateSystem() {
             lineBatcher3D_->Flush();
         }
 
-        // Draw axis labels using TextRenderer so we don't rely on raw GLUT calls here
-        TextRenderer::RenderText3D("X",
-                                   axisLength + 0.5f,
-                                   0.0f,
-                                   0.0f,
-                                   TextColor::White(),
-                                   FontSize::Medium);
-        TextRenderer::RenderText3D("Y",
-                                   0.0f,
-                                   axisLength + 0.5f,
-                                   0.0f,
-                                   TextColor::White(),
-                                   FontSize::Medium);
-        TextRenderer::RenderText3D("Z",
-                                   0.0f,
-                                   0.0f,
-                                   axisLength + 0.5f,
-                                   TextColor::White(),
-                                   FontSize::Medium);
+    // Axis labels disabled to avoid GLUT dependency at runtime. Re-enable if TextRenderer3D is GLUT-free.
 
     glLineWidth(1.0f);
-        glEnable(GL_DEPTH_TEST);
 
         // Restore matrices
         glMatrixMode(GL_MODELVIEW);
@@ -1894,6 +2351,28 @@ void Viewport3D::EnsureLineBatcher3D() {
         }
     }
 #endif
+}
+
+double Viewport3D::SampleSpeed(double x, double y, double z) {
+    using clock = std::chrono::steady_clock;
+    const auto now = clock::now();
+    double speed = 0.0;
+    if (haveHudSample_) {
+        const double dt = std::chrono::duration<double>(now - lastHudTime_).count();
+        if (dt > 1e-4) {
+            const double dx = x - lastHudX_;
+            const double dy = y - lastHudY_;
+            const double dz = z - lastHudZ_;
+            const double dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+            speed = dist / dt; // world units per second
+        }
+    }
+    lastHudX_ = x;
+    lastHudY_ = y;
+    lastHudZ_ = z;
+    lastHudTime_ = now;
+    haveHudSample_ = true;
+    return speed;
 }
 
 void Viewport3D::DrawCameraVisual(const class Camera* camera, double playerX, double playerY, double playerZ, bool targetLocked) {
@@ -2216,8 +2695,8 @@ void Viewport3D::DrawCameraDebug(const class Camera* camera, double playerX, dou
 
     if (IsUsingGLBackend()) {
         glPushMatrix();
-        // Draw world coordinate system at origin
-        // DrawCoordinateSystem(); // Commented out - debug axis visualization removed
+    // Draw world coordinate system at origin
+    DrawCoordinateSystem();
         glPopMatrix();
 
         double camDistToPlayer = std::sqrt((camera->x() - playerX) * (camera->x() - playerX) +
@@ -2237,126 +2716,116 @@ void Viewport3D::DrawCameraDebug(const class Camera* camera, double playerX, dou
 }
 
 #ifdef USE_SDL
-// Larger tiny font renderer with a few extra glyphs (Z, F, X, =)
-static void drawTinyCharSDL(SDL_Renderer* r, int x, int y, char c) {
-    if (!r) return;
-    const int scale = 8; // increase for much better visibility
-    // helper to draw a 5x5 glyph stored as 5 columns
-    auto drawGlyph = [&](const uint8_t* glyph){
-        for (int col = 0; col < 5; ++col) {
-            uint8_t colBits = glyph[col];
-            for (int row = 0; row < 5; ++row) {
-                if (colBits & (1 << (4 - row))) {
-                    SDL_Rect px{ x + col*(scale+1), y + row*(scale+1), scale, scale };
-                    compat_RenderFillRect(r, &px);
-                }
-            }
-        }
-    };
+// --- Minimal SDL bitmap text (5x5 glyphs) for non-GL renderer ---
+struct SDLMiniFontGlyph { const uint8_t* cols; int w; int h; }; // 5x5
 
-    if (c >= '0' && c <= '9') {
-        const uint8_t* glyph = tinyFont[c - '0'];
-        drawGlyph(glyph);
-    } else if (c == '-') {
-        SDL_Rect px{ x, y + 2 * (scale + 1), 5 * (scale + 1), scale };
-        compat_RenderFillRect(r, &px);
-    } else if (c == '.') {
-        SDL_Rect px{ x + 4 * (scale + 1), y + 4 * (scale + 1), scale, scale };
-        compat_RenderFillRect(r, &px);
-    } else if (c == '=') {
-        SDL_Rect top{ x, y + 1 * (scale + 1), 5 * (scale + 1), scale };
-        SDL_Rect bot{ x, y + 3 * (scale + 1), 5 * (scale + 1), scale };
-        compat_RenderFillRect(r, &top);
-        compat_RenderFillRect(r, &bot);
-    } else if (c == 'Z') {
-        const uint8_t glyphZ[5] = {0x1F, 0x02, 0x04, 0x08, 0x1F};
-        drawGlyph(glyphZ);
-    } else if (c == 'F') {
-        drawGlyph(glyphF);
-    } else if (c == 'P') {
-        drawGlyph(glyphP);
-    } else if (c == 'S') {
-        drawGlyph(glyphLtrS);
-    } else if (c == 'X') {
-        const uint8_t glyphX[5] = {0x11, 0x0A, 0x04, 0x0A, 0x11};
-        drawGlyph(glyphX);
-    } else if (c == ':') {
-        // draw two dots for colon
-        SDL_Rect d1{ x + 2 * (scale + 1), y + 1 * (scale + 1), scale / 2, scale / 2 };
-        SDL_Rect d2{ x + 2 * (scale + 1), y + 3 * (scale + 1), scale / 2, scale / 2 };
-        compat_RenderFillRect(r, &d1);
-        compat_RenderFillRect(r, &d2);
-    } else if (c == 'V') {
-        drawGlyph(glyphV);
-    } else if (c == 'Y') {
-        drawGlyph(glyphY);
-    } else if (c == 'N') {
-        drawGlyph(glyphN);
-    } else if (c == 'C') {
-        drawGlyph(glyphC);
-    } else if (c == 'O') {
-        drawGlyph(glyphO);
-    } else if (c == 'A') {
-        drawGlyph(glyphA);
-    } else if (c == 'T') {
-        drawGlyph(glyphT);
-    } else if (c == 'G') {
-        drawGlyph(glyphG);
-    } else if (c == ' ') {
-        // leave blank for space
-    } else {
-        // unknown: leave blank
+static const uint8_t kGlyphDigits[][5] = {
+    {0x1F,0x11,0x11,0x11,0x1F}, // 0
+    {0x04,0x06,0x04,0x04,0x07}, // 1
+    {0x1F,0x01,0x1F,0x10,0x1F}, // 2
+    {0x1F,0x01,0x1F,0x01,0x1F}, // 3
+    {0x11,0x11,0x1F,0x01,0x01}, // 4
+    {0x1F,0x10,0x1F,0x01,0x1F}, // 5
+    {0x1F,0x10,0x1F,0x11,0x1F}, // 6
+    {0x1F,0x01,0x02,0x04,0x04}, // 7
+    {0x1F,0x11,0x1F,0x11,0x1F}, // 8
+    {0x1F,0x11,0x1F,0x01,0x1F}, // 9
+};
+static const uint8_t kGlyphA[5] = {0x0E, 0x11, 0x1F, 0x11, 0x11};
+static const uint8_t kGlyphC[5] = {0x0E, 0x10, 0x10, 0x10, 0x0E};
+static const uint8_t kGlyphF[5] = {0x1F, 0x10, 0x1E, 0x10, 0x10};
+static const uint8_t kGlyphG[5] = {0x0E, 0x10, 0x17, 0x11, 0x0E};
+static const uint8_t kGlyphN[5] = {0x11, 0x19, 0x15, 0x13, 0x11};
+static const uint8_t kGlyphO[5] = {0x0E, 0x11, 0x11, 0x11, 0x0E};
+static const uint8_t kGlyphP[5] = {0x1E, 0x11, 0x1E, 0x10, 0x10};
+static const uint8_t kGlyphS[5] = {0x1F, 0x10, 0x1F, 0x01, 0x1F};
+static const uint8_t kGlyphT[5] = {0x1F, 0x04, 0x04, 0x04, 0x04};
+static const uint8_t kGlyphV[5] = {0x11, 0x11, 0x0A, 0x0A, 0x04};
+static const uint8_t kGlyphX[5] = {0x11, 0x0A, 0x04, 0x0A, 0x11};
+static const uint8_t kGlyphY[5] = {0x11, 0x0A, 0x04, 0x04, 0x04};
+static const uint8_t kGlyphZ[5] = {0x1F, 0x02, 0x04, 0x08, 0x1F};
+
+static SDLMiniFontGlyph SDLMiniFont_Get(char c) {
+    if (c >= '0' && c <= '9') return {kGlyphDigits[c - '0'], 5, 5};
+    switch (c) {
+        case 'A': return {kGlyphA, 5, 5};
+        case 'C': return {kGlyphC, 5, 5};
+        case 'F': return {kGlyphF, 5, 5};
+        case 'G': return {kGlyphG, 5, 5};
+        case 'N': return {kGlyphN, 5, 5};
+        case 'O': return {kGlyphO, 5, 5};
+        case 'P': return {kGlyphP, 5, 5};
+        case 'S': return {kGlyphS, 5, 5};
+        case 'T': return {kGlyphT, 5, 5};
+        case 'V': return {kGlyphV, 5, 5};
+        case 'X': return {kGlyphX, 5, 5};
+        case 'Y': return {kGlyphY, 5, 5};
+        case 'Z': return {kGlyphZ, 5, 5};
+        default: return {nullptr, 0, 0};
     }
 }
 
-// Draw a single seven-segment style digit at (x,y).
-static void drawSevenSegDigit(SDL_Renderer* r, int x, int y, int segLen, int segThick, char c) {
-    if (!r) return;
-    // segment bitmask: bit0=a(top), bit1=b(upper-right), bit2=c(lower-right), bit3=d(bottom), bit4=e(lower-left), bit5=f(upper-left), bit6=g(middle)
-    static const uint8_t segMap[10] = {
-        // a b c d e f g
-        0b0111111, // 0: a b c d e f
-        0b0000110, // 1: b c
-        0b1011011, // 2: a b g e d
-        0b1001111, // 3: a b g c d
-        0b1100110, // 4: f g b c
-        0b1101101, // 5: a f g c d
-        0b1111101, // 6: a f g e c d
-        0b0000111, // 7: a b c
-        0b1111111, // 8: all
-        0b1101111  // 9: a b c d f g
+static int SDLMiniFont_DrawText(SDL_Renderer* r, int x, int y, SDL_Color color, int scale, const char* text, bool draw) {
+    if (!r || !text) return 0;
+    const int glyphSpacing = 1; // 1 px between columns baseline
+    int cx = x;
+    SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(r, color.r, color.g, color.b, color.a);
+    auto drawGlyph = [&](const SDLMiniFontGlyph& g){
+        if (!g.cols) { cx += (5 + glyphSpacing) * scale; return; }
+        if (draw) {
+            for (int col = 0; col < g.w; ++col) {
+                uint8_t bits = g.cols[col];
+                for (int row = 0; row < g.h; ++row) {
+                    if (bits & (1 << (g.h - 1 - row))) {
+                        SDL_Rect px{ cx + col*(scale), y + row*(scale), scale, scale };
+                        compat_RenderFillRect(r, &px);
+                    }
+                }
+            }
+        }
+        cx += (g.w + glyphSpacing) * scale;
     };
-
-    auto drawSeg = [&](int sx, int sy, int w, int h){ SDL_Rect rct{sx, sy, w, h}; compat_RenderFillRect(r, &rct); };
-
-    int a = x + segThick, ay = y, aw = segLen, ah = segThick;
-    int f_x = x, f_y = y + segThick, f_w = segThick, f_h = segLen;
-    int b_x = x + segThick + segLen, b_y = y + segThick, b_w = segThick, b_h = segLen;
-    int g_x = x + segThick, g_y = y + segThick + segLen, g_w = segLen, g_h = segThick;
-    int e_x = x, e_y = y + 2*segThick + segLen, e_w = segThick, e_h = segLen;
-    int c_x = x + segThick + segLen, c_y = y + 2*segThick + segLen, c_w = segThick, c_h = segLen;
-    int d_x = x + segThick, d_y = y + 2*(segThick + segLen), d_w = segLen, d_h = segThick;
-
-    if (c == '-') {
-        drawSeg(g_x, g_y, g_w, g_h);
-        return;
+    for (const char* p = text; *p; ++p) {
+        if (*p == ' ') { cx += (3 + glyphSpacing) * scale; continue; }
+        if (*p == '.') {
+            if (draw) {
+                SDL_Rect px{ cx + 4*scale, y + 4*scale, scale, scale };
+                compat_RenderFillRect(r, &px);
+            }
+            cx += (2 + glyphSpacing) * scale;
+            continue;
+        }
+        if (*p == ':') {
+            if (draw) {
+                SDL_Rect d1{ cx + 2*scale, y + 1*scale, scale, scale };
+                SDL_Rect d2{ cx + 2*scale, y + 3*scale, scale, scale };
+                compat_RenderFillRect(r, &d1);
+                compat_RenderFillRect(r, &d2);
+            }
+            cx += (2 + glyphSpacing) * scale;
+            continue;
+        }
+        if (*p == '-') {
+            if (draw) {
+                SDL_Rect mid{ cx, y + 2*scale, 5*scale, scale };
+                compat_RenderFillRect(r, &mid);
+            }
+            cx += (5 + glyphSpacing) * scale;
+            continue;
+        }
+        SDLMiniFontGlyph g = SDLMiniFont_Get(static_cast<char>(std::toupper(*p)));
+        drawGlyph(g);
     }
-    if (c == '.') {
-        // small dot at bottom-right
-    SDL_Rect dot{ x + segThick + segLen + segThick/2, y + 2*(segThick+segLen) + segThick, segThick, segThick };
-    compat_RenderFillRect(r, &dot);
-        return;
-    }
+    return cx - x;
+}
 
-    if (c < '0' || c > '9') return;
-    uint8_t bits = segMap[c - '0'];
-    if (bits & 0x01) drawSeg(a, ay, aw, ah); // a
-    if (bits & 0x02) drawSeg(b_x, b_y, b_w, b_h); // b
-    if (bits & 0x04) drawSeg(c_x, c_y, c_w, c_h); // c
-    if (bits & 0x08) drawSeg(d_x, d_y, d_w, d_h); // d
-    if (bits & 0x10) drawSeg(e_x, e_y, e_w, e_h); // e
-    if (bits & 0x20) drawSeg(f_x, f_y, f_w, f_h); // f
-    if (bits & 0x40) drawSeg(g_x, g_y, g_w, g_h); // g
+static int SDLMiniFont_RenderText(SDL_Renderer* r, int x, int y, SDL_Color color, int scale, const char* text) {
+    return SDLMiniFont_DrawText(r, x, y, color, scale, text, true);
+}
+
+static int SDLMiniFont_MeasureText(SDL_Renderer* r, int scale, const char* text) {
+    (void)r; return SDLMiniFont_DrawText(nullptr, 0, 0, SDL_Color{0,0,0,0}, scale, text, false);
 }
 #endif // USE_SDL
 
@@ -2665,6 +3134,61 @@ void Viewport3D::EnsureSpaceshipHudTexture() {
 }
 #endif
 
+void Viewport3D::EnsurePlayerHudTextureGL() {
+    if (!IsUsingGLBackend()) {
+        return;
+    }
+
+    if (playerHudTextureGL_ != 0 || playerHudTextureGLFailed_) {
+        return;
+    }
+    SvgRasterizationOptions opts;
+    opts.targetWidth = 1920;
+    opts.targetHeight = 1080;
+    opts.preserveAspectRatio = true;
+
+    std::vector<std::uint8_t> pixels;
+    int width = 0;
+    int height = 0;
+    if (!LoadSvgToRgbaCached("assets/ui/player_hud.svg", pixels, width, height, opts)) {
+        std::cerr << "Viewport3D: failed to load player HUD SVG" << std::endl;
+        playerHudTextureGLFailed_ = true;
+        return;
+    }
+
+    unsigned int textureId = 0;
+    glGenTextures(1, &textureId);
+    if (textureId == 0) {
+        std::cerr << "Viewport3D: glGenTextures failed for player HUD" << std::endl;
+        playerHudTextureGLFailed_ = true;
+        return;
+    }
+
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,
+                 GL_RGBA8,
+                 width,
+                 height,
+                 0,
+                 GL_RGBA,
+                 GL_UNSIGNED_BYTE,
+                 pixels.data());
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    playerHudTextureGL_ = textureId;
+    playerHudTextureGLWidth_ = width;
+    playerHudTextureGLHeight_ = height;
+}
+
 void Viewport3D::DrawHUD(const class Camera* camera,
                          double fps,
                          double playerX,
@@ -2696,205 +3220,183 @@ void Viewport3D::DrawHUD(const class Camera* camera,
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-            // Begin batched UI rendering and draw background/border
+            HudAnchorRect energyAnchor{};
+            HudAnchorRect telemetryAnchor{};
+            HudAnchorRect statusAnchor{};
+            float hudScale = 1.0f;
+            bool haveHudTexture = false;
+
+#if defined(USE_GLFW) || defined(USE_SDL)
+            EnsurePlayerHudTextureGL();
+            if (playerHudTextureGL_ != 0 && playerHudTextureGLWidth_ > 0 && playerHudTextureGLHeight_ > 0) {
+                haveHudTexture = true;
+                const float texW = static_cast<float>(playerHudTextureGLWidth_);
+                const float texH = static_cast<float>(playerHudTextureGLHeight_);
+                hudScale = std::min(static_cast<float>(width) / texW,
+                                    static_cast<float>(height) / texH);
+                const float destW = texW * hudScale;
+                const float destH = texH * hudScale;
+                const float offsetX = (static_cast<float>(width) - destW) * 0.5f;
+                const float offsetY = (static_cast<float>(height) - destH) * 0.5f;
+
+                DrawHudTextureOverlay(playerHudTextureGL_, offsetX, offsetY, destW, destH);
+
+                energyAnchor = {offsetX + 80.0f * hudScale,
+                                offsetY + 60.0f * hudScale,
+                                460.0f * hudScale,
+                                280.0f * hudScale,
+                                true};
+                telemetryAnchor = {offsetX + 1380.0f * hudScale,
+                                   offsetY + 60.0f * hudScale,
+                                   460.0f * hudScale,
+                                   280.0f * hudScale,
+                                   true};
+                statusAnchor = {offsetX + 80.0f * hudScale,
+                                offsetY + 860.0f * hudScale,
+                                1760.0f * hudScale,
+                                180.0f * hudScale,
+                                true};
+            }
+#endif
+
             if (uiBatcher_) {
                 uiBatcher_->Begin(width, height);
-                uiBatcher_->AddQuad(10, 10, 340, 110, 0.2f, 0.2f, 0.2f, 0.8f);
-                uiBatcher_->AddRectOutline(10, 10, 340, 120, 1.0f, 1.0f, 1.0f, 1.0f, 0.8f);
+                if (!haveHudTexture) {
+                    uiBatcher_->AddQuad(10, 10, 340, 110, 0.2f, 0.2f, 0.2f, 0.8f);
+                    uiBatcher_->AddRectOutline(10, 10, 340, 120, 1.0f, 1.0f, 1.0f, 1.0f, 0.8f);
+                }
             }
-
-            // Simple 7-segment style display for GLFW (similar to SDL version)
-            auto addRect = [this](float x, float y, float w, float h, float r, float g, float b, float a = 1.0f) {
-                if (uiBatcher_) {
-                    uiBatcher_->AddQuad(x, y, w, h, r, g, b, a);
-                }
-            };
-
-            auto drawSevenSegDigitGL = [&](int x, int y, int segLen, int segThick, char c, float r, float g, float b) {
-                static const uint8_t segMap[10] = {
-                    0b0111111, // 0
-                    0b0000110, // 1
-                    0b1011011, // 2
-                    0b1001111, // 3
-                    0b1100110, // 4
-                    0b1101101, // 5
-                    0b1111101, // 6
-                    0b0000111, // 7
-                    0b1111111, // 8
-                    0b1101111  // 9
-                };
-                auto drawSegGL = [&](float sx, float sy, float w, float h) {
-                    if (uiBatcher_) {
-                        uiBatcher_->AddQuad(sx, sy, w, h, r, g, b, 1.0f);
-                    }
-                };
-                int a = x + segThick, ay = y, aw = segLen, ah = segThick;
-                int f_x = x, f_y = y + segThick, f_w = segThick, f_h = segLen;
-                int b_x = x + segThick + segLen, b_y = y + segThick, b_w = segThick, b_h = segLen;
-                int g_x = x + segThick, g_y = y + segThick + segLen, g_w = segLen, g_h = segThick;
-                int e_x = x, e_y = y + 2 * segThick + segLen, e_w = segThick, e_h = segLen;
-                int c_x = x + segThick + segLen, c_y = y + 2 * segThick + segLen, c_w = segThick, c_h = segLen;
-                int d_x = x + segThick, d_y = y + 2 * (segThick + segLen), d_w = segLen, d_h = segThick;
-                if (c == '-') {
-                    drawSegGL(g_x, g_y, g_w, g_h);
-                    return;
-                }
-                if (c == '.') {
-                    addRect(x + segThick + segLen + segThick / 2, y + 2 * (segThick + segLen) + segThick, segThick, segThick, 1, 1, 1);
-                    return;
-                }
-                if (c < '0' || c > '9') return;
-                uint8_t bits = segMap[c - '0'];
-                if (bits & 0x01) drawSegGL(a, ay, aw, ah);
-                if (bits & 0x02) drawSegGL(b_x, b_y, b_w, b_h);
-                if (bits & 0x04) drawSegGL(c_x, c_y, c_w, c_h);
-                if (bits & 0x08) drawSegGL(d_x, d_y, d_w, d_h);
-                if (bits & 0x10) drawSegGL(e_x, e_y, e_w, e_h);
-                if (bits & 0x20) drawSegGL(f_x, f_y, f_w, f_h);
-                if (bits & 0x40) drawSegGL(g_x, g_y, g_w, g_h);
-            };
 
             // Layout
-            int segLen = 12;
-            int segThick = 4;
-            int spacing = segLen + segThick + 6;
-            int x = 18, y = 25;
+            const float telemetryBaseX = haveHudTexture ? telemetryAnchor.x + 24.0f * hudScale : 18.0f;
+            const float telemetryBaseY = haveHudTexture ? telemetryAnchor.y + 40.0f * hudScale : 25.0f;
+            int x = static_cast<int>(std::lround(telemetryBaseX));
+            int y = static_cast<int>(std::lround(telemetryBaseY));
 
             // Label "FPS:"
-            glColor3f(0.7f, 0.7f, 0.7f);
-            addRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
-            addRect(x, y + segThick + 2, 4, segThick, 0.7f, 0.7f, 0.7f);
-            x += 14;
+            TextRenderer::RenderText("FPS:", x, y, TextColor(0.7f, 0.7f, 0.7f), FontSize::Large);
+            x += TextRenderer::MeasureText("FPS:", FontSize::Large) + 8;
 
-            // FPS value
-            char fbuf[16]; 
+            // FPS value (use TextRenderer instead of seven-seg)
+            char fbuf[16];
             snprintf(fbuf, sizeof(fbuf), "%d", (int)std::floor(fps + 0.5));
-            glColor3f(1.0f, 0.9f, 0.5f);
-            for (char* p = fbuf; *p; ++p) {
-                drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
-                x += spacing;
-            }
+            TextRenderer::RenderText(fbuf, x, y, TextColor(1.0f, 0.9f, 0.5f), FontSize::Large);
+            x += TextRenderer::MeasureText(fbuf, FontSize::Large) + 12;
 
             x += 12;
             // Zoom label "Z:"
-            glColor3f(0.7f, 0.7f, 0.7f);
-            addRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
-            addRect(x + segLen - 2, y + segThick, 4, segThick, 0.7f, 0.7f, 0.7f);
-            addRect(x, y + 2 * (segThick + segLen), 4, segThick, 0.7f, 0.7f, 0.7f);
-            x += 18;
+            TextRenderer::RenderText("Z:", x, y, TextColor(0.7f, 0.7f, 0.7f), FontSize::Large);
+            x += TextRenderer::MeasureText("Z:", FontSize::Large) + 8;
 
-            // Zoom value
+            // Zoom value (TextRenderer)
             char zbuf[32];
-            if (camera) snprintf(zbuf, sizeof(zbuf), "%.1f", camera->zoom()); 
+            if (camera) snprintf(zbuf, sizeof(zbuf), "%.1f", camera->zoom());
             else snprintf(zbuf, sizeof(zbuf), "1.0");
-            glColor3f(1.0f, 0.9f, 0.5f);
-            for (char* p = zbuf; *p; ++p) {
-                if (*p >= '0' && *p <= '9') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
-                    x += spacing;
-                } else if (*p == '.') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, '.', 1.0f, 0.9f, 0.5f);
-                    x += spacing / 2;
-                }
-            }
+            TextRenderer::RenderText(zbuf, x, y, TextColor(1.0f, 0.9f, 0.5f), FontSize::Large);
+            x += TextRenderer::MeasureText(zbuf, FontSize::Large) + 12;
 
-            float glyphScale = 4.0f;
-            float glyphAdvance = (5.0f + 1.0f) * glyphScale;
-            float vsyncX = static_cast<float>(x + 12);
-            float vsyncY = static_cast<float>(y);
-            const char* vsLabel = "VSYNC";
-            glColor3f(0.7f, 0.7f, 0.7f);
-            for (const char* p = vsLabel; *p; ++p) {
-                DrawTinyChar2D(vsyncX, vsyncY, *p, glyphScale, 0.7f, 0.7f, 0.7f);
-                vsyncX += glyphAdvance;
-            }
-            vsyncX += glyphScale * 2.0f;
+            int vsyncX = x + 12;
+            int vsyncY = y;
+            TextRenderer::RenderText("VSYNC", vsyncX, vsyncY, TextColor(0.7f, 0.7f, 0.7f), FontSize::Large);
+            vsyncX += TextRenderer::MeasureText("VSYNC", FontSize::Large) + 12;
             const char* vsValue = vsyncEnabled_ ? "ON" : "OFF";
-            glColor3f(1.0f, 0.9f, 0.5f);
-            for (const char* p = vsValue; *p; ++p) {
-                DrawTinyChar2D(vsyncX, vsyncY, *p, glyphScale, 1.0f, 0.9f, 0.5f);
-                vsyncX += glyphAdvance;
-            }
-
-            vsyncX += glyphScale * 2.0f;
-            const char* capLabel = "CAP";
-            glColor3f(0.7f, 0.7f, 0.7f);
-            for (const char* p = capLabel; *p; ++p) {
-                DrawTinyChar2D(vsyncX, vsyncY, *p, glyphScale, 0.7f, 0.7f, 0.7f);
-                vsyncX += glyphAdvance;
-            }
-
-            vsyncX += glyphScale * 2.0f;
+            TextRenderer::RenderText(vsValue, vsyncX, vsyncY, TextColor(1.0f, 0.9f, 0.5f), FontSize::Large);
+            vsyncX += TextRenderer::MeasureText(vsValue, FontSize::Large) + 12;
+            TextRenderer::RenderText("CAP", vsyncX, vsyncY, TextColor(0.7f, 0.7f, 0.7f), FontSize::Large);
+            vsyncX += TextRenderer::MeasureText("CAP", FontSize::Large) + 12;
             char capBuf[16];
             if (frameRateLimitHint_ <= 0.0) {
                 snprintf(capBuf, sizeof(capBuf), "INF");
             } else {
                 snprintf(capBuf, sizeof(capBuf), "%.0f", frameRateLimitHint_);
             }
-            glColor3f(1.0f, 0.9f, 0.5f);
-            for (char* p = capBuf; *p; ++p) {
-                DrawTinyChar2D(vsyncX, vsyncY, *p, glyphScale, 1.0f, 0.9f, 0.5f);
-                vsyncX += glyphAdvance;
-            }
+            TextRenderer::RenderText(capBuf, vsyncX, vsyncY, TextColor(1.0f, 0.9f, 0.5f), FontSize::Large);
 
             // Second row - Position
-            x = 18; y += 50;
-            glColor3f(0.7f, 0.7f, 0.7f);
+            const int rowSpacing = haveHudTexture ? static_cast<int>(std::lround(46.0f * hudScale)) : 50;
+            x = static_cast<int>(std::lround(haveHudTexture ? telemetryAnchor.x + 24.0f * hudScale : 18.0f));
+            y += rowSpacing;
             // X label
-            addRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
-            addRect(x + 6, y + segThick + 2, 4, segThick, 0.7f, 0.7f, 0.7f);
-            x += 18;
+            TextRenderer::RenderText("X", x, y, TextColor(0.7f, 0.7f, 0.7f), FontSize::Large);
+            x += TextRenderer::MeasureText("X", FontSize::Large) + 8;
             
-            // X value
-            char xbuf[32]; 
+            // X value (TextRenderer)
+            char xbuf[32];
             snprintf(xbuf, sizeof(xbuf), "%.1f", playerX);
-            glColor3f(0.5f, 1.0f, 1.0f);
-            for (char* p = xbuf; *p; ++p) {
-                if (*p >= '0' && *p <= '9') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, *p, 0.5f, 1.0f, 1.0f);
-                    x += spacing;
-                } else if (*p == '.') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, '.', 0.5f, 1.0f, 1.0f);
-                    x += spacing / 2;
-                } else if (*p == '-') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, '-', 0.5f, 1.0f, 1.0f);
-                    x += spacing;
-                }
-            }
+            TextRenderer::RenderText(xbuf, x, y, TextColor(0.5f, 1.0f, 1.0f), FontSize::Large);
+            x += TextRenderer::MeasureText(xbuf, FontSize::Large) + 12;
 
             x += 12;
             // Y label
-            glColor3f(0.7f, 0.7f, 0.7f);
-            addRect(x, y, 4, segThick, 0.7f, 0.7f, 0.7f);
-            addRect(x + 6, y + segThick + 2, 4, segThick, 0.7f, 0.7f, 0.7f);
-            x += 18;
+            TextRenderer::RenderText("Y", x, y, TextColor(0.7f, 0.7f, 0.7f), FontSize::Large);
+            x += TextRenderer::MeasureText("Y", FontSize::Large) + 8;
 
-            // Y value
-            char ybuf[32]; 
+            // Y value (TextRenderer)
+            char ybuf[32];
             snprintf(ybuf, sizeof(ybuf), "%.1f", playerY);
-            glColor3f(0.5f, 1.0f, 1.0f);
-            for (char* p = ybuf; *p; ++p) {
-                if (*p >= '0' && *p <= '9') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, *p, 0.5f, 1.0f, 1.0f);
-                    x += spacing;
-                } else if (*p == '.') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, '.', 0.5f, 1.0f, 1.0f);
-                    x += spacing / 2;
-                } else if (*p == '-') {
-                    drawSevenSegDigitGL(x, y, segLen, segThick, '-', 0.5f, 1.0f, 1.0f);
-                    x += spacing;
-                }
-            }
+            TextRenderer::RenderText(ybuf, x, y, TextColor(0.5f, 1.0f, 1.0f), FontSize::Large);
+            x += TextRenderer::MeasureText(ybuf, FontSize::Large) + 12;
 
             // Energy management overlay
 #if defined(USE_GLFW)
             if (energyTelemetry && energyTelemetry->valid) {
-                RenderEnergyPanel(uiBatcher_.get(), *energyTelemetry, width, height);
+                RenderEnergyPanel(uiBatcher_.get(), *energyTelemetry, width, height,
+                                  haveHudTexture ? &energyAnchor : nullptr);
+            }
+#endif
+
+            // Reticle at screen center (always on for now)
+            if (uiBatcher_) {
+                DrawReticle2D(uiBatcher_.get(), width, height, haveHudTexture ? hudScale : 1.0f);
+            }
+
+            // Bottom status rail (health/energy/ammo + speed)
+            {
+                const double speed = SampleSpeed(playerX, playerY, playerZ);
+                int ammoCur = -1, ammoMax = -1;
+                if (energyTelemetry && energyTelemetry->valid) {
+                    ammoCur = energyTelemetry->weaponAmmoCurrent;
+                    ammoMax = energyTelemetry->weaponAmmoMax;
+                }
+                RenderPlayerStatusRail(uiBatcher_.get(), energyTelemetry, width, height, speed, ammoCur, ammoMax,
+                                       haveHudTexture ? &statusAnchor : nullptr);
+            }
+
+            // 2D mini axes gizmo (HUD) — draws in screen space using quads
+#ifndef NDEBUG
+            if (uiBatcher_ && g_ShowMiniAxesGizmo) {
+                const float originX = g_MiniGizmoMargin;
+                const float originY = static_cast<float>(height) - g_MiniGizmoMargin; // bottom-left corner origin
+                const float L = g_MiniGizmoSize;
+                const float T = std::max(1.0f, g_MiniGizmoThickness);
+                // X axis (red) to the right
+                uiBatcher_->AddQuad(originX, originY, L, T, 1.0f, 0.0f, 0.0f, 1.0f);
+                // Y axis (green) upwards (negative screen Y)
+                uiBatcher_->AddQuad(originX, originY - L, T, L, 0.0f, 1.0f, 0.0f, 1.0f);
+                // Z axis (blue) marker as a small square at origin
+                const float ZS = std::max(T * 1.6f, 4.0f);
+                uiBatcher_->AddQuad(originX - ZS * 0.5f, originY - ZS * 0.5f, ZS, ZS, 0.0f, 0.6f, 1.0f, 1.0f);
+                // Labels via TextRenderer
+                TextRenderer::RenderText("X", static_cast<int>(originX + L + 6.0f), static_cast<int>(originY - 6.0f), TextColor(1.0f, 0.6f, 0.6f), FontSize::Medium);
+                TextRenderer::RenderText("Y", static_cast<int>(originX - 10.0f), static_cast<int>(originY - L - 12.0f), TextColor(0.6f, 1.0f, 0.6f), FontSize::Medium);
+                TextRenderer::RenderText("Z", static_cast<int>(originX + 8.0f), static_cast<int>(originY + 6.0f), TextColor(0.6f, 0.8f, 1.0f), FontSize::Medium);
             }
 #endif
 
             // Flush batched UI rendering
             if (uiBatcher_) {
+                // Optional: small HUD hint for debug hotkeys
+#ifndef NDEBUG
+                if (showHudHints_) {
+                    const char* hint = "F8: World Axes   F9: Mini Gizmo";
+                    const float hx = 14.0f;
+                    const float hy = 140.0f;
+                    const int hintW = TextRenderer::MeasureText(hint, FontSize::Medium);
+                    // subtle background sized to text
+                    uiBatcher_->AddQuad(hx - 6.0f, hy - 10.0f, static_cast<float>(hintW + 12), 20.0f, 0.0f, 0.0f, 0.0f, 0.35f);
+                    TextRenderer::RenderText(hint, static_cast<int>(hx), static_cast<int>(hy), TextColor(0.9f, 0.9f, 0.9f), FontSize::Medium);
+                }
+#endif
                 uiBatcher_->Flush();
             }
 
@@ -2938,199 +3440,119 @@ void Viewport3D::DrawHUD(const class Camera* camera,
             uiBatcher_->AddRectOutline(8, 8, 380, 180, 1.0f, 1.0f, 1.0f, 1.0f, 0.7f);
         }
 
-        // Helper functions
-        auto addRect = [this](float x, float y, float w, float h, float r, float g, float b, float a = 1.0f) {
-            if (uiBatcher_) {
-                uiBatcher_->AddQuad(x, y, w, h, r, g, b, a);
-            }
-        };
-
-        auto drawSevenSegDigitGL = [&](int x, int y, int segLen, int segThick, char c, float r, float g, float b) {
-            static const uint8_t segMap[10] = {
-                0b0111111, // 0
-                0b0000110, // 1
-                0b1011011, // 2
-                0b1001111, // 3
-                0b1100110, // 4
-                0b1101101, // 5
-                0b1111101, // 6
-                0b0000111, // 7
-                0b1111111, // 8
-                0b1101111  // 9
-            };
-            auto drawSegGL = [&](float sx, float sy, float w, float h) {
-                if (uiBatcher_) {
-                    uiBatcher_->AddQuad(sx, sy, w, h, r, g, b, 1.0f);
-                }
-            };
-            int a = x + segThick, ay = y, aw = segLen, ah = segThick;
-            int f_x = x, f_y = y + segThick, f_w = segThick, f_h = segLen;
-            int b_x = x + segThick + segLen, b_y = y + segThick, b_w = segThick, b_h = segLen;
-            int g_x = x + segThick, g_y = y + segThick + segLen, g_w = segLen, g_h = segThick;
-            int e_x = x, e_y = y + 2 * segThick + segLen, e_w = segThick, e_h = segLen;
-            int c_x = x + segThick + segLen, c_y = y + 2 * segThick + segLen, c_w = segThick, c_h = segLen;
-            int d_x = x + segThick, d_y = y + 2 * (segThick + segLen), d_w = segLen, d_h = segThick;
-            if (c == '-') {
-                drawSegGL(g_x, g_y, g_w, g_h);
-                return;
-            }
-            if (c == '.') {
-                addRect(x + segThick + segLen + segThick / 2, y + 2 * (segThick + segLen) + segThick, segThick, segThick, 1, 1, 1);
-                return;
-            }
-            if (c < '0' || c > '9') return;
-            uint8_t bits = segMap[c - '0'];
-            if (bits & 0x01) drawSegGL(a, ay, aw, ah);
-            if (bits & 0x02) drawSegGL(b_x, b_y, b_w, b_h);
-            if (bits & 0x04) drawSegGL(c_x, c_y, c_w, c_h);
-            if (bits & 0x08) drawSegGL(d_x, d_y, d_w, d_h);
-            if (bits & 0x10) drawSegGL(e_x, e_y, e_w, e_h);
-            if (bits & 0x20) drawSegGL(f_x, f_y, f_w, f_h);
-            if (bits & 0x40) drawSegGL(g_x, g_y, g_w, g_h);
-        };
-
         // Layout
-        int segLen = 16;
-        int segThick = 6;
-        int spacing = segLen + segThick + 8;
         int x = 18, y = 18;
 
-        // Label "Z:"
-        addRect(x, y, 4, segThick, 0.5f, 0.5f, 0.5f);
-        addRect(x + segLen - 2, y + segThick, 4, segThick, 0.5f, 0.5f, 0.5f);
-        addRect(x, y + 2 * (segThick + segLen), 4, segThick, 0.5f, 0.5f, 0.5f);
-        x += 24;
+        // Label "Z:" via TextRenderer
+        TextRenderer::RenderText("Z:", x, y, TextColor(0.5f, 0.5f, 0.5f), FontSize::Large);
+        x += TextRenderer::MeasureText("Z:", FontSize::Large) + 12;
 
-        // Zoom
+        // Zoom (TextRenderer)
         char zbuf[32];
         if (camera) snprintf(zbuf, sizeof(zbuf), "%.1f", camera->zoom()); else snprintf(zbuf, sizeof(zbuf), "0.0");
-        glColor3f(1.0f, 0.9f, 0.5f);
-        for (char* p = zbuf; *p; ++p) {
-            if (*p >= '0' && *p <= '9') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
-                x += spacing;
-            } else if (*p == '.') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '.', 1.0f, 0.9f, 0.5f);
-                x += spacing / 2;
-            }
-        }
+        TextRenderer::RenderText(zbuf, x, y, TextColor(1.0f, 0.9f, 0.5f), FontSize::Large);
+        x += TextRenderer::MeasureText(zbuf, FontSize::Large) + 12;
 
         x += 18;
-        // FPS label
-        addRect(x, y, 6, segThick, 0.5f, 0.5f, 0.5f);
-        addRect(x, y + segThick + 2, 6, segThick, 0.5f, 0.5f, 0.5f);
-        addRect(x, y + 2 * (segThick + segLen), 6, segThick, 0.5f, 0.5f, 0.5f);
-        x += 18;
+    // FPS label via TextRenderer
+    TextRenderer::RenderText("FPS:", x, y, TextColor(0.5f, 0.5f, 0.5f), FontSize::Large);
+    x += TextRenderer::MeasureText("FPS:", FontSize::Large) + 12;
         char fbuf[16]; snprintf(fbuf, sizeof(fbuf), "%d", (int)std::floor(fps + 0.5));
-        glColor3f(1.0f, 0.9f, 0.5f);
-        for (char* p = fbuf; *p; ++p) {
-            drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
-            x += spacing;
-        }
+        TextRenderer::RenderText(fbuf, x, y, TextColor(1.0f, 0.9f, 0.5f), FontSize::Large);
+        x += TextRenderer::MeasureText(fbuf, FontSize::Large) + 12;
 
-        float glyphScale = 4.0f;
-        float glyphAdvance = (5.0f + 1.0f) * glyphScale;
-        float infoX = static_cast<float>(x + 12);
-        float infoY = static_cast<float>(y);
-        const char* vsLabel = "VSYNC";
-        glColor3f(0.7f, 0.7f, 0.7f);
-        for (const char* p = vsLabel; *p; ++p) {
-            DrawTinyChar2D(infoX, infoY, *p, glyphScale, 0.7f, 0.7f, 0.7f);
-            infoX += glyphAdvance;
-        }
-        infoX += glyphScale * 2.0f;
+        int infoX = x + 12;
+        int infoY = y;
+        TextRenderer::RenderText("VSYNC", infoX, infoY, TextColor(0.7f, 0.7f, 0.7f), FontSize::Large);
+        infoX += TextRenderer::MeasureText("VSYNC", FontSize::Large) + 12;
         const char* vsValue = vsyncEnabled_ ? "ON" : "OFF";
-        glColor3f(1.0f, 0.9f, 0.5f);
-        for (const char* p = vsValue; *p; ++p) {
-            DrawTinyChar2D(infoX, infoY, *p, glyphScale, 1.0f, 0.9f, 0.5f);
-            infoX += glyphAdvance;
-        }
-
-        infoX += glyphScale * 2.0f;
-        const char* capLabel = "CAP";
-        glColor3f(0.7f, 0.7f, 0.7f);
-        for (const char* p = capLabel; *p; ++p) {
-            DrawTinyChar2D(infoX, infoY, *p, glyphScale, 0.7f, 0.7f, 0.7f);
-            infoX += glyphAdvance;
-        }
-
-        infoX += glyphScale * 2.0f;
+        TextRenderer::RenderText(vsValue, infoX, infoY, TextColor(1.0f, 0.9f, 0.5f), FontSize::Large);
+        infoX += TextRenderer::MeasureText(vsValue, FontSize::Large) + 12;
+        TextRenderer::RenderText("CAP", infoX, infoY, TextColor(0.7f, 0.7f, 0.7f), FontSize::Large);
+        infoX += TextRenderer::MeasureText("CAP", FontSize::Large) + 12;
         char capBuf[16];
         if (frameRateLimitHint_ <= 0.0) {
             snprintf(capBuf, sizeof(capBuf), "INF");
         } else {
             snprintf(capBuf, sizeof(capBuf), "%.0f", frameRateLimitHint_);
         }
-        glColor3f(1.0f, 0.9f, 0.5f);
-        for (char* p = capBuf; *p; ++p) {
-            DrawTinyChar2D(infoX, infoY, *p, glyphScale, 1.0f, 0.9f, 0.5f);
-            infoX += glyphAdvance;
-        }
+        TextRenderer::RenderText(capBuf, infoX, infoY, TextColor(1.0f, 0.9f, 0.5f), FontSize::Large);
 
-        x += 18;
-        // Player X label
-        addRect(x, y, 6, segThick, 0.5f, 0.5f, 0.5f);
-        addRect(x + 8, y + segThick + 2, 6, segThick, 0.5f, 0.5f, 0.5f);
-        x += 18;
+    x += 18;
+    // Player X label via TextRenderer
+    TextRenderer::RenderText("X", x, y, TextColor(0.5f, 0.5f, 0.5f), FontSize::Large);
+    x += TextRenderer::MeasureText("X", FontSize::Large) + 12;
         char xbuf[32]; snprintf(xbuf, sizeof(xbuf), "%.2f", playerX);
-        glColor3f(1.0f, 0.9f, 0.5f);
-        for (char* p = xbuf; *p; ++p) {
-            if (*p >= '0' && *p <= '9') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
-                x += spacing;
-            } else if (*p == '.') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '.', 1.0f, 0.9f, 0.5f);
-                x += spacing / 2;
-            } else if (*p == '-') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '-', 1.0f, 0.9f, 0.5f);
-                x += spacing;
-            }
-        }
+        TextRenderer::RenderText(xbuf, x, y, TextColor(1.0f, 0.9f, 0.5f), FontSize::Large);
+        x += TextRenderer::MeasureText(xbuf, FontSize::Large) + 12;
 
-        // Next row
-        x = 18; y += 60;
-        // Player Y label
-        addRect(x, y, 6, segThick, 0.5f, 0.5f, 0.5f);
-        addRect(x + 8, y + segThick + 2, 6, segThick, 0.5f, 0.5f, 0.5f);
-        x += 18;
+    // Next row
+    x = 18; y += 60;
+    // Player Y label via TextRenderer
+    TextRenderer::RenderText("Y", x, y, TextColor(0.5f, 0.5f, 0.5f), FontSize::Large);
+    x += TextRenderer::MeasureText("Y", FontSize::Large) + 12;
         char ybuf[32]; snprintf(ybuf, sizeof(ybuf), "%.2f", playerY);
-        glColor3f(1.0f, 0.9f, 0.5f);
-        for (char* p = ybuf; *p; ++p) {
-            if (*p >= '0' && *p <= '9') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
-                x += spacing;
-            } else if (*p == '.') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '.', 1.0f, 0.9f, 0.5f);
-                x += spacing / 2;
-            } else if (*p == '-') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '-', 1.0f, 0.9f, 0.5f);
-                x += spacing;
-            }
-        }
+        TextRenderer::RenderText(ybuf, x, y, TextColor(1.0f, 0.9f, 0.5f), FontSize::Large);
+        x += TextRenderer::MeasureText(ybuf, FontSize::Large) + 12;
 
-        x += 18;
-        // Player Z label
-        addRect(x, y, 4, segThick, 0.5f, 0.5f, 0.5f);
-        addRect(x + segLen - 2, y + segThick, 4, segThick, 0.5f, 0.5f, 0.5f);
-        addRect(x, y + 2 * (segThick + segLen), 4, segThick, 0.5f, 0.5f, 0.5f);
-        x += 24;
+    x += 18;
+    // Player Z label via TextRenderer
+    TextRenderer::RenderText("Z", x, y, TextColor(0.5f, 0.5f, 0.5f), FontSize::Large);
+    x += TextRenderer::MeasureText("Z", FontSize::Large) + 12;
         char zbuf2[32]; snprintf(zbuf2, sizeof(zbuf2), "%.2f", playerZ);
-        glColor3f(1.0f, 0.9f, 0.5f);
-        for (char* p = zbuf2; *p; ++p) {
-            if (*p >= '0' && *p <= '9') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, *p, 1.0f, 0.9f, 0.5f);
-                x += spacing;
-            } else if (*p == '.') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '.', 1.0f, 0.9f, 0.5f);
-                x += spacing / 2;
-            } else if (*p == '-') {
-                drawSevenSegDigitGL(x, y, segLen, segThick, '-', 1.0f, 0.9f, 0.5f);
-                x += spacing;
-            }
+        TextRenderer::RenderText(zbuf2, x, y, TextColor(1.0f, 0.9f, 0.5f), FontSize::Large);
+        x += TextRenderer::MeasureText(zbuf2, FontSize::Large) + 12;
+
+        // Reticle
+        if (uiBatcher_) {
+            DrawReticle2D(uiBatcher_.get(), width, height, 1.0f);
         }
 
-        // Flush batched UI rendering
+        // Bottom status rail
+        {
+            const double speed = SampleSpeed(playerX, playerY, playerZ);
+            int ammoCur = -1, ammoMax = -1;
+            if (energyTelemetry && energyTelemetry->valid) {
+                ammoCur = energyTelemetry->weaponAmmoCurrent;
+                ammoMax = energyTelemetry->weaponAmmoMax;
+            }
+                RenderPlayerStatusRail(uiBatcher_.get(), energyTelemetry, width, height, speed, ammoCur, ammoMax, nullptr);
+        }
+
+    // 2D mini axes gizmo (HUD) — draws in screen space using quads
+#ifndef NDEBUG
+    if (uiBatcher_ && g_ShowMiniAxesGizmo) {
+        const float originX = g_MiniGizmoMargin;
+        const float originY = static_cast<float>(height) - g_MiniGizmoMargin; // bottom-left corner origin
+        const float L = g_MiniGizmoSize;
+        const float T = std::max(1.0f, g_MiniGizmoThickness);
+        // X axis (red) to the right
+        uiBatcher_->AddQuad(originX, originY, L, T, 1.0f, 0.0f, 0.0f, 1.0f);
+        // Y axis (green) upwards (negative screen Y)
+        uiBatcher_->AddQuad(originX, originY - L, T, L, 0.0f, 1.0f, 0.0f, 1.0f);
+        // Z axis (blue) marker as a small square at origin
+        const float ZS = std::max(T * 1.6f, 4.0f);
+        uiBatcher_->AddQuad(originX - ZS * 0.5f, originY - ZS * 0.5f, ZS, ZS, 0.0f, 0.6f, 1.0f, 1.0f);
+        // Labels via TextRenderer
+        TextRenderer::RenderText("X", static_cast<int>(originX + L + 6.0f), static_cast<int>(originY - 6.0f), TextColor(1.0f, 0.6f, 0.6f), FontSize::Medium);
+        TextRenderer::RenderText("Y", static_cast<int>(originX - 10.0f), static_cast<int>(originY - L - 12.0f), TextColor(0.6f, 1.0f, 0.6f), FontSize::Medium);
+        TextRenderer::RenderText("Z", static_cast<int>(originX + 8.0f), static_cast<int>(originY + 6.0f), TextColor(0.6f, 0.8f, 1.0f), FontSize::Medium);
+    }
+#endif
+
+    // Flush batched UI rendering
         if (uiBatcher_) {
+            // Optional: small HUD hint for debug hotkeys
+#ifndef NDEBUG
+            if (showHudHints_) {
+                const char* hint = "F8: World Axes   F9: Mini Gizmo";
+                const float hx = 14.0f;
+                const float hy = 200.0f;
+                const int hintW = TextRenderer::MeasureText(hint, FontSize::Medium);
+                uiBatcher_->AddQuad(hx - 6.0f, hy - 10.0f, static_cast<float>(hintW + 12), 20.0f, 0.0f, 0.0f, 0.0f, 0.35f);
+                TextRenderer::RenderText(hint, static_cast<int>(hx), static_cast<int>(hy), TextColor(0.9f, 0.9f, 0.9f), FontSize::Medium);
+            }
+#endif
             uiBatcher_->Flush();
         }
 
@@ -3177,118 +3599,38 @@ void Viewport3D::DrawHUD(const class Camera* camera,
         SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 255, backgroundAlpha);
         compat_RenderDrawRect(sdlRenderer, &bg);
 
-        // HUD text color: bright white for digits
-        SDL_SetRenderDrawColor(sdlRenderer, 245, 245, 245, 255);
-
-        // Layout for seven-seg digits (larger for clarity)
-        int segLen = 16;
-        int segThick = 6;
-        int spacing = segLen + segThick + 8;
         int x = 18, y = 18;
+        const int scaleLabel = 4;
+        const int scaleValue = 4;
+        SDL_Color labelColor{128, 128, 128, 255};
+        SDL_Color valueColor{255, 230, 120, 255};
 
-        // Draw label "Z:" using small rectangles (simple readable glyph)
-        SDL_SetRenderDrawColor(sdlRenderer, 200, 200, 200, 255);
-        // draw 'Z' as a simple diagonal-ish using rects
-        SDL_Rect rz1{ x, y, 4, segThick }; compat_RenderFillRect(sdlRenderer, &rz1);
-        SDL_Rect rz2{ x + segLen - 2, y + segThick, 4, segThick }; compat_RenderFillRect(sdlRenderer, &rz2);
-        SDL_Rect rz3{ x, y + 2*(segThick + segLen), 4, segThick }; compat_RenderFillRect(sdlRenderer, &rz3);
-        x += 24;
-
-        // Draw Zoom numeric value (one digit before decimal, one after) as "xx.x"
+        // Z: label and value
+        x += SDLMiniFont_RenderText(sdlRenderer, x, y, labelColor, scaleLabel, "Z:") + 12;
         char zbuf[32];
-        if (camera) snprintf(zbuf, sizeof(zbuf), "%.1f", camera->zoom()); else snprintf(zbuf, sizeof(zbuf), "0.0");
-        SDL_SetRenderDrawColor(sdlRenderer, 255, 230, 120, 255);
-        for (char* p = zbuf; *p; ++p) {
-            if (*p >= '0' && *p <= '9') {
-                drawSevenSegDigit(sdlRenderer, x, y, segLen, segThick, *p);
-                x += spacing;
-            } else if (*p == '.') {
-                drawSevenSegDigit(sdlRenderer, x, y, segLen, segThick, '.');
-                x += spacing/2;
-            }
-        }
+        if (camera) snprintf(zbuf, sizeof(zbuf), "%.1f", camera->zoom());
+        else snprintf(zbuf, sizeof(zbuf), "0.0");
+        x += SDLMiniFont_RenderText(sdlRenderer, x, y, valueColor, scaleValue, zbuf) + 18;
 
-        x += 18; // gap before FPS
-        // FPS label and digits
-        SDL_SetRenderDrawColor(sdlRenderer, 200, 200, 200, 255);
-        // draw "FPS:" label as three small rects
-        SDL_Rect rf1{ x, y, 6, segThick }; compat_RenderFillRect(sdlRenderer, &rf1);
-        SDL_Rect rf2{ x, y + segThick + 2, 6, segThick }; compat_RenderFillRect(sdlRenderer, &rf2);
-        SDL_Rect rf3{ x, y + 2*(segThick+segLen), 6, segThick }; compat_RenderFillRect(sdlRenderer, &rf3);
-        x += 18;
+        // FPS: label and value
+        x += SDLMiniFont_RenderText(sdlRenderer, x, y, labelColor, scaleLabel, "FPS:") + 12;
         char fbuf[16]; snprintf(fbuf, sizeof(fbuf), "%d", (int)std::floor(fps + 0.5));
-        SDL_SetRenderDrawColor(sdlRenderer, 255, 230, 120, 255);
-        for (char* p = fbuf; *p; ++p) {
-            drawSevenSegDigit(sdlRenderer, x, y, segLen, segThick, *p);
-            x += spacing;
-        }
+        x += SDLMiniFont_RenderText(sdlRenderer, x, y, valueColor, scaleValue, fbuf) + 18;
 
-        x += 18;
-        // Player X label
-        SDL_SetRenderDrawColor(sdlRenderer, 200, 200, 200, 255);
-        SDL_Rect rx1{ x, y, 6, segThick }; compat_RenderFillRect(sdlRenderer, &rx1);
-        SDL_Rect rx2{ x + 8, y + segThick + 2, 6, segThick }; compat_RenderFillRect(sdlRenderer, &rx2);
-        x += 18;
-        // Player X numeric with 2 decimals (we draw only digits and decimal point)
+        // X: value
+        x += SDLMiniFont_RenderText(sdlRenderer, x, y, labelColor, scaleLabel, "X") + 12;
         char xbuf[32]; snprintf(xbuf, sizeof(xbuf), "%.2f", playerX);
-        SDL_SetRenderDrawColor(sdlRenderer, 255, 230, 120, 255);
-        for (char* p = xbuf; *p; ++p) {
-            if (*p >= '0' && *p <= '9') {
-                drawSevenSegDigit(sdlRenderer, x, y, segLen, segThick, *p);
-                x += spacing;
-            } else if (*p == '.') {
-                drawSevenSegDigit(sdlRenderer, x, y, segLen, segThick, '.');
-                x += spacing/2;
-            } else if (*p == '-') {
-                // draw minus sign as middle seg
-                drawSevenSegDigit(sdlRenderer, x, y, segLen, segThick, '-');
-                x += spacing;
-            }
-        }
+        x += SDLMiniFont_RenderText(sdlRenderer, x, y, valueColor, scaleValue, xbuf);
 
         // Next row for Y and Z
         x = 18; y += 60;
-        // Player Y label
-        SDL_SetRenderDrawColor(sdlRenderer, 200, 200, 200, 255);
-        SDL_Rect ry1{ x, y, 6, segThick }; compat_RenderFillRect(sdlRenderer, &ry1);
-        SDL_Rect ry2{ x + 8, y + segThick + 2, 6, segThick }; compat_RenderFillRect(sdlRenderer, &ry2);
-        x += 18;
+        x += SDLMiniFont_RenderText(sdlRenderer, x, y, labelColor, scaleLabel, "Y") + 12;
         char ybuf[32]; snprintf(ybuf, sizeof(ybuf), "%.2f", playerY);
-        SDL_SetRenderDrawColor(sdlRenderer, 255, 230, 120, 255);
-        for (char* p = ybuf; *p; ++p) {
-            if (*p >= '0' && *p <= '9') {
-                drawSevenSegDigit(sdlRenderer, x, y, segLen, segThick, *p);
-                x += spacing;
-            } else if (*p == '.') {
-                drawSevenSegDigit(sdlRenderer, x, y, segLen, segThick, '.');
-                x += spacing/2;
-            } else if (*p == '-') {
-                drawSevenSegDigit(sdlRenderer, x, y, segLen, segThick, '-');
-                x += spacing;
-            }
-        }
+        x += SDLMiniFont_RenderText(sdlRenderer, x, y, valueColor, scaleValue, ybuf) + 18;
 
-        x += 18;
-        // Player Z label
-        SDL_SetRenderDrawColor(sdlRenderer, 200, 200, 200, 255);
-        SDL_Rect rz1_z{ x, y, 4, segThick }; compat_RenderFillRect(sdlRenderer, &rz1_z);
-        SDL_Rect rz2_z{ x + segLen - 2, y + segThick, 4, segThick }; compat_RenderFillRect(sdlRenderer, &rz2_z);
-        SDL_Rect rz3_z{ x, y + 2*(segThick + segLen), 4, segThick }; compat_RenderFillRect(sdlRenderer, &rz3_z);
-        x += 24;
+        x += SDLMiniFont_RenderText(sdlRenderer, x, y, labelColor, scaleLabel, "Z") + 12;
         char zbuf2[32]; snprintf(zbuf2, sizeof(zbuf2), "%.2f", playerZ);
-        SDL_SetRenderDrawColor(sdlRenderer, 255, 230, 120, 255);
-        for (char* p = zbuf2; *p; ++p) {
-            if (*p >= '0' && *p <= '9') {
-                drawSevenSegDigit(sdlRenderer, x, y, segLen, segThick, *p);
-                x += spacing;
-            } else if (*p == '.') {
-                drawSevenSegDigit(sdlRenderer, x, y, segLen, segThick, '.');
-                x += spacing/2;
-            } else if (*p == '-') {
-                drawSevenSegDigit(sdlRenderer, x, y, segLen, segThick, '-');
-                x += spacing;
-            }
-        }
+        x += SDLMiniFont_RenderText(sdlRenderer, x, y, valueColor, scaleValue, zbuf2);
     }
 #endif
     if (IsUsingSDLGL()) {

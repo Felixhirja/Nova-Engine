@@ -51,7 +51,16 @@ struct FrameRuntimeContext {
     double mouseDeltaY = 0.0;
     int lastKey = -1;
     bool targetLocked = false;
+    bool captureMouse = false;
     bool isRelativeMode = false;
+    bool pendingRecenter = false;
+    double lastCursorX = 0.0;
+    double lastCursorY = 0.0;
+    bool hasLastCursorSample = false;
+    // SDL-only: track previous function-key states for edge-trigger toggles
+    bool sdlPrevF8Down = false;
+    bool sdlPrevF9Down = false;
+    bool sdlPrevF11Down = false;
 };
 
 } // namespace
@@ -220,7 +229,7 @@ void MainLoop::Init() {
     // Camera
     // Position: behind player at (-8, 0, 6), looking toward origin (0,0,0)
     // Yaw of PI/2 (90 degrees) makes camera look in +X direction (toward player)
-    camera = std::make_unique<Camera>(-8.0, 0.0, 6.0, -0.1, 1.5708, 45.0); // yaw = π/2 to look toward player
+    camera = std::make_unique<Camera>(-8.0, 0.0, 6.0, -0.1, 1.5708, Camera::kDefaultFovDegrees); // yaw = π/2 to look toward player
     {
         std::ofstream log2("sdl_diag.log", std::ios::app);
         if (log2) log2 << "Camera created" << std::endl;
@@ -332,6 +341,32 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
         Input::UpdateKeyState();
 
+#ifdef USE_SDL
+        // SDL hotkeys: detect F8/F9 (debug) and F11 (fullscreen) presses with edge detection
+        if (viewport && viewport->GetSDLWindow()) {
+            const Uint8* sdlKeys = SDL_GetKeyboardState(nullptr);
+            if (sdlKeys) {
+                bool f8Down = sdlKeys[SDL_SCANCODE_F8] != 0;
+                bool f9Down = sdlKeys[SDL_SCANCODE_F9] != 0;
+                bool f11Down = sdlKeys[SDL_SCANCODE_F11] != 0;
+#ifndef NDEBUG
+                if (f8Down && !runtime.sdlPrevF8Down) {
+                    viewport->ToggleWorldAxes();
+                }
+                if (f9Down && !runtime.sdlPrevF9Down) {
+                    viewport->ToggleMiniAxesGizmo();
+                }
+#endif
+                if (f11Down && !runtime.sdlPrevF11Down) {
+                    viewport->ToggleFullscreen();
+                }
+                runtime.sdlPrevF8Down = f8Down;
+                runtime.sdlPrevF9Down = f9Down;
+                runtime.sdlPrevF11Down = f11Down;
+            }
+        }
+#endif
+
         if (currentState_ == GameState::MAIN_MENU) {
             int menuKey = Input::PollKey();
             if (menuKey != -1) {
@@ -363,46 +398,6 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             return;
         }
 
-        if (runtime.targetLocked) {
-#ifdef USE_GLFW
-            if (viewport && viewport->GetGLFWWindow()) {
-                GLFWwindow* window = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
-                if (glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
-                    double x, y;
-                    glfwGetCursorPos(window, &x, &y);
-                    int width, height;
-                    glfwGetWindowSize(window, &width, &height);
-                    double centerX = width / 2.0;
-                    double centerY = height / 2.0;
-                    runtime.mouseDeltaX = x - centerX;
-                    runtime.mouseDeltaY = y - centerY;
-                    
-                    // Add deadzone to prevent drift
-                    const double deadzone = 1.0; // pixels
-                    if (std::abs(runtime.mouseDeltaX) < deadzone) runtime.mouseDeltaX = 0.0;
-                    if (std::abs(runtime.mouseDeltaY) < deadzone) runtime.mouseDeltaY = 0.0;
-                    
-                    glfwSetCursorPos(window, centerX, centerY);
-                }
-            }
-#endif
-        } else {
-            runtime.mouseDeltaX = 0.0;
-            runtime.mouseDeltaY = 0.0;
-        }
-
-#ifdef USE_SDL
-        if (viewport && viewport->GetSDLWindow()) {
-            SDL_Window* window = static_cast<SDL_Window*>(viewport->GetSDLWindow());
-            if (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) {
-                int sdlMouseDeltaX, sdlMouseDeltaY;
-                SDL_GetRelativeMouseState(&sdlMouseDeltaX, &sdlMouseDeltaY);
-                runtime.mouseDeltaX = sdlMouseDeltaX;
-                runtime.mouseDeltaY = sdlMouseDeltaY;
-            }
-        }
-#endif
-
         UpdateEnergyTelemetry(deltaSeconds);
 
         int key = Input::PollKey();
@@ -424,16 +419,12 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         }
 
         if ((key == 'z' || key == 'Z') && camera) {
-            double z = camera->targetZoom();
-            z *= 1.1;
-            if (z > 128.0) z = 128.0;
-            camera->SetTargetZoom(z);
+            constexpr double kFovStep = 5.0;
+            camera->SetTargetZoom(camera->targetZoom() - kFovStep);
         }
         if ((key == 'x' || key == 'X') && camera) {
-            double z = camera->targetZoom();
-            z /= 1.1;
-            if (z < 4.0) z = 4.0;
-            camera->SetTargetZoom(z);
+            constexpr double kFovStep = 5.0;
+            camera->SetTargetZoom(camera->targetZoom() + kFovStep);
         }
 
         if (key == '1' || key == '2' || key == '3') {
@@ -528,19 +519,102 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             }
         }
 
+        runtime.captureMouse = !IsInMainMenu();
+
         bool wantRelative = runtime.targetLocked;
+#ifdef USE_GLFW
+        GLFWwindow* focusWindow = (viewport && viewport->GetGLFWWindow())
+            ? static_cast<GLFWwindow*>(viewport->GetGLFWWindow())
+            : nullptr;
+        const bool hasFocus = focusWindow && glfwGetWindowAttrib(focusWindow, GLFW_FOCUSED);
+        wantRelative = (runtime.captureMouse || runtime.targetLocked) && hasFocus;
         if (wantRelative != runtime.isRelativeMode) {
-            if (viewport && viewport->GetGLFWWindow()) {
-                GLFWwindow* window = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
-                glfwSetInputMode(window, GLFW_CURSOR, wantRelative ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
+            if (focusWindow) {
+                glfwSetInputMode(focusWindow, GLFW_CURSOR, wantRelative ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+                if (wantRelative) {
+                    int width = 0;
+                    int height = 0;
+                    glfwGetWindowSize(focusWindow, &width, &height);
+                    glfwSetCursorPos(focusWindow, width / 2.0, height / 2.0);
+                }
             }
+            runtime.pendingRecenter = true;
+            runtime.hasLastCursorSample = false;
+            runtime.mouseDeltaX = 0.0;
+            runtime.mouseDeltaY = 0.0;
             runtime.isRelativeMode = wantRelative;
         }
+#else
+        if (wantRelative != runtime.isRelativeMode) {
+            runtime.isRelativeMode = wantRelative;
+        }
+#endif
 
         double playerInputYaw = 0.0;
         if (simulation) {
             simulation->SetPlayerInput(forward, backward, up, down, strafeLeft, strafeRight, playerInputYaw);
         }
+
+#if defined(USE_GLFW)
+        if (wantRelative) {
+            if (viewport && viewport->GetGLFWWindow()) {
+                GLFWwindow* window = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
+                if (glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+                    double cursorX = 0.0;
+                    double cursorY = 0.0;
+                    glfwGetCursorPos(window, &cursorX, &cursorY);
+
+                    if (runtime.pendingRecenter || !runtime.hasLastCursorSample) {
+                        runtime.mouseDeltaX = 0.0;
+                        runtime.mouseDeltaY = 0.0;
+                        runtime.pendingRecenter = false;
+                        runtime.hasLastCursorSample = true;
+                    } else {
+                        runtime.mouseDeltaX = cursorX - runtime.lastCursorX;
+                        runtime.mouseDeltaY = cursorY - runtime.lastCursorY;
+                    }
+
+                    runtime.lastCursorX = cursorX;
+                    runtime.lastCursorY = cursorY;
+
+                    const double deadzone = 0.25; // pixels
+                    if (std::abs(runtime.mouseDeltaX) < deadzone) runtime.mouseDeltaX = 0.0;
+                    if (std::abs(runtime.mouseDeltaY) < deadzone) runtime.mouseDeltaY = 0.0;
+                } else {
+                    runtime.mouseDeltaX = 0.0;
+                    runtime.mouseDeltaY = 0.0;
+                    runtime.pendingRecenter = true;
+                    runtime.hasLastCursorSample = false;
+                }
+            } else {
+                runtime.mouseDeltaX = 0.0;
+                runtime.mouseDeltaY = 0.0;
+                runtime.pendingRecenter = true;
+                runtime.hasLastCursorSample = false;
+                runtime.lastCursorX = 0.0;
+                runtime.lastCursorY = 0.0;
+            }
+        } else {
+            runtime.mouseDeltaX = 0.0;
+            runtime.mouseDeltaY = 0.0;
+            runtime.pendingRecenter = true;
+            runtime.hasLastCursorSample = false;
+        }
+#elif defined(USE_SDL)
+        if (viewport && viewport->GetSDLWindow()) {
+            SDL_Window* window = static_cast<SDL_Window*>(viewport->GetSDLWindow());
+            if (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) {
+                int sdlMouseDeltaX = 0;
+                int sdlMouseDeltaY = 0;
+                SDL_GetRelativeMouseState(&sdlMouseDeltaX, &sdlMouseDeltaY);
+                runtime.mouseDeltaX = sdlMouseDeltaX;
+                runtime.mouseDeltaY = sdlMouseDeltaY;
+            } else {
+                runtime.mouseDeltaX = 0.0;
+                runtime.mouseDeltaY = 0.0;
+            }
+        }
+#endif
 
         if (camera) {
             double cameraMoveSpeed = 0.5;
@@ -591,6 +665,8 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             movementInput.moveUp = cameraUp;
             movementInput.moveDown = cameraDown;
             movementInput.moveSpeed = cameraMoveSpeed;
+            movementInput.mouseDeltaX = runtime.mouseDeltaX;
+            movementInput.mouseDeltaY = runtime.mouseDeltaY;
 
             cameraFollowController.Update(*camera, followInput, movementInput, deltaTime, simulation->GetActivePhysicsEngine().get());
         }
@@ -624,6 +700,13 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         double playerY = simulation ? simulation->GetPlayerY() : 0.0;
         double playerZ = simulation ? simulation->GetPlayerZ() : 0.0;
 
+        // Show HUD hints for first few seconds
+        using clock = std::chrono::high_resolution_clock;
+        double secondsSinceStart = std::chrono::duration<double>(clock::now() - runtime.demoStart).count();
+        if (viewport) {
+            viewport->SetShowHudHints(secondsSinceStart < 5.0);
+        }
+
         viewport->Clear();
         viewport->Render(camera.get(), playerX, playerY, playerZ, runtime.targetLocked);
         viewport->DrawPlayer(playerX, playerY, playerZ);
@@ -631,10 +714,9 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         if (camera) {
             double wheelDelta = Input::GetMouseWheelDelta();
             if (wheelDelta != 0.0) {
-                double zoomFactor = 1.0 + (wheelDelta * 0.1);
-                double newZoom = camera->targetZoom() * zoomFactor;
-                // Let Camera.cpp handle zoom clamping with its wider range (0.0001 to 10000.0)
-                camera->SetTargetZoom(newZoom);
+                constexpr double kWheelStepDegrees = 3.0;
+                double newFov = camera->targetZoom() - (wheelDelta * kWheelStepDegrees);
+                camera->SetTargetZoom(newFov);
                 Input::ResetMouseWheelDelta();
             }
         }
@@ -648,7 +730,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             hudAssemblyPtr = &hudShipAssembly;
         }
 
-        viewport->DrawHUD(camera.get(), runtime.currentFPS, hudPlayerX, hudPlayerY, hudPlayerZ, hudTargetLocked, hudAssemblyPtr);
+    viewport->DrawHUD(camera.get(), runtime.currentFPS, hudPlayerX, hudPlayerY, hudPlayerZ, hudTargetLocked, hudAssemblyPtr);
         if (visualFeedbackSystem) {
             viewport->RenderParticles(camera.get(), visualFeedbackSystem.get());
         }
@@ -1007,6 +1089,26 @@ void MainLoop::HandleKeyEvent(int key, int /*scancode*/, int action, int mods) {
         mainMenu_.HandleKeyPress(key);
         return;
     }
+
+    // Runtime debug toggles (GLFW path)
+    if (viewport) {
+        if (key == GLFW_KEY_F11 && action == GLFW_PRESS) {
+            viewport->ToggleFullscreen();
+            return;
+        }
+#ifndef NDEBUG
+        switch (key) {
+        case GLFW_KEY_F8:
+            viewport->ToggleWorldAxes();
+            break;
+        case GLFW_KEY_F9:
+            viewport->ToggleMiniAxesGizmo();
+            break;
+        default:
+            break;
+        }
+#endif
+    }
 }
 
 void MainLoop::HandleMouseButtonEvent(int button, int action, int /*mods*/) {
@@ -1083,9 +1185,15 @@ void MainLoop::Shutdown() {
     if (!stateMachine.Is(EngineState::ShuttingDown)) {
         stateMachine.TransitionTo(EngineState::ShuttingDown);
     }
-    if (running) { // std::cout << "Nova Engine Shutting down..." << std::endl; running = false; }
-    // std::cout << "DEBUG: About to unset GLFW callbacks" << std::endl;
+
+    if (!running && !viewport) {
+        return;
+    }
+
+    running = false;
+
 #ifdef USE_GLFW
+    // Clear GLFW callbacks only once while the window is still alive.
     if (viewport && viewport->GetGLFWWindow()) {
         GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
         glfwSetWindowSizeCallback(glfwWindow, nullptr);
@@ -1093,20 +1201,25 @@ void MainLoop::Shutdown() {
         glfwSetMouseButtonCallback(glfwWindow, nullptr);
         glfwSetCursorPosCallback(glfwWindow, nullptr);
     }
+    // Drop the input hook before the window/context disappear to avoid calling back into a dead GLFW window.
+    Input::SetGLFWWindow(nullptr);
 #endif
-    // std::cout << "DEBUG: GLFW callbacks unset, about to call viewport->Shutdown()" << std::endl;
-    if (viewport) { viewport->Shutdown(); }
-    // std::cout << "DEBUG: viewport->Shutdown() completed" << std::endl;
+
+#ifdef USE_SDL
+    Input::SetSDLWindow(nullptr);
+#endif
+
+    if (viewport) {
+        viewport->Shutdown();
+        viewport.reset();
+    }
+
     if (ecsInspector) {
         ecsInspector->SetEntityManager(nullptr);
     }
-    // std::cout << "DEBUG: Shutdown completed" << std::endl;
-    // unique_ptr will free sceneManager
-}
 }
 
 void MainLoop::RequestShutdown() {
-    // std::cout << "Window close requested, shutting down..." << std::endl;
     Shutdown();
 }
 

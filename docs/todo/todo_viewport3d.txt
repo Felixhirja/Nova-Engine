@@ -1,5 +1,5 @@
 # Viewport3D Todo List
-
+[ ] 
 ## Rendering Pipeline
 - [ ] Replace legacy OpenGL immediate-mode helpers with retained-mode buffers (VAO/VBO) for cubes, HUD, and debug meshes.
 - [ ] Abstract mesh building so animated sprites and 3D props share a single draw submission path.

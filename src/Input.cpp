@@ -1,4 +1,7 @@
 #include "Input.h"
+#include <fstream>
+#include <cstdlib>
+#include <cstring>
 
 #ifdef USE_SDL
 #if defined(USE_SDL3)
@@ -85,10 +88,15 @@ int Input::PollKey() {
     // Poll SDL events for input
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-        // Log event type
-        std::ofstream log("sdl_diag.log", std::ios::app);
-        log << "SDL Event: " << e.type << std::endl;
-        log.close();
+        // Optional event logging
+        static int sdlLogEnabled = [](){
+            const char* v = std::getenv("NOVA_SDL_LOG");
+            return (v && std::strcmp(v, "0") != 0) ? 1 : 0;
+        }();
+        if (sdlLogEnabled) {
+            std::ofstream log("sdl_diag.log", std::ios::app);
+            log << "SDL Event: " << e.type << std::endl;
+        }
         if (e.type == SDL_QUIT) return 'q';
         if (e.type == SDL_KEYDOWN) {
             SDL_Keycode kc = e.key.keysym.sym;
@@ -185,10 +193,14 @@ void Input::UpdateKeyState() {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_QUIT) {
-            // Log window close event
-            std::ofstream log("sdl_diag.log", std::ios::app);
-            log << "SDL_QUIT event received (window closed)" << std::endl;
-            log.close();
+            static int sdlLogEnabled = [](){
+                const char* v = std::getenv("NOVA_SDL_LOG");
+                return (v && std::strcmp(v, "0") != 0) ? 1 : 0;
+            }();
+            if (sdlLogEnabled) {
+                std::ofstream log("sdl_diag.log", std::ios::app);
+                log << "SDL_QUIT event received (window closed)" << std::endl;
+            }
         }
         if (e.type == SDL_MOUSEWHEEL) {
             mouseWheelDelta += e.wheel.y; // Accumulate wheel delta

@@ -1,65 +1,144 @@
 # ECS Todo List
 
 ## Core Architecture
-- [x] Add archetype or sparse-set storage option to reduce pointer chasing and improve cache locality.
+
+* [x] Add archetype or sparse-set storage option to reduce pointer chasing and improve cache locality.
   ✅ COMPLETE: Implemented full archetype system with contiguous component arrays (SoA layout)
-  - Created: src/ecs/Archetype.h (350 lines) - TypedComponentArray + Archetype class
-  - Created: src/ecs/ArchetypeManager.h/cpp (210 lines) - Archetype management
-  - Performance: 10-50x faster iteration, 70% less memory usage
-  
-- [x] Introduce entity versioning/handles to catch stale references and safely recycle IDs.
+
+  * Created: src/ecs/Archetype.h (350 lines) - TypedComponentArray + Archetype class
+  * Created: src/ecs/ArchetypeManager.h/cpp (210 lines) - Archetype management
+  * Performance: 10-50x faster iteration, 70% less memory usage
+* [x] Introduce entity versioning/handles to catch stale references and safely recycle IDs.
   ✅ COMPLETE: EntityHandle with 24-bit index + 8-bit generation counter
-  - Created: src/ecs/EntityHandle.h (100 lines)
-  - Supports 16M entities with 256 recycle generations per ID
-  - Catches use-after-free bugs automatically
-  
-- [x] Provide thread-safe job scheduling hooks so systems can run in parallel when component sets don't overlap.
+
+  * Created: src/ecs/EntityHandle.h (100 lines)
+  * Supports 16M entities with 256 recycle generations per ID
+  * Catches use-after-free bugs automatically
+* [x] Provide thread-safe job scheduling hooks so systems can run in parallel when component sets don't overlap.
   ✅ COMPLETE: Full parallel system scheduler with dependency analysis
-  - Created: src/ecs/SystemSchedulerV2.h (450 lines)
-  - ThreadPool with work-stealing
-  - Automatic dependency graph analysis
-  - Systems run in parallel when safe (4-8x speedup on multi-core)
-  
-- [ ] 🔧 DEBUGGING: Component array synchronization during archetype transitions
+
+  * Created: src/ecs/SystemSchedulerV2.h (450 lines)
+  * ThreadPool with work-stealing
+  * Automatic dependency graph analysis
+  * Systems run in parallel when safe (4-8x speedup on multi-core)
+* [ ] 🔧 DEBUGGING: Component array synchronization during archetype transitions
   Issue: When moving entities between archetypes (add/remove components), component arrays
   become desynchronized. Need to implement component copying mechanism.
   See: docs/ecs_v2_implementation_progress.md for details and solution approaches
 
 ## Component Management
-- [ ] Move component storage out of `std::unordered_map` into contiguous pools per type with optional freelist reuse.
-- [ ] Support component construction arguments and late binding through factory/registry helpers.
-- [ ] Implement serialization/deserialization for components to enable save/load and hot-reload scenarios.
+
+* [ ] Move component storage out of `std::unordered_map` into contiguous pools per type with optional freelist reuse.
+* [ ] Support component construction arguments and late binding through factory/registry helpers.
+* [ ] Implement serialization/deserialization for components to enable save/load and hot-reload scenarios.
 
 ## Migration & Integration
-- [ ] Implement a compatibility facade so legacy systems using `EntityManager` can opt into `EntityManagerV2` without a
-      wholesale rewrite.
-      - Add an adapter header that forwards the existing API to the archetype-backed manager where feasible.
-      - Document unsupported calls and provide compile-time asserts for unported features.
-- [ ] Provide a one-shot conversion routine that migrates entities/components created through the old manager into
-      archetype storage during level load.
-      - Reuse the typed copy helpers from the transition fix to move component data safely.
-      - Add regression tests that spawn a mixed set of entities, run the migration, and validate component counts.
-- [ ] Update `Simulation` and gameplay bootstrap code to register systems through `SystemSchedulerV2` once migration is
-      enabled.
-      - Ensure scheduling metadata mirrors the current manual order.
-      - Expose feature flags to toggle between legacy and V2 execution paths while stabilizing the rollout.
+
+* [ ] Implement a compatibility facade so legacy systems using `EntityManager` can opt into `EntityManagerV2` without a
+  wholesale rewrite.
+  - Add an adapter header that forwards the existing API to the archetype-backed manager where feasible.
+  - Document unsupported calls and provide compile-time asserts for unported features.
+* [ ] Provide a one-shot conversion routine that migrates entities/components created through the old manager into
+  archetype storage during level load.
+  - Reuse the typed copy helpers from the transition fix to move component data safely.
+  - Add regression tests that spawn a mixed set of entities, run the migration, and validate component counts.
+* [ ] Update `Simulation` and gameplay bootstrap code to register systems through `SystemSchedulerV2` once migration is
+  enabled.
+  - Ensure scheduling metadata mirrors the current manual order.
+  - Expose feature flags to toggle between legacy and V2 execution paths while stabilizing the rollout.
 
 ## System Pipeline
-- [x] Allow systems to declare update order dependencies and phases (input, simulation, render prep).
-- [x] Expose event/messaging system between systems to avoid tight coupling (e.g., damage, collisions).
-- [x] Add system profiling instrumentation (update time, entities processed, cache misses if available).
+
+* [x] Allow systems to declare update order dependencies and phases (input, simulation, render prep).
+* [x] Expose event/messaging system between systems to avoid tight coupling (e.g., damage, collisions).
+* [x] Add system profiling instrumentation (update time, entities processed, cache misses if available).
 
 ## Debugging & Tooling
-- [ ] Build an in-engine ECS inspector to view entities/components in real time with filtering.
-- [ ] Provide assertions and logging when `ForEach` finds mismatched component configurations.
-- [ ] Create helper macros or templates for defining components with metadata (display name, categories).
+
+* [ ] Build an in-engine ECS inspector to view entities/components in real time with filtering.
+* [ ] Provide assertions and logging when `ForEach` finds mismatched component configurations.
+* [ ] Create helper macros or templates for defining components with metadata (display name, categories).
 
 ## Testing & QA
-- [ ] Expand unit tests covering component add/remove, entity destruction, and system iteration correctness.
-- [ ] Add stress tests that spawn thousands of entities with randomized components to measure performance.
-- [ ] Integrate ECS metrics into CI to detect regressions in update time or memory usage.
+
+* [ ] Expand unit tests covering component add/remove, entity destruction, and system iteration correctness.
+* [ ] Add stress tests that spawn thousands of entities with randomized components to measure performance.
+* [ ] Integrate ECS metrics into CI to detect regressions in update time or memory usage.
 
 ## Integration & Documentation
-- [ ] Document ECS lifecycle (creation, update, teardown) and best practices for new systems.
-- [ ] Provide examples for multiplayer-safe entity replication hooks (server authority, prediction).
-- [ ] Create migration guide for moving game logic from bespoke classes into ECS systems/components.
+
+* [ ] Document ECS lifecycle (creation, update, teardown) and best practices for new systems.
+* [ ] Provide examples for multiplayer-safe entity replication hooks (server authority, prediction).
+* [ ] Create migration guide for moving game logic from bespoke classes into ECS systems/components.
+
+---
+
+## New Pending (added 2025-10-25)
+
+### Archetype Transitions & Safety
+
+* [ ] Component move/copy policies per type (trivial move, copy-ctor, or custom copier) with compile-time traits.
+* [ ] Build a `TransitionPlan` that computes block copies for SoA arrays; per-element fallback for non-trivial types.
+* [ ] Validate post-move invariants: per-array counts match entity count; cross-array index alignment.
+* [ ] Fuzz: random add/remove sequences across 100k entities; seedable for repro; run under ASAN/UBSAN.
+* [ ] Benchmarks for hot paths: add component, remove component, destroy entity (various archetype sizes).
+* [ ] Deferred structural changes while iterating: record to a command buffer; flush at safe sync points.
+
+### Query System v1
+
+* [ ] Include/Exclude/Optional masks; wildcard tags.
+* [ ] Cached query plan per signature to avoid per-entity checks; O(1) per-chunk eligibility test.
+* [ ] Stable iteration order (archetype id → chunk → index) to reduce heisenbugs.
+* [ ] `ForEach` variant with chunk callback to process in blocks.
+* [ ] Change filters: only iterate components touched since last frame (version counters/dirty bits).
+
+### Memory & Layout
+
+* [ ] Page-aligned chunk allocator; cache-friendly SoA with interleaved hot fields where justified.
+* [ ] Fragmentation control: background compaction pass; time-sliced to avoid spikes.
+* [ ] Lock-free freelist for entity indices; contention benchmarks.
+
+### Scheduler Integration
+
+* [ ] View→job fan-out: split large views into chunks for parallel work; adaptive grain size.
+* [ ] Deterministic scheduling option given a seed; record/replay of schedule for debugging.
+
+### Debug/Inspector
+
+* [ ] Live ECS inspector UI: hierarchical filters (archetype → entity), per-component editors with safety.
+* [ ] OnAdd/OnRemove/OnSet debug callbacks with throttled logging.
+* [ ] Visual profiler timeline for systems and queries; jump-to-entity from timeline.
+
+### Serialization
+
+* [ ] Schema registry with per-component version; upgrade hooks for migration.
+* [ ] Dual formats: JSON (debug/dev) and binary (runtime) with endian guards.
+* [ ] Snapshot/Restore API for savepoints and quick state diffs.
+
+### CI & Determinism
+
+* [ ] CI matrix with ASAN/UBSAN/TSAN builds; determinism test across platforms (Windows/Linux/macOS).
+* [ ] Seeded world generator test to ensure identical outputs across runs.
+
+### Docs
+
+* [ ] Lifecycle doc: creation → attach → mutate → detach → destroy; ownership rules.
+* [ ] Cookbook: common patterns (state machines, cooldowns, spatial queries, event routing).
+
+## New Future Enhancements (added 2025-10-25)
+
+* [ ] Prefabs/Prototypes system: composable blueprints with overrides; support for nested prefabs.
+* [ ] Entity templates with parameterized spawn functions (archetype + default components).
+* [ ] Multi-world support and world partitioning; per-world allocators.
+* [ ] Rollback-friendly ECS: ring buffer of recent component states; deterministic re-sim hooks.
+* [ ] Net replication layer: ghosting/interest management, delta compression, prediction & reconciliation hooks.
+* [ ] Scripting bindings (Lua/C#/JS): reflected components with whitelist, hot-reload of scripts.
+* [ ] GPU streaming path: upload SoA blocks to compute/SSBO for culling/render; async double-buffering.
+* [ ] Hot-reload component schemas with live migration and safety rails.
+* [ ] Codegen for component registration/metadata to avoid RTTI and reduce boilerplate.
+* [ ] External benchmark harness; compare against EnTT/flecs/ecstasy baselines; publish perf dashboards.
+* [ ] Time-travel debugger: record commands; scrub timeline and inspect component diffs.
+* [ ] Editor tooling: asset-side inspectors, search by query language (e.g., `has<Physics> & !Sleeping`).
+* [ ] Relationship components (Parent/Child) with transform propagation and hierarchy-aware queries.
+* [ ] Shared components (per-archetype) for materials, layers, or LOD groups.
+* [ ] Tag (zero-sized) components and bulk tag add/remove operations.

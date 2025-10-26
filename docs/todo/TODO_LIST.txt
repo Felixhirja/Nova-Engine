@@ -1,960 +1,741 @@
-Nova-Engine Development Roadmap - Next Steps
-==========================================
+# Nova-Engine Development Roadmap – Next Steps
 
 *** STAR CITIZEN-STYLE SPACESHIP GAME PROJECT ***
-===============================================
 
-PHASE 1: FOUNDATION (Next 1-2 months)
--------------------------------------
+---
+
+## PHASE 1: FOUNDATION (Next 1–2 months)
+
 ✅ Game Design Document [COMPLETE - Living Document] (Status reconfirmed after solar system design sync)
-  ✅ Core mechanics documented
-  ✅ Solar system concept outlined
-  ✅ Spaceship types defined
-  ✅ Progression systems planned
+✅ Core mechanics documented
+✅ Solar system concept outlined
+✅ Spaceship types defined
+✅ Progression systems planned
 
-  PERIODIC UPDATES:
-  □ Enhance solar system generation details (align with implementation)
-  □ Add detailed spaceship component specifications
-  □ Define player progression and skill systems
-  □ Expand faction system with specific factions
-  □ Add resource and crafting system details
+**PERIODIC UPDATES:**
+□ Enhance solar system generation details (align with implementation)
+□ Add detailed spaceship component specifications
+□ Define player progression and skill systems
+□ Expand faction system with specific factions
+□ Add resource and crafting system details
 
-  See docs/game_design_enhancements.md for enhancement roadmap
-  Current Status: Comprehensive foundation complete, refinements optional
+See `docs/game_design_enhancements.md` for enhancement roadmap
+**Current Status:** Comprehensive foundation complete, refinements optional
 
 ✅ Spaceship Classes & Components [75% COMPLETE - Core Systems Functional]
-  ✅ Design & taxonomy complete (docs/spaceship_taxonomy.md) - Professional quality
-  ✅ Core data structures implemented (src/Spaceship.h)
-  ✅ Ship assembly system working (src/ShipAssembly.h/cpp) - 95% complete
-  ✅ Gameplay systems functional (targeting, weapons, shields, energy)
-  ✅ Feedback systems complete (visual/audio frameworks)
-  ✅ Art pipeline established (docs/ship_art_pipeline.md)
-  ✅ Testing infrastructure in place (tests/test_ship_assembly.cpp)
-  
-  HIGH PRIORITY REMAINING:
-  ✅ Text rendering system (COMPLETE + INTEGRATED ✅)
-     - ✅ src/TextRenderer.h/cpp created with full API (390 lines)
-     - ✅ Multiple font sizes, colors, alignment, shadows, word wrapping
-     - ✅ Printf-style formatting with va_args
-     - ✅ Test suite complete: tests/test_text_rendering.cpp (all tests passing)
-     - ✅ Documentation: docs/text_rendering_integration.md (500+ lines)
-     - ✅ INTEGRATED into Viewport3D::DrawHUD() with enhanced ship stats
-     - ✅ Build successful, ready for runtime testing
-     - See: docs/text_rendering_viewport_integration.md for integration details
-  🔄 Text renderer follow-up tasks (NEW 2025-10-11):
-  □ Expand HUD usage beyond ship stats (threat indicators, target locking prompts)
-    - Replace final GLUT strings in diagnostics overlays with TextRenderer API
-    - Gate new overlays behind debug toggles to avoid clutter during flight
-  □ Create fallback font atlas & localization hooks
-    - Load emergency bitmap font when TrueType assets missing
-    - Stub layout direction switch for right-to-left languages
-  □ Add regression coverage for multiline layout edge cases
-    - Snapshot baseline outputs for 4:3, 16:9, 21:9 aspect ratios
-    - Stress test wrap/ellipsis behaviour through automated headless run
-  □ Component validation with user-friendly error messages (use TextRenderer)
-  □ Advanced performance model (heat buildup, power overload)
-  □ Physics integration (coordinate with Advanced Physics Engine)
-  □ Damage model implementation (per-component health, cascading failures)
-  □ Weapon firing pipeline completion
-    - Flesh out `WeaponSystem::FireWeapon` to spawn projectile entities tied to hardpoints
-    - Attach muzzle flash, recoil, and heat events to Feedback systems when firing
-    - Query transform/weapon mount data for accurate spawn positions + 3D audio emitters
-    - Persist projectile ownership for damage attribution and AI threat evaluation
-  □ Target acquisition safeguards
-    - Finish `TargetingSystem` validation (entity existence, transform availability, range/LOS)
-    - Add graceful failure paths that surface issues through the feedback HUD
-    - Write regression tests that cover invalid/edge targeting cases
+✅ Design & taxonomy complete (`docs/spaceship_taxonomy.md`) - Professional quality
+✅ Core data structures implemented (`src/Spaceship.h`)
+✅ Ship assembly system working (`src/ShipAssembly.h/cpp`) - 95% complete
+✅ Gameplay systems functional (targeting, weapons, shields, energy)
+✅ Feedback systems complete (visual/audio frameworks)
+✅ Art pipeline established (`docs/ship_art_pipeline.md`)
+✅ Testing infrastructure in place (`tests/test_ship_assembly.cpp`)
 
-  MEDIUM PRIORITY:
-  □ Cargo management system (for freighters)
-  □ Crew management system (station assignments, skills)
-  □ Ship progression/unlock system (research trees, reputation gates)
-  □ Cockpit/bridge UI (requires text rendering first)
-  □ Flight assist controls (auto-level, dampening, modes)
-  □ Fuel management loops (propellant tracking, refueling gameplay, mission range tools)
-  □ Docking and hangar interactions (alignment guidance, airlocks, cargo transfer)
-  □ Life support management (environmental controls, consumables, failure responses)
-  
-  See todo_spaceship.txt for complete detailed task list
-  See docs/spaceship_implementation_status.md for comprehensive assessment
-  Current Status: Strong foundation complete - 100-150 hours to full feature completion
-  Estimated: ~4-6 weeks for Phase 1 completion
+**HIGH PRIORITY REMAINING:**
+✅ Text rendering system (COMPLETE + INTEGRATED ✅)
+- ✅ `src/TextRenderer.h/cpp` created with full API (390 lines)
+- ✅ Multiple font sizes, colors, alignment, shadows, word wrapping
+- ✅ Printf-style formatting with va_args
+- ✅ Test suite complete: `tests/test_text_rendering.cpp` (all tests passing)
+- ✅ Documentation: `docs/text_rendering_integration.md` (500+ lines)
+- ✅ INTEGRATED into `Viewport3D::DrawHUD()` with enhanced ship stats
+- ✅ Build successful, ready for runtime testing
+- See: `docs/text_rendering_viewport_integration.md` for integration details
 
-□ Advanced Physics Engine
-  - Implement realistic spaceship physics (thrust, momentum, inertia, atmospheric flight)
+🔄 **Text renderer follow-up tasks (NEW 2025-10-11):**
+□ Expand HUD usage beyond ship stats (threat indicators, target locking prompts)
+- Replace final GLUT strings in diagnostics overlays with TextRenderer API
+- Gate new overlays behind debug toggles to avoid clutter during flight
+□ Create fallback font atlas & localization hooks
+- Load emergency bitmap font when TrueType assets missing
+- Stub layout direction switch for right-to-left languages
+□ Add regression coverage for multiline layout edge cases
+- Snapshot baseline outputs for 4:3, 16:9, 21:9 aspect ratios
+- Stress test wrap/ellipsis behaviour through automated headless run
+□ Component validation with user-friendly error messages (use TextRenderer)
+□ Advanced performance model (heat buildup, power overload)
+□ Physics integration (coordinate with Advanced Physics Engine)
+□ Damage model implementation (per-component health, cascading failures)
+□ Weapon firing pipeline completion
+- Flesh out `WeaponSystem::FireWeapon` to spawn projectile entities tied to hardpoints
+- Attach muzzle flash, recoil, and heat events to Feedback systems when firing
+- Query transform/weapon mount data for accurate spawn positions + 3D audio emitters
+- Persist projectile ownership for damage attribution and AI threat evaluation
+□ Target acquisition safeguards
+- Finish `TargetingSystem` validation (entity existence, transform availability, range/LOS)
+- Add graceful failure paths that surface issues through the feedback HUD
+- Write regression tests that cover invalid/edge targeting cases
 
-⏳ Solar System Generation [IN PROGRESS]
-  ✅ Design document created (docs/solar_system_generation.md)
-  ✅ Component structures defined (src/CelestialBody.h)
-  ✅ Core headers created (SolarSystem.h, SolarSystemGenerator.h)
-  ✅ Task breakdown with time estimates (docs/solar_system_tasks.md)
-  ✅ Quick reference guide (docs/solar_system_quickref.md)
+**MEDIUM PRIORITY:**
+□ Cargo management system (for freighters)
+□ Crew management system (station assignments, skills)
+□ Ship progression/unlock system (research trees, reputation gates)
+□ Cockpit/bridge UI (requires text rendering first)
+□ Flight assist controls (auto-level, dampening, modes)
+□ Fuel management loops (propellant tracking, refueling gameplay, mission range tools)
+□ Docking and hangar interactions (alignment guidance, airlocks, cargo transfer)
+□ Life support management (environmental controls, consumables, failure responses)
 
-  NEXT STEPS:
-  □ Implement SolarSystem.cpp (Phase 1, Task 1.3)
-  □ Implement basic circular orbits (Phase 1, Task 1.4)
-  □ Create basic visualization with colored spheres (Phase 1, Task 1.5)
-  □ Implement SolarSystemGenerator.cpp star generation (Phase 2, Task 2.1)
-  □ Complete procedural planet generation (Phase 2, Tasks 2.3-2.7)
+See `todo_spaceship.txt` for complete detailed task list
+See `docs/spaceship_implementation_status.md` for comprehensive assessment
+**Current Status:** Strong foundation complete - 100–150 hours to full feature completion
+**Estimated:** ~4–6 weeks for Phase 1 completion
 
-⏳ Rendering & Visual Polish [PLANNED]
-  ✅ High level design captured in docs/advanced_graphics_implementation.md
-  ✅ Shader modernization goals defined in docs/opengl_modernization_summary.md
-  □ Port forward renderer to new shader architecture (src/renderer/*)
-  □ Integrate HDR pipeline and tone mapping (reference docs/postprocess_implementation_summary.md)
-  □ Add particle renderer hooks to engine loop (docs/particle_rendering_integration.md)
-  □ Build automated screenshot harness for regression testing (scripts/, docs/postprocess_usage_examples.md)
-  □ Document asset authoring workflow updates (docs/ship_art_pipeline.md)
-  □ Establish SVG asset workflow for HUD and UI elements
-    - Hook ResourceManager SVG ingestion to tessellate icons or bake SDF atlases
-    - ✅ LoadSVGSurface now exposes DPI-aware rasterization options so fallback
-      bitmap atlases can be generated at multiple resolutions
-    - Update Viewport3D HUD pipeline to load vector icons at runtime
-    - Provide SVG layout exports for designers to review HUD alignments
+□ **Advanced Physics Engine**
 
-  See docs/solar_system_tasks.md for complete roadmap (275-377 hours estimated)
-  Current Phase: Phase 1 - Core Framework (22-32 hours)
+* Implement realistic spaceship physics (thrust, momentum, inertia, atmospheric flight)
 
-PHASE 2: CORE GAMEPLAY (3-6 months)
------------------------------------
-□ Ship Building & Customization
-  - Create modular spaceship building system with parts, weapons, and customization
+⏳ **Solar System Generation [IN PROGRESS]**
+✅ Design document created (`docs/solar_system_generation.md`)
+✅ Component structures defined (`src/CelestialBody.h`)
+✅ Core headers created (`SolarSystem.h`, `SolarSystemGenerator.h`)
+✅ Task breakdown with time estimates (`docs/solar_system_tasks.md`)
+✅ Quick reference guide (`docs/solar_system_quickref.md`)
 
-□ Combat System
-  - Implement space combat mechanics (targeting, weapons, damage systems, shields)
+**NEXT STEPS:**
+□ Implement `SolarSystem.cpp` (Phase 1, Task 1.3)
+□ Implement basic circular orbits (Phase 1, Task 1.4)
+□ Create basic visualization with colored spheres (Phase 1, Task 1.5)
+□ Implement `SolarSystemGenerator.cpp` star generation (Phase 2, Task 2.1)
+□ Complete procedural planet generation (Phase 2, Tasks 2.3–2.7)
 
-□ Planetary Landing & Exploration
-  - Create landing and exploration mechanics for planets and space stations
+⏳ **Rendering & Visual Polish [PLANNED]**
+✅ High level design captured in `docs/advanced_graphics_implementation.md`
+✅ Shader modernization goals defined in `docs/opengl_modernization_summary.md`
+□ Port forward renderer to new shader architecture (`src/renderer/*`)
+□ Integrate HDR pipeline and tone mapping (reference `docs/postprocess_implementation_summary.md`)
+□ Add particle renderer hooks to engine loop (`docs/particle_rendering_integration.md`)
+□ Build automated screenshot harness for regression testing (`scripts/`, `docs/postprocess_usage_examples.md`)
+□ Document asset authoring workflow updates (`docs/ship_art_pipeline.md`)
+□ Establish SVG asset workflow for HUD and UI elements
+- Hook `ResourceManager` SVG ingestion to tessellate icons or bake SDF atlases
+- ✅ `LoadSVGSurface` now exposes DPI-aware rasterization options so fallback bitmap atlases can be generated at multiple resolutions
+- Update Viewport3D HUD pipeline to load vector icons at runtime
+- Provide SVG layout exports for designers to review HUD alignments
 
-□ Economy & Trading
-  - Build trading and economy system with markets, commodities, and player-driven economy
+See `docs/solar_system_tasks.md` for complete roadmap (275–377 hours estimated)
+**Current Phase:** Phase 1 – Core Framework (22–32 hours)
 
-PHASE 3: MULTIPLAYER & WORLD (6-12 months)
-------------------------------------------
-□ Multiplayer Framework
-  - Implement multiplayer networking for player interactions and persistent universe
+---
 
-□ Faction & Mission System
-  - Create faction system with missions, reputation, and territorial control
+## PHASE 2: CORE GAMEPLAY (3–6 months)
 
-□ Advanced Graphics & Effects
-  - Implement shader system for advanced visual effects
-  - Add particle systems for engines, explosions, and space phenomena
-  - Create dynamic lighting and shadows for space environments
+□ Ship Building & Customization – modular parts, weapons, customization
 
-□ AI & NPC Systems
-  - Implement AI for NPCs, pirates, and automated systems
-  - Create procedural mission generation
-  - Add dynamic events and encounters
+□ Combat System – targeting, weapons, damage, shields
 
-*** CRITICAL ENGINE FIXES (2025-10-10) ***
-==========================================
+□ Planetary Landing & Exploration – landing + exploration for planets/stations
 
-PHASE 4.5: UI BATCHING [COMPLETED 2025-01-XX]
------------------------------------------------
+□ Economy & Trading – markets, commodities, player-driven economy
+
+---
+
+## PHASE 3: MULTIPLAYER & WORLD (6–12 months)
+
+□ Multiplayer Framework – networking for interactions + persistent universe
+
+□ Faction & Mission System – missions, reputation, territorial control
+
+□ Advanced Graphics & Effects – shader system, particles, dynamic lighting/shadows
+
+□ AI & NPC Systems – AI for NPCs/pirates, procedural missions, dynamic events
+
+---
+
+## *** CRITICAL ENGINE FIXES (2025-10-10) ***
+
+### PHASE 4.5: UI BATCHING [COMPLETED 2025-01-XX]
+
 ✅ UI Batching Implementation Complete
-  ✅ Migrated HUD rendering from immediate mode OpenGL to batched rendering
-  ✅ Integrated UIBatcher class into Viewport3D::DrawHUD()
-  ✅ Eliminated ~35 immediate mode calls for 20x+ draw call reduction potential
-  ✅ Fixed GLUT initialization issues for proper text rendering
-  ✅ Added GLUT header inclusion (<GL/freeglut.h>) to Viewport3D.cpp
-  ✅ Successfully compiled and tested - engine runs with batched HUD
-  ✅ Performance gains: Reduced from ~35 glBegin/glEnd calls to 1-2 batched calls
-  ✅ Text rendering fully functional with glutInit() after GLAD setup
-  ✅ Coordinate systems properly mapped (screen space for UI elements)
-  ✅ Color handling integrated (RGBA float values 0.0-1.0)
-  ✅ Build successful, runtime tested, no regressions
-  ✅ Documentation: docs/uibatcher_implementation.md updated with completion notes
+✅ Migrated HUD rendering from immediate mode OpenGL to batched rendering
+✅ Integrated `UIBatcher` into `Viewport3D::DrawHUD()`
+✅ Eliminated ~35 immediate mode calls for 20x+ draw call reduction potential
+✅ Fixed GLUT initialization issues for proper text rendering
+✅ Added GLUT header inclusion (`<GL/freeglut.h>`) to `Viewport3D.cpp`
+✅ Successfully compiled and tested - engine runs with batched HUD
+✅ Performance gains: Reduced from ~35 glBegin/glEnd calls to 1–2 batched calls
+✅ Text rendering fully functional with `glutInit()` after GLAD setup
+✅ Coordinate systems properly mapped (screen space for UI elements)
+✅ Color handling integrated (RGBA float values 0.0–1.0)
+✅ Build successful, runtime tested, no regressions
+✅ Documentation: `docs/uibatcher_implementation.md` updated with completion notes
 
-IMMEDIATE FIXES REQUIRED (High Priority):
------------------------------------------
+### IMMEDIATE FIXES REQUIRED (High Priority)
+
 □ Fix GLFW initialization crash
-  - glfwInit() fails immediately on current system
-  - **LIKELY CAUSE: Requesting legacy OpenGL 2.1 on modern GPU**
-  - Modern drivers may have poor support for old OpenGL versions
-  - Try requesting OpenGL 4.3+ instead (see OpenGL 4.x upgrade)
-  - Investigate GPU driver compatibility (update drivers?)
-  - Try older GLFW version (3.3.x instead of 3.4)
-  - Alternative: Implement native Windows OpenGL context creation
-  - Test on different hardware to isolate issue
-  - Consider GLEW + manual context creation as fallback
-  - Document required GPU/driver versions
+
+* `glfwInit()` fails immediately on current system
+* **LIKELY CAUSE: Requesting legacy OpenGL 2.1 on modern GPU**
+* Modern drivers may have poor support for old OpenGL versions
+* Try requesting OpenGL 4.3+ instead (see OpenGL 4.x upgrade)
+* Investigate GPU driver compatibility (update drivers?)
+* Try older GLFW version (3.3.x instead of 3.4)
+* Alternative: Implement native Windows OpenGL context creation
+* Test on different hardware to isolate issue
+* Consider GLEW + manual context creation as fallback
+* Document required GPU/driver versions
 
 □ Fix XInput preloading crash
-  - LoadLibraryW(L"XInput1_4.dll") causes immediate crash
-  - Add better error handling with try-catch or SEH
-  - Investigate delay-loading XInput
-  - Test with different XInput versions (1_3, 9_1_0)
-  - Make gamepad support optional and graceful
-  - Add runtime detection of XInput availability
+
+* `LoadLibraryW(L"XInput1_4.dll")` causes immediate crash
+* Add better error handling with try-catch or SEH
+* Investigate delay-loading XInput
+* Test with different XInput versions (1_3, 9_1_0)
+* Make gamepad support optional and graceful
+* Add runtime detection of XInput availability
 
 □ Fix build system clean target
-  - Makefile uses Unix 'rm' which fails on Windows
-  - Add PowerShell-compatible clean commands
-  - Use cross-platform approach: del for Windows, rm for Unix
-  - Test clean target works properly
+
+* Makefile uses Unix `rm` which fails on Windows
+* Add PowerShell-compatible clean commands
+* Use cross-platform approach: `del` for Windows, `rm` for Unix
+* Test clean target works properly
 
 □ Fix shell command errors in output
-  - "The system cannot find the path specified" appears during run
-  - "'true' is not recognized" error in console
-  - Investigate source of these spurious commands
-  - Clean up build/run scripts
 
-✅ SDL Dependencies [COMPLETED 2025-10-10]
-  ✅ Removed SDL2 and SDL_mixer from build
-  ✅ Deleted SDL DLLs (SDL2.dll, SDL2_mixer.dll)
-  ✅ Audio system now compiles without SDL_mixer (graceful fallback)
-  ✅ Makefile SDL detection removed
+* "The system cannot find the path specified" appears during run
+* "'true' is not recognized" error in console
+* Investigate source of these spurious commands
+* Clean up build/run scripts
 
-✅ Headless Mode Implementation [COMPLETED 2025-10-10]
-  ✅ Environment variable: NOVA_ENGINE_HEADLESS="1"
-  ✅ Bypasses GLFW/OpenGL initialization
-  ✅ Frame limiter: NOVA_ENGINE_MAX_FRAMES (default: 300)
-  ✅ All game logic runs correctly without graphics
-  ✅ Input system handles null window gracefully
-  ✅ Viewport3D::Render() skips rendering in headless mode
-  ✅ Clean shutdown after frame limit reached
-  ✅ Documented in docs/todo/TODO_IMPROVEMENTS.md
+✅ **SDL Dependencies [COMPLETED 2025-10-10]**
+✅ Removed SDL2 and SDL_mixer from build
+✅ Deleted SDL DLLs (`SDL2.dll`, `SDL2_mixer.dll`)
+✅ Audio system now compiles without SDL_mixer (graceful fallback)
+✅ Makefile SDL detection removed
 
-✅ Camera Direction Fix [COMPLETED 2025-10-10]
-  ✅ Changed initial yaw from 0.0 to π/2 (1.5708 radians)
-  ✅ Camera now looks toward player at origin
-  ✅ Position: (-8, 0, 6) looking in +X direction
-  ✅ Pitch: -0.1 (slight downward angle)
-  ✅ Zoom: 12.0
+✅ **Headless Mode Implementation [COMPLETED 2025-10-10]**
+✅ Env var: `NOVA_ENGINE_HEADLESS="1"`
+✅ Bypasses GLFW/OpenGL initialization
+✅ Frame limiter: `NOVA_ENGINE_MAX_FRAMES` (default: 300)
+✅ All game logic runs correctly without graphics
+✅ Input system handles null window gracefully
+✅ `Viewport3D::Render()` skips rendering in headless mode
+✅ Clean shutdown after frame limit reached
+✅ Documented in `docs/todo/TODO_IMPROVEMENTS.md`
 
-DEPENDENCY & DLL MANAGEMENT:
-----------------------------
+✅ **Camera Direction Fix [COMPLETED 2025-10-10]**
+✅ Changed initial yaw from 0.0 to π/2 (1.5708 radians)
+✅ Camera now looks toward player at origin
+✅ Position: (-8, 0, 6) looking in +X direction
+✅ Pitch: -0.1 (slight downward angle)
+✅ Zoom: 12.0
+
+---
+
+## DEPENDENCY & DLL MANAGEMENT
+
 □ Create DLL checker script
-  - PowerShell script to verify all required DLLs present
-  - Auto-copy missing DLLs from MSYS2 to project directory
-  - Run before every build/execution
-  
-  Required DLLs:
-  - glfw3.dll (graphics)
-  - libfreeglut.dll (OpenGL utility)
-  - libgcc_s_seh-1.dll (MinGW runtime)
-  - libstdc++-6.dll (C++ standard library)
-  - libwinpthread-1.dll (threading)
-  - xinput1_4.dll (gamepad, optional)
+
+* PowerShell script to verify all required DLLs present
+* Auto-copy missing DLLs from MSYS2 to project directory
+* Run before every build/execution
+
+**Required DLLs:**
+
+* `glfw3.dll` (graphics)
+* `libfreeglut.dll` (OpenGL utility)
+* `libgcc_s_seh-1.dll` (MinGW runtime)
+* `libstdc++-6.dll` (C++ standard library)
+* `libwinpthread-1.dll` (threading)
+* `xinput1_4.dll` (gamepad, optional)
 
 □ Document all dependencies clearly
-  - Create DEPENDENCIES.md with versions
-  - List MSYS2 packages needed
-  - Add troubleshooting section for common issues
-  - Include alternative download sources
+
+* Create `DEPENDENCIES.md` with versions
+* List MSYS2 packages needed
+* Add troubleshooting section for common issues
+* Include alternative download sources
 
 □ Consider vcpkg or Conan
-  - Investigate package managers for C++ dependencies
-  - Could simplify GLFW, OpenGL, audio library management
-  - Test cross-platform compatibility
 
-CAMERA SYSTEM IMPROVEMENTS:
----------------------------
+* Investigate package managers for C++ dependencies
+* Could simplify GLFW, OpenGL, audio library management
+* Test cross-platform compatibility
+
+---
+
+## CAMERA SYSTEM IMPROVEMENTS
+
 □ Test camera with new direction
-  - Verify all camera presets work with π/2 yaw
-  - Test free camera mode with mouse look
-  - Test target lock mode with corrected angles
-  - Verify camera-to-world coordinate transforms
+
+* Verify all camera presets work with π/2 yaw
+* Test free camera mode with mouse look
+* Test target lock mode with corrected angles
+* Verify camera-to-world coordinate transforms
 
 □ Add camera debug visualization
-  - Draw camera frustum in world space
-  - Show look-at target as colored marker
-  - Display camera vectors (forward, right, up)
-  - Add coordinate system at camera position
+
+* Draw camera frustum in world space
+* Show look-at target as colored marker
+* Display camera vectors (forward, right, up)
+* Add coordinate system at camera position
 
 □ Camera smoothing improvements
-  - Tune interpolation parameters for smooth follow
-  - Add acceleration/deceleration curves
-  - Prevent camera jitter at low speeds
-  - Add lag compensation for high-speed movement
+
+* Tune interpolation parameters for smooth follow
+* Add acceleration/deceleration curves
+* Prevent camera jitter at low speeds
+* Add lag compensation for high-speed movement
 
 □ Camera collision detection
-  - Prevent camera from clipping through objects
-  - Push camera forward when obstructed
-  - Add subtle camera shake when obstructed
-  - Smooth transitions when collision state changes
 
-HEADLESS MODE ENHANCEMENTS:
---------------------------
+* Prevent camera from clipping through objects
+* Push camera forward when obstructed
+* Add subtle camera shake when obstructed
+* Smooth transitions when collision state changes
+
+---
+
+## HEADLESS MODE ENHANCEMENTS
+
 □ Improve headless testing capabilities
-  - Add scripted input injection for automated tests
-  - Create input replay system from recorded sessions
-  - Add visual state dumps (JSON snapshots)
-  - Generate timeline logs of entity states
+
+* Add scripted input injection for automated tests
+* Create input replay system from recorded sessions
+* Add visual state dumps (JSON snapshots)
+* Generate timeline logs of entity states
 
 □ Headless performance profiling
-  - Add detailed frame timing breakdown
-  - Profile each game system separately
-  - Generate performance reports
-  - Compare headless vs graphics mode overhead
+
+* Add detailed frame timing breakdown
+* Profile each game system separately
+* Generate performance reports
+* Compare headless vs graphics mode overhead
 
 □ Headless rendering alternatives
-  - Implement ASCII art improvements (better graphics)
-  - Add HTML/SVG output for debugging
-  - Create sprite-based 2D terminal rendering
-  - Generate animated GIFs of simulation
+
+* Implement ASCII art improvements (better graphics)
+* Add HTML/SVG output for debugging
+* Create sprite-based 2D terminal rendering
+* Generate animated GIFs of simulation
 
 □ Automated test suite using headless mode
-  - Unit tests for all game systems
-  - Integration tests for multi-system interactions
-  - Regression tests for bug fixes
-  - Performance benchmarks over time
 
-INPUT SYSTEM OVERHAUL:
----------------------
+* Unit tests for all game systems
+* Integration tests for multi-system interactions
+* Regression tests for bug fixes
+* Performance benchmarks over time
+
+---
+
+## INPUT SYSTEM OVERHAUL
+
 □ Graceful input handling without GLFW
-  - Abstract input layer from GLFW specifics
-  - Support multiple input backends
-  - Fallback to raw Windows input if GLFW fails
-  - Test keyboard/mouse without window
+
+* Abstract input layer from GLFW specifics
+* Support multiple input backends
+* Fallback to raw Windows input if GLFW fails
+* Test keyboard/mouse without window
 
 □ Scripted input for testing
-  - Load input sequences from files
-  - Replay recorded gameplay for debugging
-  - Generate random input for stress testing
-  - Create AI-driven input for automated gameplay
+
+* Load input sequences from files
+* Replay recorded gameplay for debugging
+* Generate random input for stress testing
+* Create AI-driven input for automated gameplay
 
 □ Gamepad support without crashes
-  - Fix XInput loading issues first
-  - Add support for DirectInput
-  - Support SDL_GameController as alternative
-  - Map gamepad controls to game actions
+
+* Fix XInput loading issues first
+* Add support for DirectInput
+* Support SDL_GameController as alternative
+* Map gamepad controls to game actions
 
 □ Input configuration system
-  - Save/load key bindings from file
-  - In-game key rebinding UI
-  - Support multiple control schemes
-  - Add input sensitivity settings
 
-GRAPHICS SYSTEM ALTERNATIVES:
------------------------------
-□ Upgrade to OpenGL 4.6 (Latest Stable - HIGH PRIORITY)
-  - **Current: Legacy OpenGL 2.1 (2006) - 19 years old!**
-  - **Target: OpenGL 4.6 (2017) - Latest stable version**
-  - **Critical Issue: Modern GPUs may poorly support legacy OpenGL 2.1**
-  - This upgrade may FIX the current GLFW initialization crashes!
-  
-  WHY OpenGL 4.6:
-  ✓ Best driver support on modern GPUs (NVIDIA, AMD, Intel)
-  ✓ All modern features included (compute, tessellation, geometry shaders)
-  ✓ SPIR-V shader support (portable shaders)
-  ✓ Bindless textures and buffers for massive performance
-  ✓ Multi-draw indirect with count
-  ✓ Anisotropic filtering standardized
-  ✓ Better debugging with KHR_debug
-  ✓ Lower CPU overhead, better multithreading
-  ✓ Will work on all GPUs from 2017+ (7+ years of hardware)
-  
-  CURRENT CODE ISSUES (src/Viewport3D.cpp:497-499):
-  ```cpp
-  // PROBLEM: Requesting ancient OpenGL 2.1
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-  // Missing: Core profile, forward compatibility
-  ```
-  
-  MIGRATION PLAN:
-  □ Phase 1: Immediate Fix - Request Modern OpenGL
-    - Change Viewport3D.cpp to request OpenGL 4.6 core profile
-    - **This may immediately fix GLFW crash!**
-    - Add fallback chain: 4.6 → 4.5 → 4.3 → 3.3 → 2.1
-    - Query actual OpenGL version after context creation
-    - Log GPU info: vendor, renderer, version, extensions
-    - Create graphics_capabilities.log on startup
-    
-    Code changes needed:
-    ```cpp
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    ```
-  
-  □ Phase 2: Add GLAD for Modern OpenGL Function Loading
-    - Download GLAD from https://glad.dav1d.de/
-    - Configuration: OpenGL 4.6, Core profile
-    - Include glad/glad.h before any OpenGL headers
-    - Call gladLoadGLLoader() after context creation
-    - Replace current OpenGL headers with GLAD
-    - Required for OpenGL 3.2+ on Windows
-  
-  □ Phase 3: Remove Legacy Immediate Mode Rendering
-    - Find all glBegin/glEnd calls (deprecated in 3.0+)
-    - Replace with modern VAO/VBO rendering
-    - Remove glVertex, glColor, glTexCoord calls
-    - Use glDrawArrays/glDrawElements instead
-    - Estimate: ~500 lines of code to update
-  
-  □ Phase 4: Implement Modern Rendering Pipeline
-    - Create Mesh class with VAO/VBO/EBO
-    - Vertex Buffer Objects for all geometry data
-    - Vertex Array Objects for vertex format state
-    - Element Buffer Objects for indexed drawing
-    - Uniform Buffer Objects for shader constants
-    - Shader Storage Buffers for large data arrays
-    - Documentation TODOs:
-      - Track phased work in `docs/advanced_graphics_implementation.md` (see TODO checklist).
-      - Follow shader integration/testing notes in `docs/particle_renderer_implementation.md`.
-      - Coordinate HUD migration tasks from `docs/uibatcher_implementation.md`.
-  
-  □ Phase 5: Shader-Based Rendering (Required for Core Profile)
-    - Core profile removes fixed-function pipeline
-    - Write vertex + fragment shaders for everything
-    - Basic shaders: MVP transform, texture, lighting
-    - Advanced: PBR materials, normal mapping
-    - Compute shaders for particles, physics, culling
-    - Shader management: compile, link, cache
-  
-  □ Phase 6: Advanced OpenGL 4.6 Features
-    - Direct State Access (DSA) for cleaner code
-    - Shader pipeline objects for performance
-    - Multi-draw indirect for massive batching
-    - Bindless textures (ARB_bindless_texture)
-    - SPIR-V shaders (cross-platform with Vulkan)
-    - Buffer storage for persistent mapping
-    - Compute shaders for GPU-driven rendering
-  
-  FALLBACK STRATEGY:
-  □ Try versions in order until one works:
-    1. OpenGL 4.6 Core (preferred)
-    2. OpenGL 4.5 Core (fallback 1)
-    3. OpenGL 4.3 Core (fallback 2 - compute shaders minimum)
-    4. OpenGL 3.3 Core (fallback 3 - basic modern OpenGL)
-    5. OpenGL 2.1 Compatibility (last resort - current code works)
-  
-  □ Maintain compatibility renderer for old hardware
-    - Detect OpenGL version at runtime
-    - Load appropriate rendering backend
-    - Modern renderer for 4.6+
-    - Legacy renderer for 2.1-3.2
-    - Feature flags for optional capabilities
-  
-  ESTIMATED EFFORT:
-  - Phase 1 (Quick Fix): 30 minutes - 1 hour
-  - Phase 2 (GLAD): 1-2 hours
-  - Phase 3 (Remove Legacy): 6-10 hours
-  - Phase 4 (Modern Pipeline): 15-25 hours
-  - Phase 5 (Shaders): 20-40 hours
-  - Phase 6 (Advanced Features): 30-50+ hours
-  **Total: 70-130 hours (2-3 weeks full-time)**
-  
-  IMMEDIATE ACTION (Try First):
-  - Change OpenGL version request from 2.1 to 4.6
-  - Add GLAD for function loading
-  - Test if GLFW initialization succeeds
-  - If it works, modern GPU may simply not support legacy 2.1!
+* Save/load key bindings from file
+* In-game key rebinding UI
+* Support multiple control schemes
+* Add input sensitivity settings
 
-□ Fix GLFW context creation for modern OpenGL (DO THIS FIRST!)
-  - Current glfwWindowHint requests ancient OpenGL 2.1
-  - Update to request latest OpenGL 4.6 core profile
-  - **May immediately fix the GLFW initialization crash!**
-  - See code example in Phase 1 above
-  - Add fallback version chain if 4.6 fails
-  - Test on current system - could solve the problem
+---
 
+## GRAPHICS SYSTEM ALTERNATIVES
+
+□ **Upgrade to OpenGL 4.6 (Latest Stable – HIGH PRIORITY)**
+
+* **Current:** Legacy OpenGL 2.1 (2006) – 19 years old!
+* **Target:** OpenGL 4.6 (2017) – Latest stable version
+* **Critical Issue:** Modern GPUs may poorly support legacy OpenGL 2.1
+* This upgrade may FIX the current GLFW initialization crashes!
+
+**WHY OpenGL 4.6:**
+✓ Best driver support on modern GPUs (NVIDIA, AMD, Intel)
+✓ All modern features included (compute, tessellation, geometry shaders)
+✓ SPIR-V shader support (portable shaders)
+✓ Bindless textures and buffers for massive performance
+✓ Multi-draw indirect with count
+✓ Anisotropic filtering standardized
+✓ Better debugging with `KHR_debug`
+✓ Lower CPU overhead, better multithreading
+✓ Will work on all GPUs from 2017+ (7+ years of hardware)
+
+**CURRENT CODE ISSUES (`src/Viewport3D.cpp:497–499`):**
+
+```cpp
+// PROBLEM: Requesting ancient OpenGL 2.1
+glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+// Missing: Core profile, forward compatibility
+```
+
+**MIGRATION PLAN:**
+□ *Phase 1: Immediate Fix – Request Modern OpenGL*
+- Change `Viewport3D.cpp` to request OpenGL 4.6 core profile
+- **This may immediately fix GLFW crash!**
+- Add fallback chain: 4.6 → 4.5 → 4.3 → 3.3 → 2.1
+- Query actual OpenGL version after context creation
+- Log GPU info: vendor, renderer, version, extensions
+- Create `graphics_capabilities.log` on startup
+
+````
+Code changes needed:
+```cpp
+glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+```
+````
+
+□ *Phase 2: Add GLAD for Modern OpenGL Function Loading*
+- Generate GLAD (OpenGL 4.6, Core profile)
+- Include `glad/glad.h` before any OpenGL headers
+- Call `gladLoadGLLoader()` after context creation
+- Replace current OpenGL headers with GLAD
+- Required for OpenGL 3.2+ on Windows
+
+□ *Phase 3: Remove Legacy Immediate Mode Rendering*
+- Find all `glBegin/glEnd` calls (deprecated in 3.0+)
+- Replace with modern VAO/VBO rendering
+- Remove `glVertex`, `glColor`, `glTexCoord` calls
+- Use `glDrawArrays/glDrawElements` instead
+- **Estimate:** ~500 lines of code to update
+
+□ *Phase 4: Implement Modern Rendering Pipeline*
+- Mesh class with VAO/VBO/EBO
+- UBOs for shader constants; SSBOs for large data
+- Shader management; pipeline documented (see docs)
+
+□ *Phase 5: Shader-Based Rendering (Core Profile Required)*
+- Vertex + fragment shaders for everything
+- PBR materials, normal mapping
+- Compute shaders for particles/physics/culling
+- Shader management: compile, link, cache
+
+□ *Phase 6: Advanced OpenGL 4.6 Features*
+- DSA, pipeline objects, MDI, bindless textures
+- SPIR-V, persistent mapping, compute-driven rendering
+
+**FALLBACK STRATEGY:**
+□ Try versions in order until one works: 4.6 → 4.5 → 4.3 → 3.3 → 2.1
+□ Maintain compatibility renderer for old hardware; feature flags per backend
+
+**ESTIMATED EFFORT:** 70–130 hours (2–3 weeks full-time)
+
+**IMMEDIATE ACTION (Try First):**
+
+* Change OpenGL version request from 2.1 to 4.6
+* Add GLAD for function loading
+* Test if GLFW initialization succeeds
+
+□ Fix GLFW context creation for modern OpenGL (**DO THIS FIRST!**)
 □ Add GLAD or GLEW for extension loading
-  - GLAD: Modern, generated loader (recommended)
-  - GLEW: Older but stable, well-documented
-  - Required for OpenGL 3.2+ on Windows
-  - Handles function pointer loading
-  - Provides extension checking
-
 □ Investigate GLFW alternatives
-  - Try SDL2 for window/input (different from SDL_mixer issue)
-  - Test GLUT (legacy but stable, OpenGL 2.1 only)
-  - Try native Windows CreateWindow + OpenGL
-  - Consider Vulkan as long-term replacement
-
 □ Software rendering fallback
-  - Implement CPU-based 2D renderer
-  - Use for debugging when GPU unavailable
-  - Could be faster than no graphics at all
-  - Good for remote/headless servers
-
 □ Add comprehensive graphics capability detection
-  - Query OpenGL version before initialization
-  - Check for required extensions (ARB_*, EXT_*)
-  - Detect GPU vendor and model (NVIDIA, AMD, Intel)
-  - Log all graphics information on startup
-  - Save to graphics_info.log for debugging
-  - Detect DirectX version (for Windows diagnostics)
-
 □ Shader system improvements
-  - Complete shader loading/compilation from files
-  - Add shader hot-reloading for development
-  - Implement robust shader error reporting
-  - Create shader preprocessor for variants (#ifdef support)
-  - Add shader include system for shared code
-  - Implement shader caching for faster loading
 
-*** LEGACY ENGINE IMPROVEMENTS ***
-==================================
+---
 
-IMMEDIATE TASKS (Next 1-2 weeks):
-----------------------------------
+## *** LEGACY ENGINE IMPROVEMENTS ***
+
+### IMMEDIATE TASKS (Next 1–2 weeks)
+
 □ Test distance-based camera hiding thoroughly
-  - Verify camera visual appears/disappears correctly at 3-unit threshold
-  - Test with different camera angles and player positions
-  - Ensure smooth transitions without visual glitches
-
-□ Player system roadmap
-  - Review subsystem plan in `todo_player.txt`
-  - Prioritize movement/input upgrades before adding advanced abilities
-  - Sequence progression, multiplayer sync, and tooling support after core controls
-  - Coordinate changes with camera and simulation teams
-
+□ Player system roadmap alignment
 □ Performance profiling and optimization
-  - Run performance benchmarks at different resolutions
-  - Profile CPU/GPU usage during gameplay
-  - Identify and optimize any remaining bottlenecks
-  - Consider implementing frame rate limiter for consistent performance
+□ Input system improvements (bindings, sensitivities, controller, recording)
 
-□ Input system improvements
-  - Add configurable key bindings
-  - Implement mouse sensitivity settings
-  - Add controller/gamepad support
-  - Consider adding input recording/playback for testing
+### SHORT-TERM GOALS (Next 1–2 months)
 
-SHORT-TERM GOALS (Next 1-2 months):
------------------------------------
-□ Enhanced graphics features
-  - Implement basic lighting system
-  - Add texture support for entities
-  - Implement fog/distance effects
-  - Add particle effects system
+□ Enhanced graphics features (lighting, textures, fog, particles)
+□ Audio system implementation (assets + settings UI)
+□ Game mechanics expansion (collision, physics, AI, scoring/health)
+□ User interface improvements (pause, settings, tutorials)
 
-□ Audio system implementation
-  ✓ Integrate audio library (SDL_mixer with SDL2) (COMPLETED)
-    - Core AudioSystem class: 440 lines, full SDL_mixer integration
-    - 3D audio: Distance attenuation + stereo panning
-    - Volume hierarchy: Master, SFX, Music (0.0-1.0)
-    - Resource management: Caching with lazy loading
-    - Multi-channel: 32 simultaneous sounds
-    - Music streaming: Background music with fade in/out
-    - AudioFeedbackSystem: Connected to real audio playback
-    - Build: Compiles successfully with auto-detection
-    - Docs: docs/audio_system_design.md, docs/audio_system_implementation.md
-  - Add sound effects for player actions (NEXT: need audio asset files)
-  - Implement background music support (API ready, need music files)
-  - Add volume controls and audio settings (need settings menu UI)
+### MEDIUM-TERM FEATURES (3–6 months)
 
-□ Game mechanics expansion
-  - Implement collision detection system
-  - Add physics simulation (gravity, momentum)
-  - Create basic enemy AI
-  - Add scoring/health system
-
-□ User interface improvements
-  ✓ Create main menu system (COMPLETED - see docs/menu_system_summary.md)
-    - MenuSystem framework: Generic reusable menu system
-    - MainMenu implementation: New Game, Continue, Settings, Quit
-    - Viewport3D rendering: OpenGL-based menu overlay
-    - Next: Integrate into MainLoop with game state management
-  - Add pause menu functionality
-  - Implement settings/configuration screen
-  - Add on-screen tutorials/help system
-
-MEDIUM-TERM FEATURES (3-6 months):
----------------------------------
 □ Multiplayer/networking support
-  - Implement basic client-server architecture
-  - Add player synchronization
-  - Create lobby/join game system
-  - Add network security measures
-
 □ Level/world system
-  - Implement level loading/saving
-  - Add procedural world generation
-  - Create terrain system
-  - Add checkpoints/save system
-
 □ Advanced graphics
-  - Implement shader system
-  - Add post-processing effects (bloom, motion blur)
-  - Create skybox/environment mapping
-  - Add dynamic shadows
-
 □ Modding support
-  - Create plugin/scripting system
-  - Add asset hot-reloading
-  - Implement custom entity creation tools
-  - Create level editor
 
-LONG-TERM VISION (6+ months):
------------------------------
+### LONG-TERM VISION (6+ months)
+
 □ Cross-platform support
-  - Port to Linux/macOS
- 
-⏳ Advanced engine features [ECS V2 IN PROGRESS - 95% Complete]
-  ✅ ECS (Entity Component System) V2 - Archetype-based system
-     - ✅ EntityHandle with versioning (src/ecs/EntityHandle.h - 100 lines)
-     - ✅ Archetype storage with SoA layout (src/ecs/Archetype.h - 350 lines)
-     - ✅ ArchetypeManager with transitions (src/ecs/ArchetypeManager.h/cpp - 210 lines)
-     - ✅ SystemSchedulerV2 with parallel execution (src/ecs/SystemSchedulerV2.h - 450 lines)
-     - 🔧 EntityManagerV2 (95% - debugging component array sync)
-     - ✅ Test suite created (tests/test_ecs_v2.cpp - 320 lines)
-     - ✅ Comprehensive documentation (docs/ecs_v2_implementation_progress.md)
-     
-     STATUS: One bug remaining - component copying during archetype transitions
-     IMPACT: 10-50x faster iteration, 70% less memory, 4-8x speedup on multi-core
-     NEXT: Fix component array synchronization (30-60 min estimated)
-     See: docs/ecs_v2_implementation_progress.md for details and todo_ecs.txt
 
-     FOLLOW-UP MIGRATION TASKS:
-     □ Ship a compatibility facade that forwards legacy `EntityManager` calls into `EntityManagerV2` where supported.
-       - Adapter header + documentation for unsupported pathways
-     □ Add a conversion pass that moves legacy-managed entities into archetype storage during load sequences.
-       - Validate with migration regression tests
-     □ Update Simulation bootstrap to register systems via `SystemSchedulerV2` with feature flag toggle.
-       - Maintain parity with current manual order while stabilizing rollout
+⏳ **Advanced engine features [ECS V2 IN PROGRESS – 95% Complete]**
+✅ ECS V2: Archetype-based system (EntityHandle, Archetype, Manager, SchedulerV2)
+🔧 Remaining: EntityManagerV2 – component copying during archetype transitions
+**Impact:** 10–50x iteration, 70% less memory, 4–8x multicore speedup
+**Next:** Fix component array synchronization (30–60 min est.)
 
-  □ Add physics engine integration (Bullet, PhysX)
-  □ Create animation system
-  □ Add AI pathfinding system
+**FOLLOW-UP MIGRATION TASKS:**
+□ Compatibility facade (legacy `EntityManager` → `EntityManagerV2`)
+□ Conversion pass (legacy → archetype storage) + regression tests
+□ Update Simulation bootstrap to SchedulerV2 behind a feature flag
 
-□ Tool development
-  - Create integrated development environment
-  - Build asset pipeline tools
-  - Develop debugging/profiling tools
-  - Add automated testing framework
+□ Physics engine integration (Bullet/PhysX)
+□ Animation system
+□ AI pathfinding system
 
-□ Community and distribution
-  - Create documentation and tutorials
-  - Set up continuous integration/deployment
-  - Build community around the engine
-  - Consider commercial licensing options
+---
 
-CODE QUALITY & MAINTENANCE:
----------------------------
-✅ Create comprehensive TODO document [COMPLETED 2025-10-10]
-  ✅ docs/todo/TODO_IMPROVEMENTS.md with categorized tasks
-  ✅ Prioritized by High/Medium/Low
-  ✅ Documented all fixes and improvements from today
-  ✅ Added environment variable usage guide
+## CODE QUALITY & MAINTENANCE
+
+✅ Comprehensive TODO document (2025-10-10)
 
 □ Fix compiler warnings
-  - Unused parameter warnings in Viewport3D::Render (playerX, playerY, playerZ)
-  - Unused parameter warnings in Viewport3D::DrawEntity
-  - Integer overflow warning in MainLoop (GLFW_KEY_UP conversion to char)
-  - Unused variable 'turnSpeed' in MainLoop
-  - Add [[maybe_unused]] or (void)param to suppress
-  - Consider enabling -Werror to make warnings errors
+□ Code cleanup & refactoring (split `Viewport3D.cpp`, remove dead code)
+□ Add debug/release/profile build configs
+□ Improve error handling (RAII, exceptions as appropriate)
+□ Memory leak detection (Valgrind/Dr. Memory; smart pointers)
 
-□ Code cleanup and refactoring
-  - Viewport3D.cpp is 2295 lines - split into multiple files
-  - Remove commented-out code (XInput sections, SDL fallback)
-  - Remove unused includes and forward declarations
-  - Separate rendering backends (GLFW, SDL, headless)
-  - Extract rendering systems into separate classes
+---
 
-□ Add debug/release build configurations
-  - Debug: -g -O0 with assertions enabled
-  - Release: -O3 with optimizations, assertions disabled
-  - Profile: -O2 -g for profiling with symbols
-  - Add configuration selector to Makefile
+## TESTING & QUALITY ASSURANCE
 
-□ Improve error handling
-  - Add exception handling where appropriate
-  - Use RAII for resource management
-  - Add proper cleanup in destructors
-  - Handle all malloc/new failures gracefully
-
-□ Memory leak detection
-  - Run with Valgrind (on Linux) or Dr. Memory (Windows)
-  - Add smart pointer usage where appropriate
-  - Audit all new/delete pairs
-  - Consider adding memory allocation tracking
-
-TESTING & QUALITY ASSURANCE:
-----------------------------
-□ Create automated test suite
-  - Use headless mode for running tests
-  - Test all game systems independently
-  - Add CI/CD pipeline (GitHub Actions)
-  - Run tests on every commit
-
-□ Add unit tests for each system
-  - Camera system tests (movement, rotation, zoom)
-  - Input system tests (key mapping, mouse tracking)
-  - ECS tests (entity creation, component manipulation)
-  - Physics tests (collision, forces, integration)
-  - Rendering tests (coordinate transforms, culling)
-
-□ Integration testing
-  - Test camera + player interaction
-  - Test input + movement + physics pipeline
-  - Test rendering + ECS iteration
-  - Test resource loading + rendering
-  - Test audio + game events
-
-□ Performance testing and benchmarking
-  - Profile frame times in different scenarios
-  - Measure entity iteration performance
-  - Test with increasing entity counts (100, 1000, 10000)
-  - Benchmark rendering with complex scenes
-  - Profile memory usage over time
-
+□ Create automated test suite (headless mode)
+□ Unit tests per system (camera, input, ECS, physics, rendering)
+□ Integration testing (pipelines)
+□ Performance testing & benchmarking
 □ Stress testing
-  - Run for extended periods (hours)
-  - Test with maximum entity count
-  - Simulate rapid state changes
-  - Test edge cases and boundary conditions
-  - Monitor for memory leaks over time
+□ Crash reporting & debugging (stack traces, minidumps, last-N input)
 
-□ Crash reporting and debugging
-  - Add stack trace on crash (Windows SEH)
-  - Log last N frames of input before crash
-  - Dump entity state on crash
-  - Add crash minidump generation
-  - Create automated crash analysis
+---
 
-DOCUMENTATION IMPROVEMENTS:
----------------------------
-□ Create setup guide for Windows
-  - Complete installation steps
-  - MSYS2 setup instructions
-  - Required packages and versions
-  - Common issues and solutions
-  - Screenshots and examples
+## DOCUMENTATION IMPROVEMENTS
 
-□ Document headless mode usage
-  - Environment variables reference
-  - Use cases for testing
-  - Example automated test scripts
-  - Performance comparison vs graphics mode
-  - Limitations and caveats
-
-□ Architecture documentation
-  - System overview diagrams
-  - Component interaction flowcharts
-  - Data flow diagrams
-  - Thread/concurrency model
-  - Memory layout diagrams
-
-□ API documentation
-  - Doxygen comments for all public APIs
-  - Usage examples for each system
-  - Design rationale and decisions
-  - Performance characteristics
-  - Thread safety guarantees
-
+□ Windows setup guide
+□ Headless mode usage
+□ Architecture documentation (diagrams)
+□ API documentation (Doxygen)
 □ Developer onboarding guide
-  - How to build and run
-  - Code organization explanation
-  - Coding standards and conventions
-  - How to add new systems
-  - Debugging tips and tricks
-
 □ User manual (when applicable)
-  - Controls and input reference
-  - Game mechanics explanation
-  - Settings and configuration
-  - Troubleshooting guide
-  - FAQ section
 
-BUILD SYSTEM ENHANCEMENTS:
--------------------------
-□ Improve Makefile robustness
-  - Auto-detect Windows vs Unix
-  - Use proper path separators
-  - Handle spaces in paths
-  - Add verbose mode for debugging
-  - Add quiet mode for clean output
+---
 
-□ Add build configurations
-  - make debug (with symbols, no optimization)
-  - make release (optimized, no debug)
-  - make profile (optimized with symbols)
-  - make sanitize (with AddressSanitizer/UBSan)
+## BUILD SYSTEM ENHANCEMENTS
 
-□ Parallel build support
-  - Enable -j flag for make
-  - Ensure proper dependency tracking
-  - Test with different core counts
-  - Measure build time improvements
-
+□ Robust Makefile (platform-detect, paths, verbosity)
+□ Build configurations (debug/release/profile/sanitize)
+□ Parallel builds
 □ Precompiled headers
-  - Create PCH for stable headers (STL, OpenGL)
-  - Measure compilation time improvement
-  - Ensure all source files use PCH
-  - Update on header changes
-
 □ Dependency tracking
-  - Auto-generate header dependencies
-  - Rebuild when headers change
-  - Track library dependencies
-  - Detect missing dependencies early
 
-PLATFORM COMPATIBILITY:
-----------------------
-□ Test on different Windows versions
-  - Windows 10 (various builds)
-  - Windows 11
-  - Windows Server editions
-  - Document minimum required version
+---
 
-□ Test with different compilers
-  - MinGW GCC (current)
-  - MSVC (Visual Studio)
-  - Clang for Windows
-  - Document compiler requirements
+## PLATFORM COMPATIBILITY
 
-□ Prepare for Linux port
-  - Use cross-platform APIs
-  - Avoid Windows-specific code
-  - Test with Wine on Linux
-  - Plan Linux build system
+□ Test on Windows versions
+□ Test with compilers (GCC/MSVC/Clang)
+□ Prepare Linux/macOS ports
 
-□ Prepare for macOS port
-  - Use OpenGL instead of DirectX
-  - Avoid Windows-specific APIs
-  - Plan for Metal support later
-  - Test with GLFW on macOS
+---
 
-CODE QUALITY & MAINTENANCE:
----------------------------
-□ Code cleanup and refactoring
-  - Remove unused code and dependencies
-  - Improve error handling and logging
-  - Add comprehensive unit tests
-  - Implement code formatting standards
+## TECHNICAL DEBT & OPTIMIZATION
 
-□ Documentation
-  - Create API documentation
-  - Write developer guides
-  - Add inline code comments
-  - Create video tutorials
-
-□ Bug tracking and fixes
-  - Set up issue tracking system
-  - Implement crash reporting
-  - Regular bug fix releases
-  - User feedback integration
-
-TECHNICAL DEBT & OPTIMIZATION:
--------------------------------
 □ Memory management improvements
-  - Implement object pooling
-  - Add memory leak detection
-  - Optimize memory allocation patterns
-  - Implement garbage collection for scripts
-
 □ Build system enhancements
-  - Improve Makefile for different configurations
-  - Add support for different compilers
-  - Implement automated dependency management
-  - Create installer/package system
-
 □ Security and stability
-  - Add input validation and sanitization
-  - Implement proper error recovery
-  - Add security audits
-  - Create backup/recovery systems
 
-RESEARCH & EXPERIMENTATION:
----------------------------
-□ Emerging technologies integration
-  - Explore VR/AR support
-  - Investigate machine learning integration
-  - Research cloud gaming possibilities
-  - Look into /gaming integration
+---
 
-□ Performance research
-  - Study advanced rendering techniques
-  - Research new physics simulation methods
-  - Explore AI advancements for game development
-  - Investigate new input methods (gesture, voice, etc.)
+## RESEARCH & EXPERIMENTATION
 
-OPTIMIZATION & PERFORMANCE (Advanced):
---------------------------------------
-□ Profile and optimize hot paths
-  - Identify bottlenecks with profiler (gprof, Visual Studio Profiler)
-  - Focus on frame update loop and entity iteration
-  - Optimize rendering pipeline (frustum culling, batching)
-  - Use profiler-guided optimization (PGO)
+□ VR/AR, ML, cloud gaming explorations
+□ Performance research (rendering, physics)
+□ New input methods (gesture, voice)
 
-□ Memory optimization strategies
-  - Object pooling for frequently created/destroyed objects
-  - SoA (Structure of Arrays) for cache-friendly entity data
-  - Reduce memory fragmentation with custom allocators
-  - Monitor and minimize peak memory usage
+---
 
-□ Multithreading and parallelism
-  - Separate render thread from game logic thread
-  - Parallelize entity system updates (ECS V2 ready)
-  - Async resource loading on background threads
-  - Job system for task parallelism
-  - Lock-free data structures for performance
+## ADVANCED FEATURES & SYSTEMS
 
-□ GPU compute integration
-  - Offload calculations to compute shaders
-  - GPU particle systems (millions of particles)
-  - GPU-based simple physics
-  - Investigate CUDA/OpenCL for heavy computation
-
-ADVANCED FEATURES & SYSTEMS:
-----------------------------
-□ AI Systems
-  - State machines and behavior trees for NPCs
-  - NavMesh generation and A* pathfinding
-  - Combat AI with tactics and positioning
-  - Machine learning integration for adaptive AI
-
-□ Procedural Generation
-  - Terrain generation (heightmaps, biomes)
-  - Procedural missions and quests
-  - Random encounters and events
-  - Mesh and texture variation
-
-□ Networking & Multiplayer
-  - Client-server architecture
-  - Entity synchronization with delta compression
-  - Client prediction and lag compensation
-  - Matchmaking and lobby system
-
-□ VR/AR Support (Future)
-  - OpenVR/SteamVR integration
-  - Room-scale tracking
-  - Foveated rendering
-  - VR-optimized UI and interactions
-
-□ Modding & Extensibility
-  - Lua or Python scripting system
-  - Hot-reloading for scripts and assets
-  - Custom entity/component creation
-  - Mod packaging and distribution (Steam Workshop)
-
+□ AI Systems (BTs/State machines, pathfinding, combat AI, ML)
+□ Procedural Generation (terrain, missions, encounters)
+□ Networking & Multiplayer (sync, prediction, matchmaking)
+□ VR/AR Support (future)
+□ Modding & Extensibility (scripting, hot-reload, editor)
 □ Analytics & Telemetry
-  - Gameplay analytics and behavior tracking
-  - Performance metrics and crash reporting
-  - Development metrics (build times, code complexity)
-  - A/B testing framework
 
-REFERENCE DOCUMENTS:
--------------------
-See docs/todo/TODO_IMPROVEMENTS.md for detailed 2025-10-10 fixes and improvements
-See docs/ folder for comprehensive system documentation
-See todo_*.txt files for system-specific task breakdowns
+---
 
-This roadmap provides a comprehensive plan for evolving Nova-Engine from a basic 3D engine into a full-featured game development platform. Priorities should be adjusted based on user feedback, performance requirements, and development resources available.
+## REFERENCE DOCUMENTS
 
-COMPLETION TRACKING (2025-10-10):
----------------------------------
-Major accomplishments today:
-- ✅ SDL dependencies completely removed
-- ✅ Headless mode fully functional for testing
-- ✅ Camera direction corrected (facing player)
-- ✅ Frame limiter implemented
-- ✅ Comprehensive documentation created
-- ⚠️ GLFW and XInput crashes identified (needs investigation)
-- ⚠️ Build system needs Windows compatibility improvements
+See `docs/todo/TODO_IMPROVEMENTS.md` for detailed 2025-10-10 fixes and improvements
+See `docs/` folder for system documentation
+See `todo_*.txt` files for system-specific task breakdowns
 
-Next priorities:
-1. Fix GLFW initialization crash (high priority - blocks graphics)
+---
+
+## COMPLETION TRACKING (2025-10-10)
+
+**Major accomplishments today:**
+
+* ✅ SDL dependencies completely removed
+* ✅ Headless mode fully functional for testing
+* ✅ Camera direction corrected (facing player)
+* ✅ Frame limiter implemented
+* ✅ Comprehensive documentation created
+* ⚠️ GLFW and XInput crashes identified (needs investigation)
+* ⚠️ Build system needs Windows compatibility improvements
+
+**Next priorities:**
+
+1. Fix GLFW initialization crash (high priority – blocks graphics)
 2. Implement automated testing using headless mode
 3. Complete ECS V2 final bug fix (component array sync)
 4. Add DLL checker/copier script
 5. Fix compiler warnings
 
-This roadmap provides a comprehensive plan for evolving Nova-Engine from a basic 3D engine into a full-featured game development platform. Priorities should be adjusted based on user feedback, performance requirements, and development resources available.
+---
+
+# ACTION BOARD — Next 14 Days (distilled)
+
+**Blockers (unblock graphics + input):**
+
+* [ ] GLFW context creation: switch to OpenGL 4.6 Core + fallback chain; log GPU/driver; verify init success.
+* [ ] XInput crash guard: delay-load + version probing (1_4 → 1_3 → 9_1_0); optionalize gamepad.
+
+**Enablers (reduce friction):**
+
+* [ ] DLL checker/copy script (PowerShell) wired into pre-run step.
+* [ ] Clean target: cross‑platform `clean` (PowerShell + Bash) verified in CI on Windows + Linux.
+* [ ] Shell command cleanup: root-cause the `'true'`/path errors in scripts; standardize env checks.
+
+**Core progress:**
+
+* [ ] ECS V2 transition copy fix + fuzz/regression suite for add/remove during iteration.
+* [ ] Headless test harness: scripted input playback + JSON state snapshots per frame.
+
+**Quick wins:**
+
+* [ ] Compile warnings zero: [[maybe_unused]]/casts; enable `-Werror` on CI only.
+* [ ] Graphics capability dump on startup → `graphics_info.log`.
+
+**Definitions of Done (DoD)**
+
+* GLFW/XInput: cold boot to main loop on two hardware configs, logs show versions, no crashes.
+* ECS V2 bug: 10k-entity fuzz passes, ASAN clean, determinism test green.
+* Headless tests: sample playback runs in CI (<60s), artifact uploads (snapshots + perf CSV).
+* DLL/clean/scripts: CI green on Windows + Linux; manual run doc updated.
+
+**Owner placeholders:**
+
+* Rendering: ___
+* Systems/ECS: ___
+* Tooling/CI: ___
+* Input: ___
+* Docs: ___
+
+---
+
+## Risk Radar & Mitigations
+
+* **Legacy GL dependency** → Migrate to 4.6 core; maintain 2.1 compatibility backend as fallback.
+* **Windows-only tooling** → Introduce Bash equivalents + CI matrix; document MSYS2 vs native.
+* **Input backend fragility** → Abstract input layer; feature-detect at runtime; graceful no‑gamepad path.
+* **Regression risk during ECS transition** → Command buffering for structural changes; fuzz + snapshots.
+
+---
+
+*Last updated: 2025‑10‑25*
+
+## New Todos (added 2025-10-25 – batch 3)
+
+### Rendering & Graphics Modernization
+
+* [ ] Create OpenGL debug context and wire `KHR_debug` callback with severity filtering and on-screen toast in dev builds.
+* [ ] Implement vendor-specific workarounds table (NVIDIA/AMD/Intel) for known driver quirks; log when applied.
+* [ ] Shader hot-reload: file watcher + safe recompile pipeline (fallback to last good binary on error).
+* [ ] Offline shader validation step (glslangValidator/spirv-tools) in CI pre-merge.
+* [ ] GPU timer queries for per-pass timings (opaque, transparent, post, UI) and export CSV.
+* [ ] Frustum culling prototype with per-mesh bounding spheres and a coarse BVH.
+* [ ] Optional wireframe/normal/UV debug views bound to dev hotkeys.
+* [ ] Floating-origin / camera-relative rendering to mitigate precision jitter at large coordinates.
+* [ ] HDR pipeline spike with ACES tonemapping and screenshot diffs vs LDR baseline.
+* [ ] Texture/mesh streaming stubs (LRU budgets; async IO placeholder).
+
+### Tooling & CI
+
+* [ ] GitHub Actions matrix: Windows (MSVC + MinGW), Ubuntu (clang/gcc); cache compiler artifacts.
+* [ ] clang-format + clang-tidy gates; pre-commit hooks with autofix on CI for PRs.
+* [ ] Code coverage (gcov/llvm-cov) for headless tests; threshold badge in README.
+* [ ] Sanitizers: ASAN/UBSAN on Linux, clang-cl ASAN job on Windows; nightly TSAN run.
+* [ ] Package artifacts: zipped binaries + logs for each CI job; attach to releases.
+* [ ] ADRs (Architecture Decision Records) folder with template; require ADR for major subsystem changes.
+
+### Crash Handling & Telemetry
+
+* [ ] Integrate Crashpad/Breakpad for minidumps; symbol server setup and automated upload.
+* [ ] In-engine crash screen with run id, build hash, last 200 log lines, and repro seed.
+* [ ] Frame ring buffer: persist last N input/events to aid post-crash analysis.
+* [ ] Structured logging (JSON) with session/user-less ids; log rotation policy.
+
+### Save/Settings Infrastructure
+
+* [ ] Centralized settings schema (TOML/JSON) with versioning and migration hooks.
+* [ ] Safe mode boot flag to reset graphics/input settings after failed launch.
+* [ ] Savegame format v0: compressed (zstd), checksum, and basic metadata (version, playtime, location).
+* [ ] Optional cloud saves abstraction; local-only fallback.
+
+### Accessibility & Localization
+
+* [ ] Colorblind-safe HUD palettes; contrast checks for UI text.
+* [ ] Reduce-motion preset (disable camera bob/shake, cap FOV changes per second).
+* [ ] Input: toggle vs hold for key actions; remappable dead zones for sticks.
+* [ ] Localization scaffolding: string tables, pluralization rules, UTF-8 everywhere; RTL stub switch.
+* [ ] Font fallback chain with SDF fonts for crisp scaling.
+
+### Networking Readiness (Pre-proto)
+
+* [ ] Deterministic tick runner (fixed dt) and command recording for future rollback.
+* [ ] Snapshot & delta serialization stubs for ECS components (opt-in per component).
+* [ ] Interest management draft API (proximity/visibility filters).
+
+### Gameplay & Systems
+
+* [ ] Flight model prototypes: arcade vs assisted vs sim; config bundles and A/B test hook.
+* [ ] Autopilot modes: hold attitude, match velocity, approach target with safety envelope.
+* [ ] HUD targeting revamp: lock cone visualization, lead indicators, range gating.
+* [ ] Mission generator stub with seed-based tasks (courier, scan, patrol) to exercise systems.
+
+### Solar System & Precision
+
+* [ ] Elliptical orbit support (Kepler elements) with mean anomaly update; switchable to circular.
+* [ ] Hierarchical reference frames (planet-centric) to avoid double precision requirements.
+* [ ] Time scaling controls (pause/slow/fast) with stable integrator bounds.
+* [ ] Level-of-detail rules for distant bodies (billboards → meshes → detailed).
+
+### Input & Audio
+
+* [ ] Raw mouse input path (low-latency) with optional filter toggle.
+* [ ] Input conflict resolver: display overlapping bindings and suggest alternatives.
+* [ ] Gamepad rumble events tied to weapon fire, impacts, and afterburner.
+* [ ] Audio asset pipeline: OGG/FLAC decode, streaming music channel, ducking rules, and mixer profiler.
+
+### Packaging & Docs
+
+* [ ] First-run hardware/driver probe with “supported/unsupported” checklist and save-to-file.
+* [ ] License audit of third-party code; generate NOTICE file automatically.
+* [ ] CONTRIBUTING.md with issue/PR templates and coding standards.
+* [ ] High-level architecture diagram (C4 level 2) + system sequence diagrams for hot paths.
+
+### QA & Performance
+
+* [ ] Golden-image tests: offscreen FBO renders diffed with tolerance; store artifacts on CI.
+* [ ] Long-haul soak test (8 hours, headless) with memory/leak watch and periodic snapshots.
+* [ ] Perf budgets per frame (ms targets per subsystem) with assert-on-regression in CI perf job.
+* [ ] Automated scene builder (many ships/particles) for worst-case stress.

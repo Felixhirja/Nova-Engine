@@ -11,6 +11,20 @@
 #else
 #include <GL/glut.h>
 #endif
+#include <mutex>
+
+namespace {
+    void EnsureGlutInitialized() {
+        static std::once_flag once;
+        std::call_once(once, []() {
+            int argc = 1;
+            char argv0[] = "nova";
+            char* argv[] = { argv0, nullptr };
+            glutInit(&argc, argv);
+            // No need to create a GLUT window; we rely on the existing GL context (GLFW/SDL)
+        });
+    }
+}
 
 void* TextRenderer::GetGLUTFont(FontSize size) {
     switch (size) {
@@ -46,6 +60,7 @@ void TextRenderer::RenderText(const std::string& text,
                              const TextColor& color,
                              FontSize size) {
     if (text.empty()) return;
+    EnsureGlutInitialized();
     
     void* font = GetGLUTFont(size);
     
@@ -73,6 +88,7 @@ void TextRenderer::RenderTextAligned(const std::string& text,
                                     const TextColor& color,
                                     FontSize size) {
     if (text.empty()) return;
+    EnsureGlutInitialized();
     
     int offsetX = 0;
     
@@ -97,6 +113,7 @@ void TextRenderer::RenderText3D(const std::string& text,
                                const TextColor& color,
                                FontSize size) {
     if (text.empty()) return;
+    EnsureGlutInitialized();
     
     void* font = GetGLUTFont(size);
     
@@ -114,6 +131,7 @@ void TextRenderer::RenderText3D(const std::string& text,
 
 int TextRenderer::MeasureText(const std::string& text, FontSize size) {
     if (text.empty()) return 0;
+    EnsureGlutInitialized();
     
     void* font = GetGLUTFont(size);
     int width = 0;
@@ -130,6 +148,7 @@ void TextRenderer::RenderTextF(int x, int y,
                               const TextColor& color, 
                               FontSize size,
                               const char* format, ...) {
+    EnsureGlutInitialized();
     char buffer[512];
     
     va_list args;

@@ -1,0 +1,13 @@
+# Nova-Engine SVG font manifest
+# Entries map CSS font-family names to font files relative to this directory.
+# Provide open-licensed TrueType or OpenType files alongside this manifest.
+#
+# The first matching family listed in an SVG will be used; remaining names
+# act as fallbacks. Set the `default` entry to choose the fallback font when
+# an SVG requests a family that is not listed below.
+
+default = share tech mono
+
+Share Tech Mono = ShareTechMono-Regular.ttf
+Orbitron = Orbitron-Regular.ttf
+Rajdhani = Rajdhani-Medium.ttf

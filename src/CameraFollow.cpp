@@ -24,6 +24,25 @@ void UpdateTargetLockCamera(Camera& camera,
     // Clamp dt safely even if config has nonsense
     dt = clamp(dt, 0.0, std::max(0.0, config.maxDeltaTimeClamp));
 
+    const bool teleportEnabled = config.enableTeleportHandling;
+    const bool hadLastDesired = state.hasLastDesired;
+    const double prevDesiredPosX = state.lastDesiredPosX;
+    const double prevDesiredPosY = state.lastDesiredPosY;
+    const double prevDesiredPosZ = state.lastDesiredPosZ;
+
+    auto triggerTeleportRecovery = [&]() {
+        if (!teleportEnabled) {
+            return;
+        }
+        if (config.teleportSnapFrames > 0) {
+            state.teleportFramesRemaining = std::max(state.teleportFramesRemaining, config.teleportSnapFrames);
+        }
+        if (config.teleportBlendSeconds > 0.0) {
+            state.teleportBlendTimer = std::max(state.teleportBlendTimer, config.teleportBlendSeconds);
+        }
+        state.freeVelX = state.freeVelY = state.freeVelZ = 0.0;
+    };
+
     // Debug: Log input values periodically (every ~5 seconds)
     static double debugTimer = 0.0;
     debugTimer += dt;
@@ -118,9 +137,29 @@ void UpdateTargetLockCamera(Camera& camera,
     const double ty = cy + (lockY - cy) * t;
     const double tz = cz + (lockZ - cz) * t;
 
+    if (teleportEnabled && hadLastDesired) {
+        const double dpx = tx - prevDesiredPosX;
+        const double dpy = ty - prevDesiredPosY;
+        const double dpz = tz - prevDesiredPosZ;
+        const double jumpDistance = std::sqrt(dpx * dpx + dpy * dpy + dpz * dpz);
+        if (jumpDistance > config.teleportDistanceThreshold) {
+            triggerTeleportRecovery();
+        }
+    }
+
     // --- Frame-independent smoothing ---
-    const double posA = clamp(CameraFollow::ExpAlpha(config.posResponsiveness, dt), 0.0, 1.0);
-    const double rotA = clamp(CameraFollow::ExpAlpha(config.rotResponsiveness, dt), 0.0, 1.0);
+    double posA = clamp(CameraFollow::ExpAlpha(config.posResponsiveness, dt), 0.0, 1.0);
+    double rotA = clamp(CameraFollow::ExpAlpha(config.rotResponsiveness, dt), 0.0, 1.0);
+
+    if (teleportEnabled) {
+        if (state.teleportFramesRemaining > 0) {
+            posA = 1.0;
+            rotA = 1.0;
+        } else if (state.teleportBlendTimer > 0.0) {
+            posA = std::max(posA, config.teleportBlendMinAlpha);
+            rotA = std::max(rotA, config.teleportBlendMinAlpha);
+        }
+    }
 
     // --- Position (smooth toward blended target) ---
     double nx = cx + (tx - cx) * posA;
@@ -204,16 +243,6 @@ void UpdateTargetLockCamera(Camera& camera,
         }
     }
 
-    camera.SetPosition(nx, ny, nz);
-
-    // Debug: Log final camera position
-    static double lastNx = 0.0, lastNy = 0.0, lastNz = 0.0;
-    const double finalChange = std::sqrt((nx-lastNx)*(nx-lastNx) + (ny-lastNy)*(ny-lastNy) + (nz-lastNz)*(nz-lastNz));
-    if (finalChange > 5.0) {  // Log large jumps
-        std::cout << "Camera jump detected: " << finalChange << " units to (" << nx << "," << ny << "," << nz << ")" << std::endl;
-    }
-    lastNx = nx; lastNy = ny; lastNz = nz;
-
     // --- Orientation: look at player (mouse pitch affects aim, not height) ---
     const double dx = px - nx;
     const double dz = pz - nz;
@@ -241,6 +270,7 @@ void UpdateTargetLockCamera(Camera& camera,
     const double topBlend = clamp(horizRaw * config.topBlendScale, 0.0, 1.0);
     targetPitch = camPitch + (pitchLocked - camPitch) * (t * topBlend);
 
+
     camYaw   = camYaw   + remainder(targetYaw - camYaw, kTAU) * rotA;
     camPitch = camPitch + (targetPitch - camPitch) * rotA;
 
@@ -253,4 +283,27 @@ void UpdateTargetLockCamera(Camera& camera,
     camYaw = std::remainder(camYaw, kTAU);
 
     camera.SetOrientation(camPitch, camYaw);
+
+    camera.SetPosition(nx, ny, nz);
+
+    // Debug: Log final camera position
+    static double lastNx = 0.0, lastNy = 0.0, lastNz = 0.0;
+    const double finalChange = std::sqrt((nx-lastNx)*(nx-lastNx) + (ny-lastNy)*(ny-lastNy) + (nz-lastNz)*(nz-lastNz));
+    if (finalChange > 5.0) {  // Log large jumps
+        std::cout << "Camera jump detected: " << finalChange << " units to (" << nx << "," << ny << "," << nz << ")" << std::endl;
+    }
+    lastNx = nx; lastNy = ny; lastNz = nz;
+
+    if (teleportEnabled) {
+        if (state.teleportFramesRemaining > 0) {
+            state.teleportFramesRemaining = std::max(0, state.teleportFramesRemaining - 1);
+        } else if (state.teleportBlendTimer > 0.0) {
+            state.teleportBlendTimer = std::max(0.0, state.teleportBlendTimer - dt);
+        }
+    }
+
+    state.lastDesiredPosX = tx;
+    state.lastDesiredPosY = ty;
+    state.lastDesiredPosZ = tz;
+    state.hasLastDesired = true;
 }

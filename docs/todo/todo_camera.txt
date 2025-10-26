@@ -1,50 +1,126 @@
 # Camera Todo List
 
+[x] Camera view should change camera view not world
+
 ## Completed
-- [x] Implement target lock component for camera following
-- [x] Add Tab key toggle for target lock on/off
-- [x] Fix camera visual positioning to prevent blocking player view
-- [x] Implement world-space camera movement with arrow keys when target lock disabled
-- [x] Update HUD to show target lock status and control instructions
+
+* [x] Implement target lock component for camera following
+* [x] Add Tab key toggle for target lock on/off
+* [x] Fix camera visual positioning to prevent blocking player view
+* [x] Implement world-space camera movement with arrow keys when target lock disabled
+* [x] Update HUD to show target lock status and control instructions
 
 ## Pending
-- [x] Test Tab key toggle between free camera mode and target lock mode
+
+* [x] Test Tab key toggle between free camera mode and target lock mode
+
 ## Pending
-- [x] Verify arrow keys move camera in world space (north/south/east/west) when unlocked
-- [x] Confirm WASD keys only move player, not camera
+
+* [x] Verify arrow keys move camera in world space (north/south/east/west) when unlocked
+* [x] Confirm WASD keys only move player, not camera
+
 ## Pending
-- [x] Test smooth camera following behavior when target lock enabled
-- [x] Verify camera visual offset prevents view obstruction
-- [x] Test camera performance during rapid movement and following
-- [x] Test edge cases: player at world boundaries, rapid Tab toggling, extreme zoom levels
-- [ ] Test camera behavior with mouse look while target locked
-- [x] Verify camera following works correctly when player moves in all directions
-- [ ] Test camera controls with different window sizes/resolutions
-- [ ] Add camera control documentation to README
-- [x] Consider adding camera presets or bookmarks for common positions
-- [ ] Test camera system integration with other game systems (physics, rendering)
-- [ ] Add camera shake effect for impacts/explosions
-- [ ] Implement camera collision detection to prevent going through walls
+
+* [x] Test smooth camera following behavior when target lock enabled
+* [x] Verify camera visual offset prevents view obstruction
+* [x] Test camera performance during rapid movement and following
+* [x] Test edge cases: player at world boundaries, rapid Tab toggling, extreme zoom levels
+* [ ] Test camera behavior with mouse look while target locked
+* [x] Verify camera following works correctly when player moves in all directions
+* [ ] Test camera controls with different window sizes/resolutions
+* [ ] Add camera control documentation to README
+* [x] Consider adding camera presets or bookmarks for common positions
+* [ ] Test camera system integration with other game systems (physics, rendering)
+* [ ] Add camera shake effect for impacts/explosions
+* [ ] Implement camera collision detection to prevent going through walls
 
 ## Recent Improvements (Completed)
-- [x] Add config-driven camera tuning (shoulder offset, pitch bias, sensitivities)
-- [x] Implement angle-based near-vertical yaw stabilization
-- [x] Add runtime config validation to prevent bad hot-loads
-- [x] Add math helpers (ExpAlpha, SmoothStep, DegToRad/RadToDeg) for consistency
-- [x] Add compile-time asserts for default value sanity checks
-- [x] Implement exponential smoothing for frame-rate independence
-- [x] Add shortest-arc yaw blending to avoid wrap glitches
-- [x] Add configurable pitch clamping with safe bounds
-- [x] Add delta-time clamping for stability in variable framerates
+
+* [x] Add config-driven camera tuning (shoulder offset, pitch bias, sensitivities)
+* [x] Implement angle-based near-vertical yaw stabilization
+* [x] Add runtime config validation to prevent bad hot-loads
+* [x] Add math helpers (ExpAlpha, SmoothStep, DegToRad/RadToDeg) for consistency
+* [x] Add compile-time asserts for default value sanity checks
+* [x] Implement exponential smoothing for frame-rate independence
+* [x] Add shortest-arc yaw blending to avoid wrap glitches
+* [x] Add configurable pitch clamping with safe bounds
+* [x] Add delta-time clamping for stability in variable framerates
 
 ## Future Enhancements
-- [x] Implement soft ground clamp with spring-based easing (use groundClampHz config)
-- [x] Add obstacle avoidance: raycast from player to desired camera position, push forward on hit (placeholder - needs physics raycast API)
-- [x] Implement dynamic shoulder offset based on target screen position
-- [ ] Add adaptive smoothing: increase rotResponsiveness when target is moving fast
-- [ ] Add camera shake effects for impacts/explosions with configurable intensity/duration
-- [ ] Implement camera bookmarks/presets system with save/load functionality
-- [ ] Add cinematic camera paths for scripted sequences
-- [ ] Implement camera occlusion fade-out for objects between camera and target
-- [ ] Add camera auto-framing for multiple targets (e.g., fleet view)
-- [ ] Implement camera prediction for high-velocity targets to reduce lag
+
+* [x] Implement soft ground clamp with spring-based easing (use groundClampHz config)
+* [x] Add obstacle avoidance: raycast from player to desired camera position, push forward on hit (placeholder - needs physics raycast API)
+* [x] Implement dynamic shoulder offset based on target screen position
+* [ ] Add adaptive smoothing: increase rotResponsiveness when target is moving fast
+* [ ] Add camera shake effects for impacts/explosions with configurable intensity/duration
+* [ ] Implement camera bookmarks/presets system with save/load functionality
+* [ ] Add cinematic camera paths for scripted sequences
+* [ ] Implement camera occlusion fade-out for objects between camera and target
+* [ ] Add camera auto-framing for multiple targets (e.g., fleet view)
+* [ ] Implement camera prediction for high-velocity targets to reduce lag
+
+---
+
+## New Pending (added 2025-10-25)
+
+* [ ] **Fix transform space bug:** ensure rotations/translation apply to the camera rig, not the world root; add a unit test to prevent regressions.
+* [ ] **Invert axes options:** configurable invert X/Y for mouse and controller.
+* [ ] **Gamepad support:** right-stick look, zoom on triggers/bumpers; deadzones and response curves.
+* [ ] **Smooth zoom:** mouse wheel/controller zoom with easing and min/max bounds; optional per-zoom FOV.
+* [ ] **Recentre keybind:** quick snap-to-target and re-align behind target.
+* [ ] **Rebindable controls:** expose camera bindings in settings.
+* [ ] **Horizon lock toggle:** reduce unintended roll/pitch drift; optional deadband around level.
+* [ ] **Hitch handling:** pause/scale smoothing when frame hitch > threshold to avoid overshoot.
+* [ ] **Persist settings:** save/load camera prefs to player profile/config.
+* [ ] **Debug overlay:** draw desired vs actual camera poses, collision raycasts, current mode, target lock state.
+* [ ] **Angle math tests:** unit tests for wrap-around and shortest-arc blending edge cases.
+* [ ] **Aspect/Resolution QA:** verify behavior on ultrawide (21:9, 32:9), 4K, HiDPI, and during window resizes.
+* [ ] **Perf sweeps:** profile at 30/60/120/240 FPS; validate dt clamp thresholds.
+* [ ] **Collision response:** prefer slide-along-surface before push-in; avoid pop/jitter.
+* [ ] **Zoom-aware pan speed:** scale edge panning speed with zoom (if edge pan is enabled).
+* [ ] **Mouse capture UX:** indicator and escape path; handle alt-tab gracefully.
+* [ ] **Target loss fallback:** on destroy/occlusion, gracefully transition to free-cam or last-known.
+
+### Additional Pending (added 2025-10-25 – batch 2)
+
+* [ ] Accessibility: toggle camera bob, optional vignetting during fast turns, and a reduced-motion preset.
+* [ ] Per-device sensitivity curves: separate mouse/controller curves, accel thresholds, and deadzones.
+* [ ] Per-mode FOV: distinct FOV for aim/sprint/photo; clamp ranges and transitions.
+* [ ] Camera state machine + priority stack (combat, dialogue, photo, free-cam) with debug UI.
+* [ ] Camera bounds/volumes: area-based limits for zoom, pitch, and no-fly zones.
+* [x] Cut/teleport detection: fade or snap-smooth re-acquire to avoid nausea.
+* [ ] Stuck/jitter watchdog: auto-relocate when penetration/jitter is detected.
+* [ ] Collision probe upgrade: sphere-cast with adjustable radius for corner handling.
+* [ ] Multiplayer audit: interpolate/extrapolate remote targets; authority handoff rules.
+* [ ] Telemetry + perf HUD: log dt, hitches, occlusion hits; on-screen counters.
+* [ ] Automated test map: tunnels, tight corridors, overhangs, multi-level ramps.
+* [ ] Live debug toggles: console commands to enable/disable collision, shake, smoothing, clamps.
+* [ ] Config hot-reload UX: toast with diff summary and one-click rollback.
+* [ ] Bookmarks I/O: save/load camera bookmarks to JSON; import/export UI.
+* [ ] Window focus/alt-tab resilience: freeze input deltas briefly on regain focus.
+
+## New Future Enhancements (added 2025-10-25)
+
+* [ ] **Multi-target framing v2:** screen-bounds based framing with per-target weights and padding.
+* [ ] **Photo mode:** free orbit, HUD hide, depth-of-field stub, slow-mo toggle.
+* [ ] **Contextual zoom:** auto-zoom in tight spaces; zoom out in open areas (with motion-sickness guardrails).
+* [ ] **Aim-assist bias:** subtle camera bias toward on-screen threats near reticle.
+* [ ] **First-person toggle:** switchable perspective sharing core controls.
+* [ ] **Spectator/free-cam mode:** decoupled from player for debugging or replays.
+* [ ] **Spline-aware avoidance:** sample along camera path for smarter occlusion handling.
+* [ ] **Dynamic FOV by speed:** widen on sprint/boost with configurable limits.
+* [ ] **Shake blending system:** layer multiple shake sources with priorities and envelopes.
+
+### Additional Future Enhancements (added 2025-10-25 – batch 2)
+
+* [ ] Director system: rule-based shot selection for combat/exploration beats.
+* [ ] Smart conversation framing: over-shoulder and shot/reverse-shot presets.
+* [ ] Replay keyframer: record/play camera paths with spline keyframes and easing.
+* [ ] Multi-target framing v3: velocity prediction and per-target intent weights.
+* [ ] Dynamic cutaways: context-aware wall transparency and portal-style peeks.
+* [ ] Shoulder swap on cover edges; contextual offsets near walls.
+* [ ] Comfort mode: tunnel vignette + yaw dampening at high angular velocity.
+* [ ] Camera zones: trigger volumes that auto-apply camera profiles/settings.
+* [ ] Photo mode extras: FOV/exposure sliders, focus plane picker, basic DOF stub.
+* [ ] VR guardrails (if applicable): no roll, minimal camera acceleration, strict horizon lock.
+* [ ] Depth-aware autofocus prototype using depth buffer when available.

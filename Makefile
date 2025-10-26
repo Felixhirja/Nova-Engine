@@ -38,6 +38,22 @@ else
 $(info GLFW not found; building ASCII fallback)
 endif
 
+# FreeType detection for SVG text rasterization
+FREETYPE_CFLAGS := $(shell pkg-config --cflags freetype2 2>/dev/null)
+FREETYPE_LIBS := $(shell pkg-config --libs freetype2 2>/dev/null)
+
+ifneq ($(FREETYPE_LIBS),)
+	CXXFLAGS += $(FREETYPE_CFLAGS) -DUSE_FREETYPE
+	LDLIBS += $(FREETYPE_LIBS)
+else
+ifeq ($(OS),Windows_NT)
+	CXXFLAGS += -IC:/msys64/mingw64/include/freetype2 -DUSE_FREETYPE
+	LDLIBS += -LC:/msys64/mingw64/lib -lfreetype
+else
+$(info FreeType not found; SVG text rendering will be disabled)
+endif
+endif
+
 # Include graphics subsystem and GLAD loader
 SRC := $(wildcard src/*.cpp) $(wildcard src/ecs/*.cpp) $(wildcard src/physics/*.cpp)
 GLAD_SRC :=

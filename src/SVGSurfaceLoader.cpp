@@ -1,17 +1,14 @@
 #include "SVGSurfaceLoader.h"
 
-#ifdef USE_SDL
-#if defined(USE_SDL3)
-#include <SDL3/SDL.h>
-#else
-#include <SDL2/SDL.h>
-#endif
-
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
+#include <cstring>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <optional>
 #include <sstream>
@@ -20,6 +17,19 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
+#if defined(USE_FREETYPE)
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#endif
+
+#if defined(USE_SDL)
+#if defined(USE_SDL3)
+#include <SDL3/SDL.h>
+#else
+#include <SDL2/SDL.h>
+#endif
+#endif
 
 namespace {
 
@@ -45,6 +55,24 @@ struct Matrix2D {
     float e = 0.0f;
     float f = 0.0f;
 };
+
+// Forward declarations for matrix helpers used in type declarations.
+Matrix2D MatrixIdentity();
+Matrix2D MatrixTranslate(float tx, float ty);
+Matrix2D MatrixScale(float sx, float sy);
+Matrix2D MatrixRotate(float angleDegrees);
+Matrix2D MatrixSkewX(float angleDegrees);
+Matrix2D MatrixSkewY(float angleDegrees);
+Matrix2D MatrixMultiply(const Matrix2D& lhs, const Matrix2D& rhs);
+std::optional<Matrix2D> MatrixInverse(const Matrix2D& m);
+bool MatrixEqual(const Matrix2D& a, const Matrix2D& b);
+
+bool StartsWith(const std::string& text, const std::string& prefix);
+bool EndsWith(const std::string& text, const std::string& suffix);
+
+struct Shape;
+struct SvgDocument;
+void ResolveGradientReferences(SvgDocument& doc);
 
 struct GradientStop {
     float offset = 0.0f;
@@ -105,6 +133,13 @@ struct StyleProperties {
     std::optional<std::string> fillUrl;
     std::optional<float> fillOpacity;
     std::optional<float> opacity;
+    std::optional<std::string> fontFamily;
+    std::optional<float> fontSize;
+    std::optional<std::string> textAnchor;
+    std::optional<float> letterSpacing;
+    bool letterSpacingIsRelative = false;
+    std::optional<float> lineHeight;
+    bool lineHeightIsAbsolute = false;
 
     void Apply(const StyleProperties& other) {
         if (other.fillNone) {
@@ -128,6 +163,23 @@ struct StyleProperties {
         if (other.opacity.has_value()) {
             opacity = other.opacity;
         }
+        if (other.fontFamily.has_value()) {
+            fontFamily = other.fontFamily;
+        }
+        if (other.fontSize.has_value()) {
+            fontSize = other.fontSize;
+        }
+        if (other.textAnchor.has_value()) {
+            textAnchor = other.textAnchor;
+        }
+        if (other.letterSpacing.has_value()) {
+            letterSpacing = other.letterSpacing;
+            letterSpacingIsRelative = other.letterSpacingIsRelative;
+        }
+        if (other.lineHeight.has_value()) {
+            lineHeight = other.lineHeight;
+            lineHeightIsAbsolute = other.lineHeightIsAbsolute;
+        }
     }
 };
 
@@ -146,6 +198,26 @@ struct Shape {
     std::optional<float> strokeWidth;
 };
 
+enum class TextAnchor {
+    Start,
+    Middle,
+    End
+};
+
+struct TextSpan {
+    Vec2 origin;
+    FillStyle fill;
+    std::vector<std::string> fontFamilies;
+    std::string debugFontFamily;
+    std::vector<std::string> lines;
+    float fontSize = 16.0f;
+    float letterSpacing = 0.0f;
+    float lineHeightMultiplier = 1.2f;
+    std::optional<float> absoluteLineHeight;
+    TextAnchor anchor = TextAnchor::Start;
+    bool hasUnsupportedTransform = false;
+};
+
 std::string Trim(const std::string& str) {
     size_t begin = 0;
     while (begin < str.size() && std::isspace(static_cast<unsigned char>(str[begin]))) {
@@ -160,6 +232,17 @@ std::string Trim(const std::string& str) {
 
 std::string ToLower(std::string value) {
     std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return value;
+}
+
+std::string StripQuotes(const std::string& value) {
+    if (value.size() >= 2) {
+        char first = value.front();
+        char last = value.back();
+        if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
+            return value.substr(1, value.size() - 2);
+        }
+    }
     return value;
 }
 
@@ -219,6 +302,490 @@ std::vector<float> ParseFloatList(const std::string& text) {
     }
     return values;
 }
+
+std::vector<std::string> SplitLines(const std::string& text) {
+    std::vector<std::string> lines;
+    std::stringstream ss(text);
+    std::string line;
+    while (std::getline(ss, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        lines.push_back(line);
+    }
+    if (lines.empty()) {
+        lines.push_back(text);
+    }
+    return lines;
+}
+
+std::string DecodeHtmlEntities(const std::string& input) {
+    std::string result;
+    result.reserve(input.size());
+    for (size_t i = 0; i < input.size();) {
+        if (input[i] == '&') {
+            size_t semicolon = input.find(';', i + 1);
+            if (semicolon != std::string::npos) {
+                std::string entity = input.substr(i + 1, semicolon - i - 1);
+                std::string lowerEntity = ToLower(entity);
+                if (lowerEntity == "amp") {
+                    result.push_back('&');
+                    i = semicolon + 1;
+                    continue;
+                }
+                if (lowerEntity == "lt") {
+                    result.push_back('<');
+                    i = semicolon + 1;
+                    continue;
+                }
+                if (lowerEntity == "gt") {
+                    result.push_back('>');
+                    i = semicolon + 1;
+                    continue;
+                }
+                if (lowerEntity == "quot") {
+                    result.push_back('"');
+                    i = semicolon + 1;
+                    continue;
+                }
+                if (lowerEntity == "apos") {
+                    result.push_back('\'');
+                    i = semicolon + 1;
+                    continue;
+                }
+                if (!entity.empty() && entity[0] == '#') {
+                    int base = 10;
+                    size_t offset = 1;
+                    if (entity.size() > 1 && (entity[1] == 'x' || entity[1] == 'X')) {
+                        base = 16;
+                        offset = 2;
+                    }
+                    try {
+                        int codepoint = std::stoi(entity.substr(offset), nullptr, base);
+                        if (codepoint > 0 && codepoint <= 0x10FFFF) {
+                            if (codepoint <= 0x7F) {
+                                result.push_back(static_cast<char>(codepoint));
+                            } else if (codepoint <= 0x7FF) {
+                                result.push_back(static_cast<char>(0xC0 | (codepoint >> 6)));
+                                result.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+                            } else if (codepoint <= 0xFFFF) {
+                                result.push_back(static_cast<char>(0xE0 | (codepoint >> 12)));
+                                result.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+                                result.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+                            } else {
+                                result.push_back(static_cast<char>(0xF0 | (codepoint >> 18)));
+                                result.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)));
+                                result.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+                                result.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+                            }
+                        }
+                        i = semicolon + 1;
+                        continue;
+                    } catch (...) {
+                    }
+                }
+            }
+        }
+        result.push_back(input[i]);
+        ++i;
+    }
+    return result;
+}
+
+std::string StripXmlTags(const std::string& text) {
+    std::string output;
+    output.reserve(text.size());
+    bool inTag = false;
+    for (char c : text) {
+        if (c == '<') {
+            inTag = true;
+            continue;
+        }
+        if (c == '>') {
+            inTag = false;
+            continue;
+        }
+        if (!inTag) {
+            output.push_back(c);
+        }
+    }
+    return output;
+}
+
+std::vector<std::string> ParseFontFamilyList(const std::string& value) {
+    std::vector<std::string> families;
+    std::stringstream ss(value);
+    std::string token;
+    while (std::getline(ss, token, ',')) {
+        std::string trimmed = Trim(token);
+        if (trimmed.empty()) {
+            continue;
+        }
+        trimmed = StripQuotes(trimmed);
+        if (trimmed.empty()) {
+            continue;
+        }
+        families.push_back(ToLower(trimmed));
+    }
+    return families;
+}
+
+TextAnchor ParseTextAnchorValue(const std::string& value) {
+    std::string lower = ToLower(Trim(value));
+    if (lower == "middle" || lower == "center") {
+        return TextAnchor::Middle;
+    }
+    if (lower == "end" || lower == "right") {
+        return TextAnchor::End;
+    }
+    return TextAnchor::Start;
+}
+
+std::optional<float> ParseScalarAllowUnits(const std::string& token) {
+    if (token.empty()) return std::nullopt;
+    std::string trimmed = Trim(token);
+    std::string lower = ToLower(trimmed);
+    if (EndsWith(lower, "px") || EndsWith(lower, "pt") || EndsWith(lower, "em")) {
+        trimmed = trimmed.substr(0, trimmed.size() - 2);
+    } else if (EndsWith(lower, "rem")) {
+        trimmed = trimmed.substr(0, trimmed.size() - 3);
+    }
+    float value = 0.0f;
+    if (!ParseFloat(trimmed, value)) return std::nullopt;
+    return value;
+}
+
+struct LineHeightSpec {
+    float value = 1.0f;
+    bool isAbsolute = false;
+};
+
+std::optional<LineHeightSpec> ParseLineHeightValue(const std::string& token) {
+    if (token.empty()) return std::nullopt;
+    std::string trimmed = Trim(token);
+    std::string lower = ToLower(trimmed);
+    if (lower == "normal") {
+        return LineHeightSpec{1.2f, false};
+    }
+    LineHeightSpec spec;
+    if (EndsWith(lower, "px") || EndsWith(lower, "pt")) {
+        trimmed = trimmed.substr(0, trimmed.size() - 2);
+        spec.isAbsolute = true;
+    } else if (EndsWith(lower, "em")) {
+        trimmed = trimmed.substr(0, trimmed.size() - 2);
+        spec.isAbsolute = false;
+    } else if (!trimmed.empty() && trimmed.back() == '%') {
+        trimmed.pop_back();
+        spec.isAbsolute = false;
+        float percent = 0.0f;
+        if (!ParseFloat(trimmed, percent)) {
+            return std::nullopt;
+        }
+        spec.value = percent / 100.0f;
+        return spec;
+    }
+    float value = 0.0f;
+    if (!ParseFloat(trimmed, value)) {
+        return std::nullopt;
+    }
+    spec.value = value;
+    return spec;
+}
+
+struct LetterSpacingSpec {
+    float value = 0.0f;
+    bool isRelative = false;
+};
+
+std::optional<LetterSpacingSpec> ParseLetterSpacingValue(const std::string& token) {
+    if (token.empty()) return std::nullopt;
+    std::string trimmed = Trim(token);
+    std::string lower = ToLower(trimmed);
+    if (lower == "normal") {
+        return LetterSpacingSpec{0.0f, false};
+    }
+    LetterSpacingSpec spec;
+    if (EndsWith(lower, "em")) {
+        trimmed = trimmed.substr(0, trimmed.size() - 2);
+        spec.isRelative = true;
+    } else if (EndsWith(lower, "px") || EndsWith(lower, "pt")) {
+        trimmed = trimmed.substr(0, trimmed.size() - 2);
+        spec.isRelative = false;
+    } else if (!trimmed.empty() && trimmed.back() == '%') {
+        trimmed.pop_back();
+        spec.isRelative = true;
+        float percent = 0.0f;
+        if (!ParseFloat(trimmed, percent)) {
+            return std::nullopt;
+        }
+        spec.value = percent / 100.0f;
+        return spec;
+    }
+    float value = 0.0f;
+    if (!ParseFloat(trimmed, value)) {
+        return std::nullopt;
+    }
+    spec.value = value;
+    return spec;
+}
+
+std::vector<char32_t> DecodeUtf8(const std::string& text) {
+    std::vector<char32_t> codepoints;
+    size_t i = 0;
+    while (i < text.size()) {
+        unsigned char c = static_cast<unsigned char>(text[i]);
+        if (c < 0x80) {
+            codepoints.push_back(static_cast<char32_t>(c));
+            ++i;
+        } else if ((c >> 5) == 0x6 && i + 1 < text.size()) {
+            char32_t cp = ((c & 0x1F) << 6) |
+                          (static_cast<unsigned char>(text[i + 1]) & 0x3F);
+            codepoints.push_back(cp);
+            i += 2;
+        } else if ((c >> 4) == 0xE && i + 2 < text.size()) {
+            char32_t cp = ((c & 0x0F) << 12) |
+                          ((static_cast<unsigned char>(text[i + 1]) & 0x3F) << 6) |
+                          (static_cast<unsigned char>(text[i + 2]) & 0x3F);
+            codepoints.push_back(cp);
+            i += 3;
+        } else if ((c >> 3) == 0x1E && i + 3 < text.size()) {
+            char32_t cp = ((c & 0x07) << 18) |
+                          ((static_cast<unsigned char>(text[i + 1]) & 0x3F) << 12) |
+                          ((static_cast<unsigned char>(text[i + 2]) & 0x3F) << 6) |
+                          (static_cast<unsigned char>(text[i + 3]) & 0x3F);
+            codepoints.push_back(cp);
+            i += 4;
+        } else {
+            // Invalid sequence; skip byte.
+            ++i;
+        }
+    }
+    return codepoints;
+}
+
+#if defined(USE_FREETYPE)
+
+class SvgFontRegistry {
+public:
+    static SvgFontRegistry& Instance() {
+        static SvgFontRegistry instance;
+        return instance;
+    }
+
+    void EnsureManifestForSvg(const std::filesystem::path& svgPath) {
+        Initialize();
+        if (!initialized_) {
+            return;
+        }
+
+        std::vector<std::filesystem::path> candidates;
+        if (const char* env = std::getenv("NOVA_SVG_FONT_MANIFEST")) {
+            candidates.emplace_back(env);
+        }
+
+        auto svgDir = svgPath.parent_path();
+        if (!svgDir.empty()) {
+            candidates.push_back(svgDir / "fonts.manifest");
+            candidates.push_back(svgDir / "fonts" / "fonts.manifest");
+            auto parent = svgDir.parent_path();
+            if (!parent.empty()) {
+                candidates.push_back(parent / "fonts.manifest");
+                candidates.push_back(parent / "fonts" / "fonts.manifest");
+            }
+        }
+
+        auto climb = svgDir;
+        for (int i = 0; i < 4 && !climb.empty(); ++i) {
+            candidates.push_back(climb / "fonts.manifest");
+            candidates.push_back(climb / "fonts" / "fonts.manifest");
+            climb = climb.parent_path();
+        }
+
+        for (auto& candidate : candidates) {
+            std::error_code ec;
+            std::filesystem::path resolved = std::filesystem::weakly_canonical(candidate, ec);
+            if (ec) {
+                resolved = candidate;
+            }
+            if (std::filesystem::exists(resolved)) {
+                LoadManifest(resolved);
+            }
+        }
+    }
+
+    struct FontResource {
+        std::filesystem::path path;
+        FT_Face face = nullptr;
+        bool loadAttempted = false;
+    };
+
+    const FontResource* ResolveFont(const std::vector<std::string>& families) {
+        Initialize();
+        if (!initialized_) {
+            return nullptr;
+        }
+        for (const auto& fam : families) {
+            std::string key = ToLower(Trim(fam));
+            auto it = fonts_.find(key);
+            if (it != fonts_.end()) {
+                if (EnsureFaceLoaded(it->second)) {
+                    return &it->second;
+                }
+            }
+        }
+        if (!defaultFamilyKey_.empty()) {
+            auto it = fonts_.find(defaultFamilyKey_);
+            if (it != fonts_.end() && EnsureFaceLoaded(it->second)) {
+                return &it->second;
+            }
+        }
+        for (auto& entry : fonts_) {
+            if (EnsureFaceLoaded(entry.second)) {
+                return &entry.second;
+            }
+        }
+        return nullptr;
+    }
+
+    bool HasRegisteredFonts() const {
+        return !fonts_.empty();
+    }
+
+private:
+    SvgFontRegistry() = default;
+    ~SvgFontRegistry() {
+        for (auto& entry : fonts_) {
+            if (entry.second.face) {
+                FT_Done_Face(entry.second.face);
+                entry.second.face = nullptr;
+            }
+        }
+        if (library_) {
+            FT_Done_FreeType(library_);
+            library_ = nullptr;
+        }
+    }
+
+    SvgFontRegistry(const SvgFontRegistry&) = delete;
+    SvgFontRegistry& operator=(const SvgFontRegistry&) = delete;
+
+    void Initialize() {
+        if (initialized_) {
+            return;
+        }
+        FT_Error err = FT_Init_FreeType(&library_);
+        if (err != 0) {
+            library_ = nullptr;
+            std::cerr << "SVGSurfaceLoader: FreeType initialization failed (error " << err << ")" << std::endl;
+        } else {
+            initialized_ = true;
+        }
+    }
+
+    void LoadManifest(const std::filesystem::path& manifestPath) {
+        std::error_code ec;
+        std::filesystem::path canonical = std::filesystem::weakly_canonical(manifestPath, ec);
+        if (ec) {
+            canonical = manifestPath;
+        }
+        std::string key = ToLower(canonical.generic_string());
+        if (!loadedManifestKeys_.insert(key).second) {
+            return;
+        }
+
+        std::ifstream file(manifestPath, std::ios::in);
+        if (!file) {
+            std::cerr << "SVGSurfaceLoader: unable to read font manifest " << manifestPath << std::endl;
+            return;
+        }
+
+        std::string line;
+        size_t lineNumber = 0;
+        while (std::getline(file, line)) {
+            ++lineNumber;
+            std::string trimmed = Trim(line);
+            if (trimmed.empty() || trimmed[0] == '#') {
+                continue;
+            }
+            size_t delim = trimmed.find('=');
+            if (delim == std::string::npos) {
+                delim = trimmed.find(':');
+            }
+            if (delim == std::string::npos) {
+                std::cerr << "SVGSurfaceLoader: font manifest " << manifestPath << " line " << lineNumber << " missing key/value separator" << std::endl;
+                continue;
+            }
+            std::string left = Trim(trimmed.substr(0, delim));
+            std::string right = Trim(trimmed.substr(delim + 1));
+            if (left.empty() || right.empty()) {
+                continue;
+            }
+
+            std::string lowerLeft = ToLower(left);
+            if (lowerLeft == "default") {
+                defaultFamilyKey_ = ToLower(StripQuotes(right));
+                continue;
+            }
+
+            std::vector<std::string> aliases = ParseFontFamilyList(left);
+            if (aliases.empty()) {
+                aliases.push_back(ToLower(StripQuotes(left)));
+            }
+
+            std::string pathToken = StripQuotes(right);
+            std::filesystem::path fontPath = manifestPath.parent_path() / pathToken;
+            std::error_code fontEc;
+            std::filesystem::path normalized = std::filesystem::weakly_canonical(fontPath, fontEc);
+            if (!fontEc) {
+                fontPath = normalized;
+            } else {
+                fontPath = fontPath.lexically_normal();
+            }
+
+            if (!std::filesystem::exists(fontPath)) {
+                std::cerr << "SVGSurfaceLoader: font file not found: " << fontPath << std::endl;
+            }
+
+            for (const auto& aliasRaw : aliases) {
+                std::string alias = ToLower(aliasRaw);
+                FontResource& resource = fonts_[alias];
+                resource.path = fontPath;
+                resource.loadAttempted = false;
+            }
+
+            if (defaultFamilyKey_.empty() && !aliases.empty()) {
+                defaultFamilyKey_ = ToLower(aliases.front());
+            }
+        }
+    }
+
+    bool EnsureFaceLoaded(FontResource& resource) {
+        if (resource.face) {
+            return true;
+        }
+        if (!initialized_ || resource.loadAttempted) {
+            return false;
+        }
+        resource.loadAttempted = true;
+        std::string pathStr = resource.path.u8string();
+        FT_Face face = nullptr;
+        FT_Error err = FT_New_Face(library_, pathStr.c_str(), 0, &face);
+        if (err != 0) {
+            std::cerr << "SVGSurfaceLoader: failed to load font '" << resource.path << "' (error " << err << ")" << std::endl;
+            return false;
+        }
+        resource.face = face;
+        return true;
+    }
+
+    FT_Library library_ = nullptr;
+    bool initialized_ = false;
+    std::unordered_map<std::string, FontResource> fonts_;
+    std::unordered_set<std::string> loadedManifestKeys_;
+    std::string defaultFamilyKey_;
+};
+
+#endif // defined(USE_FREETYPE)
 
 Matrix2D ParseTransformAttribute(const std::string& text) {
     Matrix2D result = MatrixIdentity();
@@ -321,6 +888,11 @@ Color SampleGradientStops(const std::vector<GradientStop>& stops, float t) {
 
 bool StartsWith(const std::string& text, const std::string& prefix) {
     return text.size() >= prefix.size() && text.compare(0, prefix.size(), prefix) == 0;
+}
+
+bool EndsWith(const std::string& text, const std::string& suffix) {
+    return text.size() >= suffix.size() &&
+           text.compare(text.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
 Matrix2D MatrixIdentity() {
@@ -610,6 +1182,28 @@ StyleProperties ParseStyleDeclarations(const std::string& text) {
             float v = 0.0f;
             if (ParseFloat(value, v)) {
                 props.opacity = std::clamp(v, 0.0f, 1.0f);
+            }
+        } else if (name == "font-family") {
+            if (!value.empty()) {
+                props.fontFamily = value;
+            }
+        } else if (name == "font-size") {
+            if (auto size = ParseScalarAllowUnits(value)) {
+                props.fontSize = *size;
+            }
+        } else if (name == "text-anchor") {
+            if (!value.empty()) {
+                props.textAnchor = value;
+            }
+        } else if (name == "letter-spacing") {
+            if (auto spacing = ParseLetterSpacingValue(value)) {
+                props.letterSpacing = spacing->value;
+                props.letterSpacingIsRelative = spacing->isRelative;
+            }
+        } else if (name == "line-height") {
+            if (auto lh = ParseLineHeightValue(value)) {
+                props.lineHeight = lh->value;
+                props.lineHeightIsAbsolute = lh->isAbsolute;
             }
         }
     }
@@ -1021,6 +1615,7 @@ FillStyle ResolveFillStyle(const StyleProperties& props, const Color& defaultCol
 
 struct SvgDocument {
     std::vector<Shape> shapes;
+    std::vector<TextSpan> texts;
     int width = 0;
     int height = 0;
     std::unordered_map<std::string, Gradient> gradients;
@@ -1047,6 +1642,8 @@ bool ParseSVG(const std::string& text, SvgDocument& outDoc) {
     std::vector<Matrix2D> transformStack;
     transformStack.push_back(MatrixIdentity());
     std::string currentDefsId;
+    std::vector<StyleProperties> styleStack;
+    styleStack.push_back(StyleProperties{});
 
     while (true) {
         size_t lt = text.find('<', pos);
@@ -1094,6 +1691,9 @@ bool ParseSVG(const std::string& text, SvgDocument& outDoc) {
                 if (transformStack.size() > 1) {
                     transformStack.pop_back();
                 }
+                if (styleStack.size() > 1) {
+                    styleStack.pop_back();
+                }
             }
             continue;
         }
@@ -1116,11 +1716,100 @@ bool ParseSVG(const std::string& text, SvgDocument& outDoc) {
         Matrix2D parentTransform = transformStack.back();
         Matrix2D elementTransform = MatrixMultiply(parentTransform, localTransform);
 
+        StyleProperties elementStyle = styleStack.back();
+        if (auto itClass = attrs.find("class"); itClass != attrs.end()) {
+            std::stringstream ss(itClass->second);
+            std::string cls;
+            while (ss >> cls) {
+                std::string key = ToLower(cls);
+                auto it = classStyles.find(key);
+                if (it != classStyles.end()) {
+                    elementStyle.Apply(it->second);
+                }
+            }
+        }
+        if (auto itStyle = attrs.find("style"); itStyle != attrs.end()) {
+            StyleProperties inlineStyle = ParseStyleDeclarations(itStyle->second);
+            elementStyle.Apply(inlineStyle);
+        }
+        if (auto itFill = attrs.find("fill"); itFill != attrs.end()) {
+            StyleProperties fillProp;
+            if (auto url = ParseUrlReference(itFill->second)) {
+                fillProp.fillUrl = *url;
+                fillProp.fillNone = false;
+            } else {
+                Color c;
+                if (ParseColorString(itFill->second, c)) {
+                    fillProp.fill = c;
+                    fillProp.fillNone = false;
+                    fillProp.fillUrl.reset();
+                } else {
+                    std::string lowered = ToLower(Trim(itFill->second));
+                    if (lowered == "none") {
+                        fillProp.fillNone = true;
+                        fillProp.fill.reset();
+                        fillProp.fillUrl.reset();
+                    }
+                }
+            }
+            elementStyle.Apply(fillProp);
+        }
+        if (auto itFillOpacity = attrs.find("fill-opacity"); itFillOpacity != attrs.end()) {
+            float v = 0.0f;
+            if (ParseFloat(itFillOpacity->second, v)) {
+                StyleProperties prop;
+                prop.fillOpacity = std::clamp(v, 0.0f, 1.0f);
+                elementStyle.Apply(prop);
+            }
+        }
+        if (auto itOpacity = attrs.find("opacity"); itOpacity != attrs.end()) {
+            float v = 0.0f;
+            if (ParseFloat(itOpacity->second, v)) {
+                StyleProperties prop;
+                prop.opacity = std::clamp(v, 0.0f, 1.0f);
+                elementStyle.Apply(prop);
+            }
+        }
+        if (auto itFontFamily = attrs.find("font-family"); itFontFamily != attrs.end()) {
+            StyleProperties prop;
+            prop.fontFamily = itFontFamily->second;
+            elementStyle.Apply(prop);
+        }
+        if (auto itFontSize = attrs.find("font-size"); itFontSize != attrs.end()) {
+            if (auto size = ParseScalarAllowUnits(itFontSize->second)) {
+                StyleProperties prop;
+                prop.fontSize = *size;
+                elementStyle.Apply(prop);
+            }
+        }
+        if (auto itAnchor = attrs.find("text-anchor"); itAnchor != attrs.end()) {
+            StyleProperties prop;
+            prop.textAnchor = itAnchor->second;
+            elementStyle.Apply(prop);
+        }
+        if (auto itLetterSpacing = attrs.find("letter-spacing"); itLetterSpacing != attrs.end()) {
+            if (auto spacing = ParseLetterSpacingValue(itLetterSpacing->second)) {
+                StyleProperties prop;
+                prop.letterSpacing = spacing->value;
+                prop.letterSpacingIsRelative = spacing->isRelative;
+                elementStyle.Apply(prop);
+            }
+        }
+        if (auto itLineHeight = attrs.find("line-height"); itLineHeight != attrs.end()) {
+            if (auto lh = ParseLineHeightValue(itLineHeight->second)) {
+                StyleProperties prop;
+                prop.lineHeight = lh->value;
+                prop.lineHeightIsAbsolute = lh->isAbsolute;
+                elementStyle.Apply(prop);
+            }
+        }
+
         if (tagName == "defs") {
             if (!selfClosing) {
                 elementStack.push_back(tagName);
                 ++defsDepth;
                 transformStack.push_back(elementTransform);
+                styleStack.push_back(elementStyle);
             }
             continue;
         }
@@ -1136,6 +1825,7 @@ bool ParseSVG(const std::string& text, SvgDocument& outDoc) {
             if (!selfClosing) {
                 elementStack.push_back(tagName);
                 transformStack.push_back(elementTransform);
+                styleStack.push_back(elementStyle);
             }
             continue;
         }
@@ -1207,6 +1897,7 @@ bool ParseSVG(const std::string& text, SvgDocument& outDoc) {
                 currentGradient = std::move(builder);
                 elementStack.push_back(tagName);
                 transformStack.push_back(elementTransform);
+                styleStack.push_back(elementStyle);
             }
             continue;
         }
@@ -1248,6 +1939,7 @@ bool ParseSVG(const std::string& text, SvgDocument& outDoc) {
         if (!selfClosing) {
             elementStack.push_back(tagName);
             transformStack.push_back(elementTransform);
+            styleStack.push_back(elementStyle);
         }
 
         if (tagName == "svg") {
@@ -1315,62 +2007,120 @@ bool ParseSVG(const std::string& text, SvgDocument& outDoc) {
                 classStyles[className].Apply(props);
                 dot = braceClose + 1;
             }
-    } else if (tagName == "rect" || tagName == "circle" || tagName == "ellipse" || tagName == "polygon" || tagName == "polyline" || tagName == "path" || tagName == "line" || tagName == "use") {
-            StyleProperties combined;
-            auto itClass = attrs.find("class");
-            if (itClass != attrs.end()) {
-                std::stringstream ss(itClass->second);
-                std::string cls;
-                while (ss >> cls) {
-                    std::string key = ToLower(cls);
-                    auto it = classStyles.find(key);
-                    if (it != classStyles.end()) {
-                        combined.Apply(it->second);
-                    }
+    } else if (tagName == "text") {
+            if (selfClosing) {
+                continue;
+            }
+
+            auto extractFirstCoordinate = [](const std::string& value, float& out) {
+                auto numbers = ParseFloatList(value);
+                if (!numbers.empty()) {
+                    out = numbers.front();
+                    return true;
                 }
+                return ParseFloat(value, out);
+            };
+
+            float x = 0.0f;
+            float y = 0.0f;
+            if (auto it = attrs.find("x"); it != attrs.end()) {
+                extractFirstCoordinate(it->second, x);
             }
-            auto itStyle = attrs.find("style");
-            if (itStyle != attrs.end()) {
-                StyleProperties inlineStyle = ParseStyleDeclarations(itStyle->second);
-                combined.Apply(inlineStyle);
+            if (auto it = attrs.find("y"); it != attrs.end()) {
+                extractFirstCoordinate(it->second, y);
             }
-            auto itFill = attrs.find("fill");
-            if (itFill != attrs.end()) {
-                StyleProperties fillProp;
-                if (auto url = ParseUrlReference(itFill->second)) {
-                    fillProp.fillUrl = *url;
-                    fillProp.fillNone = false;
+
+            size_t contentStart = pos;
+            size_t closeTagPos = text.find("</text", pos);
+            if (closeTagPos == std::string::npos) {
+                closeTagPos = text.size();
+            }
+            std::string rawContent = text.substr(contentStart, closeTagPos - contentStart);
+            pos = closeTagPos;
+            std::string stripped = StripXmlTags(rawContent);
+            std::string decoded = DecodeHtmlEntities(stripped);
+
+            // Preserve intentional spacing but trim leading/trailing whitespace overall.
+            std::string trimmedDecoded = Trim(decoded);
+            if (trimmedDecoded.empty()) {
+                continue;
+            }
+
+            TextSpan span;
+            span.fill = ResolveFillStyle(elementStyle, {0.0f, 0.0f, 0.0f, 1.0f});
+            if (!span.fill.hasFill || (span.fill.solidColor.a <= 0.0f && !span.fill.isGradient)) {
+                continue;
+            }
+
+            span.fontSize = elementStyle.fontSize.value_or(16.0f);
+            if (span.fontSize <= 0.0f) {
+                span.fontSize = 16.0f;
+            }
+
+            if (elementStyle.lineHeight.has_value()) {
+                if (elementStyle.lineHeightIsAbsolute) {
+                    span.absoluteLineHeight = elementStyle.lineHeight.value();
                 } else {
-                    Color c;
-                    if (ParseColorString(itFill->second, c)) {
-                        fillProp.fill = c;
-                    } else {
-                        std::string lowered = ToLower(Trim(itFill->second));
-                        if (lowered == "none") {
-                            fillProp.fillNone = true;
-                        }
-                    }
-                }
-                combined.Apply(fillProp);
-            }
-            auto itFillOpacity = attrs.find("fill-opacity");
-            if (itFillOpacity != attrs.end()) {
-                float v = 0.0f;
-                if (ParseFloat(itFillOpacity->second, v)) {
-                    StyleProperties fillProp;
-                    fillProp.fillOpacity = std::clamp(v, 0.0f, 1.0f);
-                    combined.Apply(fillProp);
+                    span.lineHeightMultiplier = elementStyle.lineHeight.value();
                 }
             }
-            auto itOpacity = attrs.find("opacity");
-            if (itOpacity != attrs.end()) {
-                float v = 0.0f;
-                if (ParseFloat(itOpacity->second, v)) {
-                    StyleProperties fillProp;
-                    fillProp.opacity = std::clamp(v, 0.0f, 1.0f);
-                    combined.Apply(fillProp);
+
+            if (elementStyle.letterSpacing.has_value()) {
+                float spacing = elementStyle.letterSpacing.value();
+                if (elementStyle.letterSpacingIsRelative) {
+                    spacing *= span.fontSize;
                 }
+                span.letterSpacing = spacing;
             }
+
+            if (elementStyle.textAnchor.has_value()) {
+                span.anchor = ParseTextAnchorValue(elementStyle.textAnchor.value());
+            }
+
+            if (elementStyle.fontFamily.has_value()) {
+                span.debugFontFamily = elementStyle.fontFamily.value();
+                span.fontFamilies = ParseFontFamilyList(elementStyle.fontFamily.value());
+            }
+            if (span.fontFamilies.empty()) {
+                span.fontFamilies.push_back("sans-serif");
+            }
+
+            std::vector<std::string> rawLines = SplitLines(decoded);
+            span.lines.reserve(rawLines.size());
+            for (auto& line : rawLines) {
+                span.lines.push_back(Trim(line));
+            }
+            if (span.lines.empty()) {
+                continue;
+            }
+
+            Vec2 origin {x, y};
+            Vec2 transformedOrigin = ApplyMatrix(elementTransform, origin);
+            Vec2 baseOrigin = ApplyMatrix(elementTransform, {0.0f, 0.0f});
+            Vec2 basisX = ApplyMatrix(elementTransform, {1.0f, 0.0f});
+            basisX.x -= baseOrigin.x;
+            basisX.y -= baseOrigin.y;
+            Vec2 basisY = ApplyMatrix(elementTransform, {0.0f, 1.0f});
+            basisY.x -= baseOrigin.x;
+            basisY.y -= baseOrigin.y;
+            float scaleX = std::sqrt(basisX.x * basisX.x + basisX.y * basisX.y);
+            float scaleY = std::sqrt(basisY.x * basisY.x + basisY.y * basisY.y);
+            if (scaleX <= 1e-6f) scaleX = 1.0f;
+            if (scaleY <= 1e-6f) scaleY = 1.0f;
+            if (std::abs(basisX.y) > 1e-3f || std::abs(basisY.x) > 1e-3f) {
+                span.hasUnsupportedTransform = true;
+            }
+
+            span.fontSize *= scaleY;
+            if (span.absoluteLineHeight.has_value()) {
+                span.absoluteLineHeight = span.absoluteLineHeight.value() * scaleY;
+            }
+            span.letterSpacing *= scaleX;
+            span.origin = transformedOrigin;
+
+            outDoc.texts.push_back(std::move(span));
+    } else if (tagName == "rect" || tagName == "circle" || tagName == "ellipse" || tagName == "polygon" || tagName == "polyline" || tagName == "path" || tagName == "line" || tagName == "use") {
+            StyleProperties combined = elementStyle;
 
             FillStyle fillStyle = ResolveFillStyle(combined, {1.0f, 1.0f, 1.0f, 1.0f});
             // stroke parsing
@@ -1471,8 +2221,10 @@ bool ParseSVG(const std::string& text, SvgDocument& outDoc) {
                             Matrix2D useTransform = MatrixTranslate(ox, oy);
                             if (!MatrixEqual(elementTransform, transformStack.back())) {
                                 // elementTransform includes the <use> transform, but we need to apply it relative to parent
-                                Matrix2D relativeTransform = MatrixMultiply(MatrixInverse(transformStack.back()), elementTransform);
-                                useTransform = MatrixMultiply(useTransform, relativeTransform);
+                                if (auto parentInverse = MatrixInverse(transformStack.back())) {
+                                    Matrix2D relativeTransform = MatrixMultiply(*parentInverse, elementTransform);
+                                    useTransform = MatrixMultiply(useTransform, relativeTransform);
+                                }
                             }
                             if (!MatrixEqual(useTransform, MatrixIdentity())) {
                                 ApplyTransformToShape(clonedShape, useTransform);
@@ -1556,6 +2308,15 @@ bool ParseSVG(const std::string& text, SvgDocument& outDoc) {
             }
         }
     }
+    for (auto& span : outDoc.texts) {
+        span.origin.x = (span.origin.x - viewMinX) * scaleX;
+        span.origin.y = (span.origin.y - viewMinY) * scaleY;
+        span.fontSize *= scaleY;
+        if (span.absoluteLineHeight.has_value()) {
+            span.absoluteLineHeight = span.absoluteLineHeight.value() * scaleY;
+        }
+        span.letterSpacing *= scaleX;
+    }
 
     return true;
 }
@@ -1622,15 +2383,7 @@ void ResolveGradientReferences(SvgDocument& doc) {
     }
 }
 
-SDL_Surface* CreateSurface(int width, int height) {
-#if SDL_MAJOR_VERSION >= 3
-    return SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32);
-#else
-    return SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL_PIXELFORMAT_RGBA32);
-#endif
-}
-
-void BlendPixel(Uint8* pixel, const Color& color) {
+void BlendPixel(std::uint8_t* pixel, const Color& color) {
     float srcR = std::clamp(color.r, 0.0f, 1.0f);
     float srcG = std::clamp(color.g, 0.0f, 1.0f);
     float srcB = std::clamp(color.b, 0.0f, 1.0f);
@@ -1649,13 +2402,202 @@ void BlendPixel(Uint8* pixel, const Color& color) {
     float outG = (srcG * srcA + dstG * dstA * (1.0f - srcA)) / outA;
     float outB = (srcB * srcA + dstB * dstA * (1.0f - srcA)) / outA;
 
-    pixel[0] = static_cast<Uint8>(std::round(std::clamp(outR, 0.0f, 1.0f) * 255.0f));
-    pixel[1] = static_cast<Uint8>(std::round(std::clamp(outG, 0.0f, 1.0f) * 255.0f));
-    pixel[2] = static_cast<Uint8>(std::round(std::clamp(outB, 0.0f, 1.0f) * 255.0f));
-    pixel[3] = static_cast<Uint8>(std::round(std::clamp(outA, 0.0f, 1.0f) * 255.0f));
+    pixel[0] = static_cast<std::uint8_t>(std::round(std::clamp(outR, 0.0f, 1.0f) * 255.0f));
+    pixel[1] = static_cast<std::uint8_t>(std::round(std::clamp(outG, 0.0f, 1.0f) * 255.0f));
+    pixel[2] = static_cast<std::uint8_t>(std::round(std::clamp(outB, 0.0f, 1.0f) * 255.0f));
+    pixel[3] = static_cast<std::uint8_t>(std::round(std::clamp(outA, 0.0f, 1.0f) * 255.0f));
 }
 
-void RasterizeShape(const Shape& shape, const SvgDocument& doc, Uint8* pixels, int pitch, int width, int height) {
+#if defined(USE_FREETYPE)
+
+float MeasureLineWidth(FT_Face face, const std::string& line, float letterSpacing) {
+    auto codepoints = DecodeUtf8(line);
+    float width = 0.0f;
+    FT_UInt previous = 0;
+    bool firstGlyph = true;
+    for (char32_t cp : codepoints) {
+        if (!firstGlyph) {
+            width += letterSpacing;
+        }
+        FT_UInt glyphIndex = FT_Get_Char_Index(face, static_cast<FT_ULong>(cp));
+        if (FT_Load_Glyph(face, glyphIndex, FT_LOAD_DEFAULT) != 0) {
+            previous = 0;
+            firstGlyph = false;
+            continue;
+        }
+        if (!firstGlyph && FT_HAS_KERNING(face) && previous != 0 && glyphIndex != 0) {
+            FT_Vector kerning;
+            if (FT_Get_Kerning(face, previous, glyphIndex, FT_KERNING_DEFAULT, &kerning) == 0) {
+                width += static_cast<float>(kerning.x) / 64.0f;
+            }
+        }
+        width += static_cast<float>(face->glyph->advance.x) / 64.0f;
+        previous = glyphIndex;
+        firstGlyph = false;
+    }
+    return width;
+}
+
+void RasterizeTextSpan(const TextSpan& span,
+                       const SvgDocument& doc,
+                       std::uint8_t* pixels,
+                       int pitch,
+                       int width,
+                       int height) {
+    if (span.lines.empty()) {
+        return;
+    }
+    if (span.fontSize <= 0.0f) {
+        return;
+    }
+    if (!span.fill.hasFill) {
+        return;
+    }
+
+    static bool warnedRotation = false;
+    if (span.hasUnsupportedTransform && !warnedRotation) {
+        std::cerr << "SVGSurfaceLoader: text transform includes rotation/skew; rendering without rotation." << std::endl;
+        warnedRotation = true;
+    }
+
+    SvgFontRegistry& registry = SvgFontRegistry::Instance();
+    const SvgFontRegistry::FontResource* resource = registry.ResolveFont(span.fontFamilies);
+    if (!resource || resource->face == nullptr) {
+        static std::unordered_set<std::string> warnedFamilies;
+        std::string displayName;
+        if (!span.debugFontFamily.empty()) {
+            displayName = Trim(span.debugFontFamily);
+        } else if (!span.fontFamilies.empty()) {
+            displayName = span.fontFamilies.front();
+        } else {
+            displayName = "<unspecified>";
+        }
+        std::string warnKey = ToLower(displayName);
+        if (!warnedFamilies.count(warnKey)) {
+            std::cerr << "SVGSurfaceLoader: missing font for family '" << displayName << "'; text will not render." << std::endl;
+            warnedFamilies.insert(warnKey);
+        }
+        return;
+    }
+
+    FT_Face face = resource->face;
+    int pixelSize = std::max(1, static_cast<int>(std::round(span.fontSize)));
+    FT_Error err = FT_Set_Pixel_Sizes(face, 0, pixelSize);
+    if (err != 0) {
+        static bool warnedSize = false;
+        if (!warnedSize) {
+            std::cerr << "SVGSurfaceLoader: failed to set FreeType pixel size (error " << err << ")" << std::endl;
+            warnedSize = true;
+        }
+        return;
+    }
+
+    float lineAdvance = span.absoluteLineHeight.has_value()
+                            ? span.absoluteLineHeight.value()
+                            : span.fontSize * span.lineHeightMultiplier;
+    if (lineAdvance <= 0.0f) {
+        lineAdvance = span.fontSize * 1.2f;
+    }
+
+    Color baseColor = span.fill.solidColor;
+    if (span.fill.isGradient) {
+        auto gradientIt = doc.gradients.find(span.fill.gradientId);
+        if (gradientIt != doc.gradients.end() && !gradientIt->second.stops.empty()) {
+            baseColor = gradientIt->second.stops.front().color;
+        }
+        baseColor.a = std::clamp(baseColor.a * span.fill.opacityScale, 0.0f, 1.0f);
+    }
+
+    float letterSpacing = span.letterSpacing;
+
+    float baselineY = span.origin.y;
+    for (std::size_t lineIndex = 0; lineIndex < span.lines.size(); ++lineIndex) {
+        const std::string& line = span.lines[lineIndex];
+        if (line.empty()) {
+            baselineY += lineAdvance;
+            continue;
+        }
+
+        float lineWidth = MeasureLineWidth(face, line, letterSpacing);
+        float offsetX = 0.0f;
+        switch (span.anchor) {
+            case TextAnchor::Middle:
+                offsetX = -lineWidth * 0.5f;
+                break;
+            case TextAnchor::End:
+                offsetX = -lineWidth;
+                break;
+            case TextAnchor::Start:
+            default:
+                offsetX = 0.0f;
+                break;
+        }
+
+        float penX = span.origin.x + offsetX;
+        float penY = baselineY;
+        auto codepoints = DecodeUtf8(line);
+        FT_UInt previous = 0;
+        bool firstGlyph = true;
+
+        for (char32_t cp : codepoints) {
+            if (!firstGlyph) {
+                penX += letterSpacing;
+            }
+            FT_UInt glyphIndex = FT_Get_Char_Index(face, static_cast<FT_ULong>(cp));
+            if (FT_Load_Glyph(face, glyphIndex, FT_LOAD_DEFAULT) != 0) {
+                previous = 0;
+                firstGlyph = false;
+                continue;
+            }
+            if (!firstGlyph && FT_HAS_KERNING(face) && previous != 0 && glyphIndex != 0) {
+                FT_Vector kerning;
+                if (FT_Get_Kerning(face, previous, glyphIndex, FT_KERNING_DEFAULT, &kerning) == 0) {
+                    penX += static_cast<float>(kerning.x) / 64.0f;
+                }
+            }
+            if (FT_Load_Glyph(face, glyphIndex, FT_LOAD_RENDER) != 0) {
+                previous = 0;
+                firstGlyph = false;
+                continue;
+            }
+
+            FT_GlyphSlot slot = face->glyph;
+            const FT_Bitmap& bitmap = slot->bitmap;
+            float glyphX = penX + static_cast<float>(slot->bitmap_left);
+            float glyphY = penY - static_cast<float>(slot->bitmap_top);
+
+            for (unsigned int row = 0; row < bitmap.rows; ++row) {
+                int destY = static_cast<int>(std::floor(glyphY + static_cast<float>(row)));
+                if (destY < 0 || destY >= height) {
+                    continue;
+                }
+                for (unsigned int col = 0; col < bitmap.width; ++col) {
+                    int destX = static_cast<int>(std::floor(glyphX + static_cast<float>(col)));
+                    if (destX < 0 || destX >= width) {
+                        continue;
+                    }
+                    std::uint8_t coverage = bitmap.buffer[row * bitmap.pitch + col];
+                    if (coverage == 0) {
+                        continue;
+                    }
+                    float alpha = (coverage / 255.0f);
+                    Color pixelColor = baseColor;
+                    pixelColor.a = std::clamp(baseColor.a * alpha, 0.0f, 1.0f);
+                    BlendPixel(pixels + destY * pitch + destX * 4, pixelColor);
+                }
+            }
+
+            penX += static_cast<float>(slot->advance.x) / 64.0f;
+            previous = glyphIndex;
+            firstGlyph = false;
+        }
+        baselineY += lineAdvance;
+    }
+}
+
+#endif // defined(USE_FREETYPE)
+
+void RasterizeShape(const Shape& shape, const SvgDocument& doc, std::uint8_t* pixels, int pitch, int width, int height) {
     if (shape.subpaths.empty()) return;
 
     const FillStyle& fill = shape.fill;
@@ -1789,7 +2731,7 @@ void RasterizeShape(const Shape& shape, const SvgDocument& doc, Uint8* pixels, i
                 for (int x = startX; x <= endX; ++x) {
                     float sampleX = static_cast<float>(x) + 0.5f;
                     Color color = sampleFillColor(sampleX, scanY);
-                    Uint8* pixel = pixels + y * pitch + x * 4;
+                    std::uint8_t* pixel = pixels + y * pitch + x * 4;
                     BlendPixel(pixel, color);
                 }
             }
@@ -1815,7 +2757,7 @@ void RasterizeShape(const Shape& shape, const SvgDocument& doc, Uint8* pixels, i
                     if (inStroke) break;
                 }
                 if (inStroke) {
-                    Uint8* pixel = pixels + y * pitch + x * 4;
+                    std::uint8_t* pixel = pixels + y * pitch + x * 4;
                     BlendPixel(pixel, sc);
                 }
             }
@@ -1825,31 +2767,39 @@ void RasterizeShape(const Shape& shape, const SvgDocument& doc, Uint8* pixels, i
 
 } // namespace
 
-SDL_Surface* LoadSVGSurface(const std::string& path, SvgRasterizationOptions options) {
+bool LoadSvgToRgba(const std::string& path,
+                   std::vector<std::uint8_t>& outPixels,
+                   int& outWidth,
+                   int& outHeight,
+                   SvgRasterizationOptions options) {
     std::ifstream file(path, std::ios::binary);
     if (!file) {
-        return nullptr;
+        return false;
     }
     std::string contents;
     file.seekg(0, std::ios::end);
     std::streampos fileSize = file.tellg();
     if (fileSize <= 0) {
-        return nullptr;
+        return false;
     }
     contents.resize(static_cast<size_t>(fileSize));
     file.seekg(0, std::ios::beg);
     file.read(contents.data(), static_cast<std::streamsize>(contents.size()));
     if (!file) {
-        return nullptr;
+        return false;
     }
 
     SvgDocument doc;
     if (!ParseSVG(contents, doc)) {
-        return nullptr;
+        return false;
     }
 
+#if defined(USE_FREETYPE)
+    SvgFontRegistry::Instance().EnsureManifestForSvg(std::filesystem::path(path));
+#endif
+
     if (doc.width <= 0 || doc.height <= 0) {
-        return nullptr;
+        return false;
     }
 
     const int originalWidth = doc.width;
@@ -1916,11 +2866,60 @@ SDL_Surface* LoadSVGSurface(const std::string& path, SvgRasterizationOptions opt
                 }
             }
         }
+        for (auto& span : doc.texts) {
+            span.origin.x *= actualScaleX;
+            span.origin.y *= actualScaleY;
+            span.fontSize *= actualScaleY;
+            if (span.absoluteLineHeight.has_value()) {
+                span.absoluteLineHeight = span.absoluteLineHeight.value() * actualScaleY;
+            }
+            span.letterSpacing *= actualScaleX;
+        }
         doc.width = outputWidth;
         doc.height = outputHeight;
     }
 
-    SDL_Surface* surface = CreateSurface(doc.width, doc.height);
+    outWidth = doc.width;
+    outHeight = doc.height;
+    const std::size_t bufferSize = static_cast<std::size_t>(outWidth) * static_cast<std::size_t>(outHeight) * 4u;
+    outPixels.assign(bufferSize, 0);
+
+    std::uint8_t* pixels = outPixels.data();
+    const int pitch = outWidth * 4;
+    for (const auto& shape : doc.shapes) {
+        RasterizeShape(shape, doc, pixels, pitch, outWidth, outHeight);
+    }
+
+#if defined(USE_FREETYPE)
+    for (const auto& textSpan : doc.texts) {
+        RasterizeTextSpan(textSpan, doc, pixels, pitch, outWidth, outHeight);
+    }
+#else
+    (void)doc;
+#endif
+
+    return true;
+}
+
+#if defined(USE_SDL)
+
+SDL_Surface* CreateSurface(int width, int height) {
+#if SDL_MAJOR_VERSION >= 3
+    return SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32);
+#else
+    return SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL_PIXELFORMAT_RGBA32);
+#endif
+}
+
+SDL_Surface* LoadSVGSurface(const std::string& path, SvgRasterizationOptions options) {
+    std::vector<std::uint8_t> pixels;
+    int width = 0;
+    int height = 0;
+    if (!LoadSvgToRgba(path, pixels, width, height, options)) {
+        return nullptr;
+    }
+
+    SDL_Surface* surface = CreateSurface(width, height);
     if (!surface) {
         return nullptr;
     }
@@ -1941,13 +2940,17 @@ SDL_Surface* LoadSVGSurface(const std::string& path, SvgRasterizationOptions opt
         locked = true;
     }
 
-    std::fill_n(static_cast<Uint8*>(surface->pixels),
-                static_cast<size_t>(surface->pitch) * static_cast<size_t>(surface->h),
-                0);
-
-    Uint8* pixels = static_cast<Uint8*>(surface->pixels);
-    for (const auto& shape : doc.shapes) {
-        RasterizeShape(shape, doc, pixels, surface->pitch, surface->w, surface->h);
+    std::uint8_t* dst = static_cast<std::uint8_t*>(surface->pixels);
+    const int pitch = surface->pitch;
+    const int rowBytes = width * 4;
+    if (pitch == rowBytes) {
+        std::memcpy(dst, pixels.data(), static_cast<std::size_t>(rowBytes) * static_cast<std::size_t>(height));
+    } else {
+        for (int y = 0; y < height; ++y) {
+            std::memcpy(dst + static_cast<std::size_t>(y) * static_cast<std::size_t>(pitch),
+                        pixels.data() + static_cast<std::size_t>(y) * static_cast<std::size_t>(rowBytes),
+                        static_cast<std::size_t>(rowBytes));
+        }
     }
 
     if (locked) {
@@ -1961,6 +2964,8 @@ SDL_Surface* LoadSVGSurface(const std::string& path, SvgRasterizationOptions opt
     return surface;
 }
 
-#else // USE_SDL
+#else
+
 SDL_Surface* LoadSVGSurface(const std::string&, SvgRasterizationOptions) { return nullptr; }
+
 #endif

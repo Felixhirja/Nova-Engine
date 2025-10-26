@@ -1,0 +1,71 @@
+# Nova-Engine — TODO Checklist (quick-hit)
+
+*Snapshot of actionable items pulled from the roadmap. Use this to drive daily execution.*
+
+## Next 48 Hours
+
+* [ ] GLFW context: switch to OpenGL 4.6 Core + fallback chain; verify init.
+* [ ] Add GLAD loader; call `gladLoadGLLoader` and log success/failure.
+* [ ] XInput: delay-load + version probe (1_4 → 1_3 → 9_1_0); graceful no‑gamepad path.
+* [ ] Startup graphics dump: vendor/renderer/version/extensions → `graphics_info.log`.
+* [ ] Cross‑platform `clean` target (PowerShell + Bash) and test on Windows.
+* [ ] DLL checker/copy PowerShell script wired before run.
+* [x] SVGSurfaceLoader: integrate FreeType text rasterization + font asset packaging.
+* [ ] SVGSurfaceLoader: software filter stack with `feGaussianBlur` support for HUD art.
+## Next 7 Days
+
+* [ ] ECS V2: archetype transition copy fix + fuzz tests; run under ASAN/UBSAN; determinism check.
+* [ ] Headless harness: scripted input playback, JSON state snapshots, perf CSV exporter.
+* [ ] CI matrix: Windows (MSVC, MinGW) + Ubuntu (clang/gcc) with cache; artifacts zipped.
+* [ ] clang-format/clang-tidy config + pre-commit; CI gates with autofix in PRs.
+* [ ] Crash handling: integrate Crashpad/Breakpad + symbol upload pipeline.
+* [ ] Settings schema (JSON/TOML) with versioning + **Safe Mode** boot flag.
+
+## Next 14 Days
+
+* [ ] OpenGL debug context + `KHR_debug` callback; on-screen toast in dev builds.
+* [ ] Shader hot-reload with fallback to last good binary on error.
+* [ ] GPU timer queries per pass (opaque/transparent/post/UI) → CSV export.
+* [ ] Frustum culling prototype (bounding spheres + coarse BVH); FPS delta recorded.
+* [ ] HDR spike: ACES tonemapping; screenshot diffs vs LDR baseline.
+* [ ] Floating-origin / camera-relative rendering prototype to reduce precision jitter.
+* [x] SVGSurfaceLoader: integrate FreeType text rasterization + font asset packaging.
+* [ ] SVGSurfaceLoader: software filter stack with `feGaussianBlur` support for HUD art.
+
+## Accessibility & UX
+
+* [ ] Reduced‑motion preset (disable camera bob/shake; cap FOV change rate).
+* [ ] Input toggles vs hold; remappable stick dead zones.
+
+## Solar System & Precision
+
+* [ ] Elliptical orbits (Kepler elements) with mean anomaly update.
+* [ ] Hierarchical reference frames (planet‑centric) to avoid double‑precision.
+* [ ] Time scaling controls (pause/slow/fast) with stable integrator bounds.
+
+## Networking Readiness
+
+* [ ] Deterministic tick runner (fixed dt) + command recording for future rollback.
+* [ ] Snapshot & delta serialization stubs (opt‑in per component).
+* [ ] Interest management filter draft (proximity/visibility).
+
+## Packaging & Docs
+
+* [ ] First‑run hardware/driver probe; save checklist to file.
+* [ ] License audit of third‑party code; auto‑generate `NOTICE`.
+* [ ] `CONTRIBUTING.md` + issue/PR templates and coding standards.
+* [ ] High‑level architecture diagram (C4 L2) + hot‑path sequence diagrams.
+
+## QA & Performance
+
+* [ ] Golden‑image tests (offscreen FBO diff) running in CI with artifact uploads.
+* [ ] 8‑hour headless soak test with memory/leak watch and periodic snapshots.
+* [ ] Perf budgets per frame (ms targets per subsystem) with CI regression assertions.
+* [ ] Automated worst‑case scene builder (many ships/particles) for stress testing.
+
+---
+
+**Owner placeholders**
+Rendering: ___ • Systems/ECS: ___ • Tooling/CI: ___ • Input: ___ • Docs: ___
+
+*Last updated: 2025‑10‑25*

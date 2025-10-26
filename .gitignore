@@ -27,3 +27,6 @@ TestResults.xml
 star-engine
 nova-engine
 build/
+
+# Generated at runtime; rasterized SVG caches
+assets/ui/cache/

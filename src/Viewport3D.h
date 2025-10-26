@@ -6,10 +6,12 @@
 #include "EnergyHUDTelemetry.h"
 #include "graphics/UIBatcher.h"
 #include "graphics/LineBatcher3D.h"
+#include "Mesh.h"
 #include <string>
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <chrono>
 
 enum class RenderBackend {
     None,
@@ -133,6 +135,9 @@ public:
                  const class ShipAssemblyResult*,
                  const struct EnergyHUDTelemetry* energyTelemetry = nullptr);
 
+    void ToggleFullscreen();
+    bool IsFullscreen() const { return isFullscreen_; }
+
     // Overlay rendering
     void RenderMenuOverlay(const MainMenu::RenderData& menuData);
 
@@ -141,6 +146,9 @@ public:
     void SetBloomEnabled(bool) {}
     bool IsLetterboxEnabled() const { return false; }
     void SetLetterboxEnabled(bool) {}
+
+    // Small helper: show brief HUD usage hints (F8/F9)
+    void SetShowHudHints(bool v) { showHudHints_ = v; }
 
     void SetVSyncEnabled(bool enabled);
     bool IsVSyncEnabled() const { return vsyncEnabled_; }
@@ -162,6 +170,14 @@ public:
 
     // Expose UI batcher for external overlays (read-only pointer; may be null if not using GL)
     UIBatcher* GetUIBatcher() const { return uiBatcher_.get(); }
+
+#ifndef NDEBUG
+    // Debug toggles for axes rendering (no-op in Release)
+    void ToggleWorldAxes();
+    void ToggleMiniAxesGizmo();
+    bool IsWorldAxesShown() const;
+    bool IsMiniAxesGizmoShown() const;
+#endif
 
 private:
     int width;
@@ -188,9 +204,23 @@ private:
     std::vector<ViewportLayout> layouts_;
     size_t activeLayoutIndex_;
     std::unique_ptr<UIBatcher> uiBatcher_;
+#if defined(USE_GLFW) || defined(USE_SDL)
+    unsigned int playerHudTextureGL_;
+    int playerHudTextureGLWidth_;
+    int playerHudTextureGLHeight_;
+    bool playerHudTextureGLFailed_;
+    Mesh playerMesh_;
+    bool playerMeshInitialized_ = false;
+    bool isFullscreen_ = false;
+    int windowedPosX_ = 100;
+    int windowedPosY_ = 100;
+    int windowedWidth_ = 800;
+    int windowedHeight_ = 600;
+#endif
     std::unique_ptr<LineBatcher3D> lineBatcher3D_;
     struct PrimitiveBuffers;
     std::unique_ptr<PrimitiveBuffers> primitiveBuffers_;
+    bool showHudHints_ = false;
 
     void EnsureLayoutConfiguration();
     void ApplyViewportView(const ViewportView& view);
@@ -200,6 +230,9 @@ private:
     void ActivateSDLView(const ViewportView& view);
 #ifdef USE_SDL
     void EnsureSpaceshipHudTexture();
+#endif
+#if defined(USE_GLFW) || defined(USE_SDL)
+    void EnsurePlayerHudTextureGL();
 #endif
     void SetBackend(RenderBackend backend);
     bool IsUsingSDLBackend() const;
@@ -211,10 +244,18 @@ private:
     void DestroyPrimitiveBuffers();
     void DrawPlayerPatchPrimitive();
     void DrawCubePrimitive(float r, float g, float b);
-
-    // Tiny 5x5 glyph rendering using UI batcher when available (fallback to immediate mode)
-    void DrawTinyChar2D(float x, float y, char c, float scale, float r, float g, float b);
+    void EnsurePlayerMesh();
 
     // Ensure line batcher exists and initialized
     void EnsureLineBatcher3D();
+
+    // HUD sampling state for velocity estimation
+    double lastHudX_ = 0.0;
+    double lastHudY_ = 0.0;
+    double lastHudZ_ = 0.0;
+    std::chrono::steady_clock::time_point lastHudTime_{};
+    bool haveHudSample_ = false;
+
+    // Compute speed estimate in world units per second; stores last sample
+    double SampleSpeed(double x, double y, double z);
 };

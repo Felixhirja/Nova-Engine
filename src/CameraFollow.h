@@ -74,6 +74,13 @@ struct CameraFollowConfig {
     bool   enableObstacleAvoidance = false; // if true, raycast to avoid obstacles
     double obstacleMargin = 0.5;           // meters to keep from obstacles
 
+    // --- Cut / teleport handling ---
+    bool   enableTeleportHandling   = true;   // guard for the feature
+    double teleportDistanceThreshold = 10.0;  // meters; jump larger than this triggers snap
+    int    teleportSnapFrames        = 2;     // number of frames to skip smoothing entirely
+    double teleportBlendSeconds      = 0.3;   // seconds of boosted smoothing after the snap
+    double teleportBlendMinAlpha     = 0.65;  // minimum smoothing alpha while recovering
+
     // Sanity pass: clamp ranges and fix obviously-bad configs at runtime.
     void Validate() noexcept {
         // Make sure mins are sensible
@@ -107,6 +114,12 @@ struct CameraFollowConfig {
 
         // Dynamic shoulder factor reasonable
         dynamicShoulderFactor = std::clamp(dynamicShoulderFactor, -1.0, 1.0);
+
+        // Teleport handling guards
+        teleportDistanceThreshold = std::max(0.0, teleportDistanceThreshold);
+        teleportSnapFrames        = std::max(0, teleportSnapFrames);
+        teleportBlendSeconds      = std::clamp(teleportBlendSeconds, 0.0, 1.0);
+        teleportBlendMinAlpha     = std::clamp(teleportBlendMinAlpha, 0.0, 1.0);
     }
 };
 
@@ -126,6 +139,14 @@ struct CameraFollowState {
     // Persistent orbit angle for stable target-lock orbiting
     double orbitYaw = 0.0;
     double lockedOrbitOffset = 0.0;  // Separate offset for locked mode
+
+    // Teleport handling state
+    double lastDesiredPosX = 0.0;
+    double lastDesiredPosY = 0.0;
+    double lastDesiredPosZ = 0.0;
+    bool   hasLastDesired   = false;
+    int    teleportFramesRemaining = 0;
+    double teleportBlendTimer = 0.0;
 };
 
 struct CameraFollowInput {

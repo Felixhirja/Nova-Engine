@@ -2,6 +2,10 @@
 
 class Camera {
 public:
+    static constexpr double kMinFovDegrees = 30.0;
+    static constexpr double kMaxFovDegrees = 90.0;
+    static constexpr double kDefaultFovDegrees = 60.0;
+
     Camera();
     Camera(double x, double y, double z, double pitch, double yaw, double zoom);
 
@@ -32,11 +36,13 @@ public:
     void UpdateZoom(double dt);
 
 private:
+    static double ClampFov(double fov) noexcept;
+
     double x_;
     double y_;
     double z_;
     double pitch_;
     double yaw_;
     double zoom_;
-    double targetZoom_ = 1.0;
+    double targetZoom_;
 };

@@ -9,13 +9,14 @@ This document summarizes the current limitations of `src/SVGSurfaceLoader.cpp`, 
 - Parses solid color fills (hex, rgb, rgba, basic named colors).
 - Added (recent): basic stroke parsing (`stroke`, `stroke-width`) and a simple stroke rasterization pass.
 - Added (recent): minimal `<defs>`/`<use>` support for resolving `<path id="...">` and basic `<use href="#id" x="..." y="..." />` with offset.
+- Added (recent): FreeType-backed text rasterization driven by `assets/ui/fonts/fonts.manifest`.
 
 ## Known limitations
 
 1. Gradients: `linearGradient` and `radialGradient` are not supported. Elements using `fill="url(#...)"` will be rendered with a solid fallback or not rendered as intended.
 2. Filters: `feGaussianBlur`, `feColorMatrix`, `feMerge` and other filters are ignored. Glow and blur effects will not appear.
 3. Strokes: basic stroke is implemented, but joins, caps, dashed patterns, and stroke alignment (inside/center/outside) are not handled.
-4. Text: `<text>` elements are not rendered. Text in HUD SVGs must be rasterized or drawn with engine text overlays.
+4. Text: only horizontal, unskewed text is supported. Rotation/skew transforms are ignored, gradients fall back to a solid fill, and glyph caching is not yet implemented.
 5. `<use>` resolution: only references to `<path id=...>` collected from the same document are supported, and only x/y offsets are applied; transforms are not resolved.
 6. Performance: stroke rasterization checks every pixel against every segment; this is slow for large images.
 
@@ -34,7 +35,7 @@ Medium priority
 
 - [ ] Implement strokes more accurately: support stroke-linejoin, stroke-linecap, miter limits, and dashed strokes.
 
-- [ ] Implement text fallback: either rasterize text using a font rasterizer library or map SVG `\<text\>` to the engine TextRenderer (preferred for HUDs because the engine already renders text).
+- [x] Implement text fallback: rasterize SVG `\<text\>` via FreeType with manifest-driven font lookup.
 
 
 Low priority
