@@ -9,11 +9,11 @@ This document defines the baseline taxonomy for player-flyable and AI-controlled
 - **Power Budget** – Baseline power plant output in megawatts used for balance and subsystem sizing.
 - **Hardpoint Layout** – Count of primary/secondary weapon mounts, utility pylons, and module sockets.
 - **Progression Tier** – The typical character or faction milestone where the hull unlocks in the campaign.
-- **Component Slot** – Installation point defined by `ComponentSlotCategory`/`SlotSize` enums in `src/Spaceship.h`. Slots dictate which subsystems the hull can accept and are consumed by the ship assembly tool (`ShipAssembly.cpp`).
+- **Component Slot** – Installation point defined by `ComponentSlotCategory`/`SlotSize` enums in `actors/Spaceship.h`. Slots dictate which subsystems the hull can accept and are consumed by the ship assembly tool (`ShipAssembly.cpp`).
 
 ### Component & Hardpoint Specification Reference
 
-The runtime catalog in `src/Spaceship.cpp` exposes deterministic component layouts per class. Designers should use the matrix below when planning blueprints, balance passes, or UI slices.
+The runtime catalog in `actors/Spaceship.cpp` exposes deterministic component layouts per class. Designers should use the matrix below when planning blueprints, balance passes, or UI slices.
 
 | Category (`ComponentSlotCategory`) | Typical Size | Fighter | Freighter | Explorer | Industrial | Capital | Notes |
 |------------------------------------|--------------|---------|-----------|----------|------------|---------|-------|
@@ -176,4 +176,4 @@ Designers iterating on new hulls or revising faction variants should evaluate pr
   `assets/ships/` to guarantee consistency between editor tooling and runtime builds.
 - Progression tiers map to milestone IDs in the mission and economy systems; unlocking a hull automatically exposes associated component blueprints.
 - Coordination required with art, audio, and UI teams to ensure consistent visual language and telemetry exposure.
-- The runtime taxonomy is currently implemented in-code via `SpaceshipCatalog` (`src/Spaceship.cpp`) exposing the structures defined in this document.
+- The runtime taxonomy is currently implemented in-code via `SpaceshipCatalog` (`actors/Spaceship.cpp`) exposing the structures defined in this document.

@@ -4,6 +4,7 @@
 #include "MainMenu.h"
 #include "Transform.h"
 #include "EnergyHUDTelemetry.h"
+#include "ecs/EntityManager.h"
 #include "graphics/UIBatcher.h"
 #include "graphics/LineBatcher3D.h"
 #include "Mesh.h"
@@ -12,6 +13,7 @@
 #include <memory>
 #include <vector>
 #include <chrono>
+#include <unordered_map>
 
 enum class RenderBackend {
     None,
@@ -88,10 +90,13 @@ public:
     void DrawPlayer(double x, double y = 0.0, double z = 0.0);
     // Draw a generic entity given its transform (x,y,z)
     void DrawEntity(const Transform &t);
-    // Draw entity with optional texture handle (0 == none). ResourceManager is optional and used only with SDL.
-    void DrawEntity(const Transform &t, int textureHandle, class ResourceManager* resourceManager, int currentFrame = 0);
-    // Draw entity with camera transform
-    void DrawEntity(const Transform &t, int textureHandle, class ResourceManager* resourceManager, const class Camera* camera, int currentFrame = 0);
+    void DrawEntity(Entity entity, const Transform& t);
+    // Allow callers to override the mesh/scale used for a specific entity ID
+    void SetEntityMesh(Entity entity, Mesh mesh, float scale = 1.0f);
+    void ClearEntityMesh(Entity entity);
+    void ClearEntityMeshes();
+    // Factory for the default stylized player avatar mesh
+    static Mesh CreatePlayerAvatarMesh();
     void Shutdown();
     
     // If OpenGL is in use this flag will be true and an OpenGL context will be owned
@@ -245,6 +250,7 @@ private:
     void DrawPlayerPatchPrimitive();
     void DrawCubePrimitive(float r, float g, float b);
     void EnsurePlayerMesh();
+    void DrawMeshAt(double x, double y, double z, const Mesh* meshOverride, float scale, char asciiChar);
 
     // Ensure line batcher exists and initialized
     void EnsureLineBatcher3D();
@@ -258,4 +264,10 @@ private:
 
     // Compute speed estimate in world units per second; stores last sample
     double SampleSpeed(double x, double y, double z);
+
+    struct EntityMeshBinding {
+        Mesh mesh;
+        float scale = 1.0f;
+    };
+    std::unordered_map<Entity, EntityMeshBinding> entityMeshes_;
 };

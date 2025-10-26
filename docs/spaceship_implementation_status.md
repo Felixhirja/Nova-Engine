@@ -312,11 +312,13 @@ Your spaceship system has **substantial infrastructure** already built!
 - `src/EnergyManagementSystem.h/cpp` - Power distribution
 
 ### 🔄 Needs Enhancement
-- `src/Spaceship.cpp` - Add more detailed implementations
+
+- `actors/Spaceship.cpp` - Add more detailed implementations
 - `src/MainLoop.cpp` - Integrate ship systems more deeply
 - `src/Viewport3D.cpp` - Integrate particle rendering
 
 ### 📝 Needs Creation
+
 - `src/CargoSystem.h/cpp` - NEW
 - `src/CrewSystem.h/cpp` - NEW
 - `src/DamageModel.h/cpp` - NEW
@@ -330,6 +332,7 @@ Your spaceship system has **substantial infrastructure** already built!
 ## 💡 Key Insights
 
 ### What's Working Well
+
 1. **Excellent Architecture** - Modular, extensible component system
 2. **Strong Documentation** - Professional-quality taxonomy and design docs
 3. **Good Testing** - Unit tests for core assembly logic
@@ -337,6 +340,7 @@ Your spaceship system has **substantial infrastructure** already built!
 5. **Clear Roadmap** - `todo_spaceship.txt` provides good tracking
 
 ### Gaps to Address
+
 1. **Text Rendering** - Blocks all UI work (CRITICAL)
 2. **Physics Integration** - Needed for realistic flight (Depends on Physics Engine task)
 3. **Damage Model** - Needed for combat gameplay
@@ -344,6 +348,7 @@ Your spaceship system has **substantial infrastructure** already built!
 5. **Asset Creation** - Art and audio assets need to be created/sourced
 
 ### Coordination Needed
+
 - **Physics Engine** task must progress to unlock flight mechanics
 - **Solar System** work should coordinate for docking/landing
 - **UI/HUD** development can proceed once text rendering is complete
@@ -354,7 +359,7 @@ Your spaceship system has **substantial infrastructure** already built!
 
 Mark this task as:
 
-```
+```text
 ✅ Spaceship Classes & Components [75% COMPLETE - Core Systems Functional]
   ✅ Design & taxonomy complete (docs/spaceship_taxonomy.md)
   ✅ Core data structures implemented (src/Spaceship.h)
@@ -390,6 +395,7 @@ Mark this task as:
 **Your spaceship system is in EXCELLENT shape!**
 
 ✅ **Strengths:**
+
 - World-class design documentation
 - Clean, modular architecture
 - Core assembly and performance systems working
@@ -397,6 +403,7 @@ Mark this task as:
 - Professional-quality feedback frameworks
 
 🔄 **Focus Areas:**
+
 - Implement text rendering (unblocks UI work)
 - Complete validation and error handling
 - Integrate with physics engine

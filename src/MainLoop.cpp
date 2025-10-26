@@ -10,6 +10,7 @@
 #include "GamepadManager.h"
 #include "EngineBootstrap.h"
 #include "FrameScheduler.h"
+#include "Transform.h"
 #include "ecs/EntityManager.h"
 #include "ecs/Components.h"
 #include "ecs/ECSInspector.h"
@@ -249,6 +250,13 @@ void MainLoop::Init() {
     {
         std::ofstream log2("sdl_diag.log", std::ios::app);
         if (log2) log2 << "Simulation initialized" << std::endl;
+    }
+
+    if (viewport && simulation) {
+        Entity playerEntity = simulation->GetPlayerEntity();
+        if (playerEntity != 0 && entityManager && entityManager->IsAlive(playerEntity)) {
+            viewport->SetEntityMesh(playerEntity, Viewport3D::CreatePlayerAvatarMesh(), 1.1f);
+        }
     }
 
     // Resource manager & demo entity (use unique_ptr ownership)
@@ -707,9 +715,15 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             viewport->SetShowHudHints(secondsSinceStart < 5.0);
         }
 
-        viewport->Clear();
-        viewport->Render(camera.get(), playerX, playerY, playerZ, runtime.targetLocked);
-        viewport->DrawPlayer(playerX, playerY, playerZ);
+    viewport->Clear();
+    viewport->Render(camera.get(), playerX, playerY, playerZ, runtime.targetLocked);
+
+    Transform playerTransform;
+    playerTransform.x = playerX;
+    playerTransform.y = playerY;
+    playerTransform.z = playerZ;
+    Entity playerEntity = simulation ? simulation->GetPlayerEntity() : 0;
+    viewport->DrawEntity(playerEntity, playerTransform);
 
         if (camera) {
             double wheelDelta = Input::GetMouseWheelDelta();

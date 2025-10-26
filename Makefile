@@ -13,6 +13,10 @@ GLAD_INCLUDE := -Ilib/glad/include
 CXXFLAGS += $(GLAD_INCLUDE)
 CFLAGS += $(GLAD_INCLUDE)
 
+# Expose actor facades outside the engine directory
+CXXFLAGS += -Iactors
+CFLAGS += -Iactors
+
 GLFW_CFLAGS := $(shell pkg-config --cflags glfw3 2>/dev/null)
 GLFW_LIBS  := $(shell pkg-config --libs glfw3 2>/dev/null)
 
@@ -55,7 +59,7 @@ endif
 endif
 
 # Include graphics subsystem and GLAD loader
-SRC := $(wildcard src/*.cpp) $(wildcard src/ecs/*.cpp) $(wildcard src/physics/*.cpp)
+SRC := $(wildcard src/*.cpp) $(wildcard actors/*.cpp) $(wildcard src/ecs/*.cpp) $(wildcard src/physics/*.cpp)
 GLAD_SRC :=
 GLAD_OBJ :=
 

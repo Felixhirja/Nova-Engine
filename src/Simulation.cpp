@@ -675,6 +675,13 @@ void Simulation::Init(EntityManager* externalEm) {
     auto movementParams = std::make_shared<MovementParameters>(movementConfig);
     useEm->AddComponent<MovementParameters>(playerEntity, movementParams);
 
+    if (auto* existingBounds = useEm->GetComponent<MovementBounds>(playerEntity)) {
+        *existingBounds = movementBoundsConfig;
+    } else {
+        auto movementBounds = std::make_shared<MovementBounds>(movementBoundsConfig);
+        useEm->AddComponent<MovementBounds>(playerEntity, movementBounds);
+    }
+
     auto locomotion = std::make_shared<LocomotionStateMachine>();
     locomotion->wasGrounded = physics->isGrounded;
     const double forwardMax = std::max(0.0, movementConfig.forwardMaxSpeed);
@@ -881,6 +888,13 @@ void Simulation::ConfigureMovementBounds(const MovementBounds& bounds) {
     }
 
     RebuildEnvironmentColliders(*useEm);
+
+    if (auto* existing = useEm->GetComponent<MovementBounds>(playerEntity)) {
+        *existing = movementBoundsConfig;
+    } else {
+        auto movementBounds = std::make_shared<MovementBounds>(movementBoundsConfig);
+        useEm->AddComponent<MovementBounds>(playerEntity, movementBounds);
+    }
 }
 
 void Simulation::SetMovementBoundsConfigPath(const std::string& path) {

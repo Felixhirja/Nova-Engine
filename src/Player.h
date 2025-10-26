@@ -1,22 +1,4 @@
-#ifndef PLAYER_H
-#define PLAYER_H
+#pragma once
 
-class Player {
-public:
-    Player();
-    ~Player();
-
-    void Init();
-    // Update with input: left/right boolean input
-    void Update(double dt, bool inputLeft = false, bool inputRight = false);
-
-    double GetX() const;
-    double GetY() const;
-
-private:
-    double x, y;
-    double vx; // velocity in x
-    double ax; // acceleration
-};
-
-#endif // PLAYER_H
+// Legacy include shim to preserve existing includes. Real implementation now lives in actors/.
+#include "../actors/Player.h"

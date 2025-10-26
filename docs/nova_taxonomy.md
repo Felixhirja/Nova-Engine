@@ -1,3 +1,4 @@
+
 # Nova Engine Gameplay Taxonomy
 
 This document summarizes the major taxonomic groups used when describing gameplay-facing content within Nova Engine. It is intended to help designers, programmers, and QA align on shared terminology when discussing feature scope, asset requirements, or balancing passes. Each section lists the defining traits for the category, the typical data sources, and relevant subsystems that consume the information.
@@ -6,7 +7,7 @@ This document summarizes the major taxonomic groups used when describing gamepla
 
 - **Core Definition**: Any runtime object that can navigate the world, receive input (player or AI), and interact through combat, logistics, or scripted events.
 - **Primary Classes**: `Spaceship`, `Drone`, `CapitalShip`, `StationModule`.
-- **Data Sources**: `src/Spaceship.cpp`, faction tuning tables, AI behavior trees, and the physics configuration files in `assets/config/`.
+- **Data Sources**: `actors/Spaceship.cpp`, faction tuning tables, AI behavior trees, and the physics configuration files in `assets/config/`.
 - **Key Subsystems**: Flight model, targeting, damage routing, docking, and mission scripting.
 
 ### 1.1 Sub-Taxonomy: Spacecraft

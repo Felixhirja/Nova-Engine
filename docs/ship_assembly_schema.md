@@ -91,6 +91,6 @@ Stores per-category aggregates that power editor diagnostics and UI slices:
 
 ## Related Work
 
-- Taxonomy source: `src/Spaceship.h` / `src/Spaceship.cpp` (class definitions, slot specs).
+- Taxonomy source: `actors/Spaceship.h` / `actors/Spaceship.cpp` (class definitions, slot specs).
 - Unit test exercising the schema and assembler: `tests/test_ship_assembly.cpp`.
 

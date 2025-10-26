@@ -37,7 +37,6 @@
 #include <SDL.h>
 #include "sdl_compat.h"
 #endif
-#include "ResourceManager.h"
 #include "Camera.h"
 #endif
 #ifdef USE_GLFW
@@ -2052,23 +2051,28 @@ void Viewport3D::Present() {
     }
 }
 
-void Viewport3D::DrawPlayer(double x, double y, double z) {
-    if (debugLogging_) std::cout << "Viewport3D::DrawPlayer() called at (" << x << ", " << y << ", " << z << ")" << std::endl;
-    if (debugLogging_) std::cout << "Viewport3D::DrawPlayer() - backend=" << RenderBackendToString(backend_) << std::endl;
+void Viewport3D::DrawMeshAt(double x, double y, double z, const Mesh* meshOverride, float scale, char asciiChar) {
     if (IsUsingSDLBackend()) {
 #ifdef USE_SDL
         if (IsUsingSDLGL()) {
             SDL_GL_MakeCurrent(sdlWindow, sdlGLContext);
-            EnsurePlayerMesh();
+            const Mesh* meshToDraw = meshOverride;
+            if (!meshToDraw || meshToDraw->Empty()) {
+                EnsurePlayerMesh();
+                meshToDraw = &playerMesh_;
+                scale = 0.85f;
+            } else if (scale <= 0.0f) {
+                scale = 1.0f;
+            }
             glPushMatrix();
-            glTranslatef((GLfloat)x, (GLfloat)y, (GLfloat)z);
-            constexpr GLfloat playerScale = 0.85f;
+            glTranslatef(static_cast<GLfloat>(x), static_cast<GLfloat>(y), static_cast<GLfloat>(z));
+            const GLfloat playerScale = static_cast<GLfloat>(scale);
             glScalef(playerScale, playerScale, playerScale);
             const GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
             if (cullEnabled) {
                 glDisable(GL_CULL_FACE);
             }
-            playerMesh_.Draw();
+            meshToDraw->Draw();
             if (cullEnabled) {
                 glEnable(GL_CULL_FACE);
             }
@@ -2076,37 +2080,48 @@ void Viewport3D::DrawPlayer(double x, double y, double z) {
         } else {
             int px = static_cast<int>(((x + 5.0) / 10.0) * width);
             int py = height / 2;
-            // Draw smaller, more visible player patch
-            SDL_Rect mainRect{px - 6, py - 6, 12, 12};
-            SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 0, 255); // Bright yellow
-            compat_RenderFillRect(sdlRenderer, &mainRect);
-
-            // Add red border for visibility
-            SDL_SetRenderDrawColor(sdlRenderer, 255, 0, 0, 255);
-            compat_RenderDrawRect(sdlRenderer, &mainRect);
-
-            // Add blue center dot
-            SDL_Rect centerDot{px - 2, py - 2, 4, 4};
-            SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 255, 255);
-            compat_RenderFillRect(sdlRenderer, &centerDot);
+            const float patchScale = meshOverride ? std::max(0.2f, scale) : 0.85f;
+            const int halfSize = std::max(3, static_cast<int>(std::round(6.0f * patchScale)));
+            SDL_Rect mainRect{px - halfSize, py - halfSize, halfSize * 2, halfSize * 2};
+            if (meshOverride) {
+                SDL_SetRenderDrawColor(sdlRenderer, 0, 220, 255, 255);
+                compat_RenderFillRect(sdlRenderer, &mainRect);
+                SDL_SetRenderDrawColor(sdlRenderer, 0, 64, 255, 255);
+                compat_RenderDrawRect(sdlRenderer, &mainRect);
+            } else {
+                SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 0, 255);
+                compat_RenderFillRect(sdlRenderer, &mainRect);
+                SDL_SetRenderDrawColor(sdlRenderer, 255, 0, 0, 255);
+                compat_RenderDrawRect(sdlRenderer, &mainRect);
+                SDL_Rect centerDot{px - 2, py - 2, 4, 4};
+                SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 255, 255);
+                compat_RenderFillRect(sdlRenderer, &centerDot);
+            }
         }
 #else
-        (void)x; (void)y; (void)z;
+        (void)x; (void)y; (void)z; (void)meshOverride; (void)scale; (void)asciiChar;
 #endif
     }
 #ifdef USE_GLFW
     else if (IsUsingGLFWBackend() && glfwWindow) {
         glfwMakeContextCurrent(glfwWindow);
-        EnsurePlayerMesh();
+        const Mesh* meshToDraw = meshOverride;
+        if (!meshToDraw || meshToDraw->Empty()) {
+            EnsurePlayerMesh();
+            meshToDraw = &playerMesh_;
+            scale = 0.85f;
+        } else if (scale <= 0.0f) {
+            scale = 1.0f;
+        }
         glPushMatrix();
-        glTranslatef((GLfloat)x, (GLfloat)y, (GLfloat)z);
-    constexpr GLfloat playerScale = 0.85f;
+        glTranslatef(static_cast<GLfloat>(x), static_cast<GLfloat>(y), static_cast<GLfloat>(z));
+        const GLfloat playerScale = static_cast<GLfloat>(scale);
         glScalef(playerScale, playerScale, playerScale);
         const GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
         if (cullEnabled) {
             glDisable(GL_CULL_FACE);
         }
-        playerMesh_.Draw();
+        meshToDraw->Draw();
         if (cullEnabled) {
             glEnable(GL_CULL_FACE);
         }
@@ -2114,84 +2129,123 @@ void Viewport3D::DrawPlayer(double x, double y, double z) {
     }
 #endif
     else {
-        if (debugLogging_) std::cout << "Drawing ASCII fallback for player at " << x << std::endl;
         const int widthChars = 40;
         double clamped = std::min(5.0, std::max(-5.0, x));
         int pos = static_cast<int>((clamped + 5.0) / 10.0 * (widthChars - 1));
         std::string line(widthChars, '-');
-        line[pos] = 'P';
+        line[pos] = asciiChar;
         std::cout << line << std::endl;
     }
 }
 
-void Viewport3D::DrawEntity(const Transform &t) {
-    // Very simple: use the entity's x,y,z coordinates and draw like DrawPlayer
-    DrawPlayer(t.x, t.y, t.z);
-}
-
-void Viewport3D::DrawEntity(const Transform &t, int textureHandle, class ResourceManager* resourceManager, int currentFrame) {
-    // Forward to camera-aware overload (camera=nullptr)
-    DrawEntity(t, textureHandle, resourceManager, nullptr, currentFrame);
-}
-
-void Viewport3D::DrawEntity(const Transform &t, int textureHandle, class ResourceManager* resourceManager, const class Camera* camera, int currentFrame) {
-#if !defined(USE_SDL)
-    (void)textureHandle;
-    (void)resourceManager;
-    (void)currentFrame;
-#endif
-    if (IsUsingSDLBackend()) {
-#ifdef USE_SDL
-        if (camera) {
-            camera->WorldToScreen(t.x, t.y, t.z, width, height, px, py);
-        } else {
-            px = static_cast<int>(((t.x + 5.0) / 10.0) * width);
-            py = height / 2;
-        }
-        int w = 16, h = 16;
-    SDL_Rect dst{px - w/2, py - h/2, w, h};
-
-        // Try texture path first
-        if (textureHandle != 0 && resourceManager) {
-            void* texRaw = resourceManager->GetTexture(static_cast<void*>(sdlRenderer), textureHandle);
-            if (texRaw) {
-                SDL_Texture* tex = static_cast<SDL_Texture*>(texRaw);
-                // If sprite info available, compute source rect
-                ResourceManager::SpriteInfo info;
-                SDL_Rect srcRect;
-                bool haveSrc = false;
-                if (resourceManager->GetSpriteInfo(textureHandle, info) && info.frameW > 0 && info.frameH > 0) {
-                    int frameCount = info.sheetW > 0 ? std::max(1, info.sheetW / info.frameW) : 1;
-                    int frame = frameCount > 0 ? currentFrame % frameCount : 0;
-                    if (frame < 0) {
-                        frame += frameCount;
-                    }
-                    srcRect.x = frame * info.frameW;
-                    srcRect.y = 0;
-                    srcRect.w = info.frameW;
-                    srcRect.h = info.frameH;
-                    haveSrc = true;
-                }
-                compat_RenderCopy(sdlRenderer, tex, haveSrc ? &srcRect : nullptr, &dst);
-                return;
-            }
-        }
-
-        // Fallback: draw an orange rectangle
-    SDL_SetRenderDrawColor(sdlRenderer, 255, 128, 0, 255);
-    compat_RenderFillRect(sdlRenderer, &dst);
-#endif
-#ifdef USE_GLFW
-    } else if (IsUsingGLFWBackend() && glfwWindow) {
-        glfwMakeContextCurrent(glfwWindow);
-        glPushMatrix();
-        glTranslatef((GLfloat)t.x, (GLfloat)t.y, (GLfloat)t.z);
-        DrawCubePrimitive(1.0f, 0.5f, 0.0f);
-        glPopMatrix();
-#endif
-    } else {
-        DrawPlayer(t.x, t.y, t.z);
+void Viewport3D::DrawPlayer(double x, double y, double z) {
+    if (debugLogging_) {
+        std::cout << "Viewport3D::DrawPlayer() called at (" << x << ", " << y << ", " << z << ")" << std::endl;
+        std::cout << "Viewport3D::DrawPlayer() - backend=" << RenderBackendToString(backend_) << std::endl;
     }
+    DrawMeshAt(x, y, z, nullptr, 0.85f, 'P');
+}
+
+void Viewport3D::DrawEntity(const Transform &t) {
+    DrawMeshAt(t.x, t.y, t.z, nullptr, 0.85f, 'E');
+}
+
+void Viewport3D::DrawEntity(Entity entity, const Transform& t) {
+    const Mesh* overrideMesh = nullptr;
+    float scale = 1.0f;
+    char asciiChar = 'E';
+    auto binding = entityMeshes_.find(entity);
+    if (binding != entityMeshes_.end()) {
+        if (!binding->second.mesh.Empty()) {
+            overrideMesh = &binding->second.mesh;
+        }
+        scale = binding->second.scale;
+        asciiChar = 'S';
+    }
+    if (debugLogging_) {
+        std::cout << "Viewport3D::DrawEntity(entity=" << entity << ")";
+        if (overrideMesh) {
+            std::cout << " with custom mesh";
+        }
+        std::cout << std::endl;
+    }
+    DrawMeshAt(t.x, t.y, t.z, overrideMesh, scale, asciiChar);
+}
+
+void Viewport3D::SetEntityMesh(Entity entity, Mesh mesh, float scale) {
+    entityMeshes_[entity] = {std::move(mesh), scale};
+}
+
+void Viewport3D::ClearEntityMesh(Entity entity) {
+    entityMeshes_.erase(entity);
+}
+
+void Viewport3D::ClearEntityMeshes() {
+    entityMeshes_.clear();
+}
+
+Mesh Viewport3D::CreatePlayerAvatarMesh() {
+    // Builds a stylized arrowhead mesh so the player silhouette stands out from generic cubes.
+    constexpr GLenum kTriangles = 0x0004u; // GL_TRIANGLES
+    MeshBuilder builder(kTriangles);
+    builder.ReserveVertices(32);
+    builder.ReserveIndices(96);
+
+    auto addTriangle = [&](const MeshVertex& a, const MeshVertex& b, const MeshVertex& c) {
+        const GLuint base = builder.CurrentIndex();
+        builder.AddVertex(a);
+        builder.AddVertex(b);
+        builder.AddVertex(c);
+        builder.AddTriangle(base, base + 1, base + 2);
+    };
+
+    const MeshVertex nose(0.0f, 0.0f, 1.35f, 0.92f, 0.96f, 1.0f, 1.0f);
+    const MeshVertex tail(0.0f, 0.0f, -1.35f, 0.18f, 0.22f, 0.4f, 1.0f);
+    const MeshVertex leftWing(-0.95f, 0.0f, 0.0f, 0.32f, 0.55f, 0.95f, 1.0f);
+    const MeshVertex rightWing(0.95f, 0.0f, 0.0f, 0.32f, 0.55f, 0.95f, 1.0f);
+    const MeshVertex dorsal(0.0f, 0.68f, 0.0f, 0.78f, 0.86f, 1.0f, 1.0f);
+    const MeshVertex ventral(0.0f, -0.68f, 0.0f, 0.08f, 0.12f, 0.24f, 1.0f);
+
+    // Primary hull (diamond / octahedron)
+    addTriangle(nose, dorsal, leftWing);
+    addTriangle(nose, rightWing, dorsal);
+    addTriangle(nose, ventral, rightWing);
+    addTriangle(nose, leftWing, ventral);
+    addTriangle(tail, leftWing, dorsal);
+    addTriangle(tail, dorsal, rightWing);
+    addTriangle(tail, rightWing, ventral);
+    addTriangle(tail, ventral, leftWing);
+
+    // Dorsal fin for silhouette contrast
+    const MeshVertex dorsalA(-0.25f, 0.68f, -0.42f, 0.42f, 0.85f, 1.0f, 1.0f);
+    const MeshVertex dorsalB(0.25f, 0.68f, -0.42f, 0.42f, 0.85f, 1.0f, 1.0f);
+    const MeshVertex dorsalTip(0.0f, 1.12f, -0.28f, 0.58f, 0.95f, 1.0f, 1.0f);
+    addTriangle(dorsalA, dorsalTip, dorsalB);
+    addTriangle(dorsalA, tail, dorsalTip);
+    addTriangle(dorsalB, dorsalTip, tail);
+
+    // Ventral stabilizer
+    const MeshVertex ventralA(-0.22f, -0.68f, -0.36f, 0.16f, 0.32f, 0.58f, 1.0f);
+    const MeshVertex ventralB(0.22f, -0.68f, -0.36f, 0.16f, 0.32f, 0.58f, 1.0f);
+    const MeshVertex ventralTip(0.0f, -1.05f, -0.18f, 0.28f, 0.45f, 0.82f, 1.0f);
+    addTriangle(ventralA, ventralB, ventralTip);
+    addTriangle(ventralA, ventralTip, tail);
+    addTriangle(ventralB, tail, ventralTip);
+
+    // Engine ring around the tail for visual detail
+    const MeshVertex engineTop(0.0f, 0.34f, -1.1f, 0.95f, 0.58f, 0.22f, 1.0f);
+    const MeshVertex engineBottom(0.0f, -0.34f, -1.1f, 0.95f, 0.58f, 0.22f, 1.0f);
+    const MeshVertex engineLeft(-0.34f, 0.0f, -1.1f, 0.85f, 0.48f, 0.2f, 1.0f);
+    const MeshVertex engineRight(0.34f, 0.0f, -1.1f, 0.85f, 0.48f, 0.2f, 1.0f);
+
+    addTriangle(tail, engineLeft, engineTop);
+    addTriangle(tail, engineTop, engineRight);
+    addTriangle(tail, engineRight, engineBottom);
+    addTriangle(tail, engineBottom, engineLeft);
+    addTriangle(engineLeft, engineTop, engineRight);
+    addTriangle(engineLeft, engineRight, engineBottom);
+
+    return builder.Build();
 }
 
 void Viewport3D::Resize(int w, int h) {
@@ -2236,6 +2290,7 @@ void Viewport3D::Shutdown() {
         playerMesh_.Clear();
         playerMeshInitialized_ = false;
     }
+    entityMeshes_.clear();
 #endif
 #ifdef USE_SDL
     if (IsUsingSDLBackend() || sdlWindow || sdlRenderer || sdlGLContext) {

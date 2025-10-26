@@ -7,7 +7,7 @@ _Last updated: October 2025_
 1. **Guide the campaign arc** with clear milestones that surface new ships, equipment, and mission types.
 2. **Reinforce playstyles** through distinct skill tracks (combat, piloting, industry, diplomacy) that provide meaningful perks without invalidating baseline gameplay.
 3. **Integrate with existing data surfaces** so runtime systems can query a single source of truth. Progression hooks must reference:
-   - `ProgressionTier` definitions embedded in `SpaceshipCatalog` (`src/Spaceship.cpp`).
+   - `ProgressionTier` definitions embedded in `SpaceshipCatalog` (`actors/Spaceship.cpp`).
    - Faction reputation stored via the ECS `Faction` component and economy metadata on stations (`SpaceStationComponent`).
    - Resource classifications emitted by solar-system generation (`PlanetComponent`, `AsteroidBeltComponent`).
 
