@@ -1,11 +1,111 @@
 #pragma once
 
-#include "Spaceship.h"
-
 #include <string>
 #include <unordered_map>
 #include <vector>
 #include <limits>
+
+// -----------------------------------------------------------------------------
+// Ship assembly core enums and helpers (self-contained; no external deps)
+// -----------------------------------------------------------------------------
+
+// High-level ship class taxonomy (minimal set for now)
+enum class SpaceshipClassType {
+    Fighter,
+    Freighter,
+    Explorer,
+    Corvette,
+    Cruiser,
+    Capital
+};
+
+// Slot size standardization for component fit checks
+enum class SlotSize { XS, Small, Medium, Large, XL, XXL };
+
+// Component categories that can occupy hull slots
+enum class ComponentSlotCategory {
+    PowerPlant,
+    MainThruster,
+    ManeuverThruster,
+    Shield,
+    Weapon,
+    Sensor,
+    Support,
+    Cargo,
+    CrewQuarters,
+    Industrial,
+    Hangar,
+    Computer
+};
+
+// Human-readable conversions
+inline const char* ToString(SpaceshipClassType t) {
+    switch (t) {
+        case SpaceshipClassType::Fighter:  return "Fighter";
+        case SpaceshipClassType::Freighter:return "Freighter";
+        case SpaceshipClassType::Explorer: return "Explorer";
+        case SpaceshipClassType::Corvette: return "Corvette";
+        case SpaceshipClassType::Cruiser:  return "Cruiser";
+        case SpaceshipClassType::Capital:  return "Capital";
+    }
+    return "Unknown";
+}
+
+inline const char* ToString(SlotSize s) {
+    switch (s) {
+        case SlotSize::XS:     return "XS";
+        case SlotSize::Small:  return "Small";
+        case SlotSize::Medium: return "Medium";
+        case SlotSize::Large:  return "Large";
+        case SlotSize::XL:     return "XL";
+        case SlotSize::XXL:    return "XXL";
+    }
+    return "Unknown";
+}
+
+inline const char* ToString(ComponentSlotCategory c) {
+    switch (c) {
+        case ComponentSlotCategory::PowerPlant:       return "PowerPlant";
+        case ComponentSlotCategory::MainThruster:     return "MainThruster";
+        case ComponentSlotCategory::ManeuverThruster: return "ManeuverThruster";
+        case ComponentSlotCategory::Shield:           return "Shield";
+        case ComponentSlotCategory::Weapon:           return "Weapon";
+        case ComponentSlotCategory::Sensor:           return "Sensor";
+        case ComponentSlotCategory::Support:          return "Support";
+        case ComponentSlotCategory::Cargo:            return "Cargo";
+        case ComponentSlotCategory::CrewQuarters:     return "CrewQuarters";
+        case ComponentSlotCategory::Industrial:       return "Industrial";
+        case ComponentSlotCategory::Hangar:           return "Hangar";
+        case ComponentSlotCategory::Computer:         return "Computer";
+    }
+    return "Unknown";
+}
+
+// -----------------------------------------------------------------------------
+// Minimal Spaceship class definition schema (used by ExpandDefinition)
+// -----------------------------------------------------------------------------
+
+struct SpaceshipBaselineSpec {
+    double minMassTons = 0.0;
+    double maxMassTons = 0.0;
+    int minCrew = 0;
+    int maxCrew = 0;
+    double maxPowerBudgetMW = 0.0;
+};
+
+struct ComponentSlotSpec {
+    ComponentSlotCategory category = ComponentSlotCategory::Support;
+    SlotSize size = SlotSize::Small;
+    int count = 1;
+    std::string notes;
+};
+
+struct SpaceshipClassDefinition {
+    SpaceshipClassType type = SpaceshipClassType::Fighter;
+    std::string displayName;
+    SpaceshipBaselineSpec baseline;
+    std::vector<ComponentSlotSpec> componentSlots;
+};
 
 // Diagnostic severity levels for ship assembly validation
 enum class DiagnosticSeverity {

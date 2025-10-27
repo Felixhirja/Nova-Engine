@@ -1,0 +1,43 @@
+Nova Engine - TODOs (2025-10-27)
+
+1) Build and run tests
+- On Windows (MSYS2/MinGW), run full build and test suite via Makefile to validate recent ECS/assembly changes; capture output to artifacts/build.log and artifacts/test.log; accept if build PASS and all tests run/green.
+
+2) Clear IntelliSense errors
+- Re-index and fix any remaining IntelliSense diagnostics across engine/ecs/*.h|.cpp, especially ShipAssembly.cpp and headers; accept when Problems panel shows no C/C++ errors for these files.
+
+3) Attach demo assembly spec
+- In EngineBootstrap or Simulation startup, create a demo entity and add ShipAssemblySpec with hull 'fighter_mk1' and minimal slot assignments; accept when ShipAssemblySystem produces ShipAssemblyMetrics for this entity.
+
+4) HUD: show assembly metrics
+- Add a minimal HUD/overlay to render ShipAssemblyMetrics (net power, thrust, heat, crew) for selected entity; integrate with existing HUD toggle; accept when values show in-game.
+
+5) Unit tests: assembly system
+- Add tests/tests_ship_assembly_system.cpp to validate ShipAssemblySystem: happy path, missing components error, size/category mismatch, and soft compatibility warnings; accept when tests pass.
+
+6) JSON catalogs loading
+- Implement/verify ComponentJsonLoader to load components from assets/components and hulls from assets/ships; wire ShipComponentCatalog::EnsureDefaults to prefer JSON then fallback; accept when hot-reload works.
+
+7) Replace hardcoded defaults
+- Remove or gate hardcoded component/hull defaults in ShipAssembly.cpp behind JSON-first logic; accept when catalogs populate from JSON on startup with fallback only when absent.
+
+8) Serialization tests
+- Add unit tests to validate ShipAssemblyResult::Serialize output shape and key aggregates; ensure stable ordering for deterministic test results; accept when tests pass.
+
+9) Scheduler ordering check (V2)
+- Ensure assembly adapter/system runs before SpaceshipPhysics and any consumers; add a focused test or debug assert to verify ordering; accept when ordering is enforced and documented.
+
+10) Docs: assembly quickstart
+- Create docs/ship_assembly_quickstart.md with ECS component usage (ShipAssemblySpec/Metrics), sample JSON, and troubleshooting; link from README; accept after review.
+
+11) Performance microbench
+- Add a microbenchmark or stress test creating N entities with specs to profile ShipAssembler; target O(Slots+Components) behavior; accept with basic timing reported to artifacts/diagnostics.
+
+12) CLI dev tool
+- Add a small dev-only executable or test that reads a spec JSON and prints assembly result Serialize(); accept when it runs on Windows and outputs readable JSON.
+
+13) SystemManager features
+- Extend SystemManager to support named systems, enable/disable flags, and optional priority ordering; keep backward-compatible UpdateAll; accept with minimal tests.
+
+14) Fix docs markdown lint
+- Resolve markdownlint issues flagged in actors/README.md and docs/actor_rendering_guide.md (headings, blank lines, trailing newlines); accept when linter warnings clear.

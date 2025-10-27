@@ -6,6 +6,7 @@
 #include "ecs/PhysicsSystem.h"
 #include "ecs/PlayerControlSystem.h"
 #include "ecs/SpaceshipPhysicsSystem.h"
+#include "ecs/ShipAssemblySystem.h"
 #include "TargetingSystem.h"
 #include "WeaponSystem.h"
 #include "ShieldSystem.h"
@@ -604,6 +605,7 @@ void Simulation::Init(EntityManager* externalEm) {
 
     systemManager.Clear();
     systemManager.RegisterSystem<PlayerControlSystem>();
+    systemManager.RegisterSystem<ShipAssemblySystem>();
     systemManager.RegisterSystem<SpaceshipPhysicsSystem>();
     systemManager.RegisterSystem<MovementSystem>();
     systemManager.RegisterSystem<LocomotionSystem>();
@@ -1038,6 +1040,7 @@ void Simulation::ConfigureSchedulerV2(EntityManager& entityManager) {
     schedulerV2_.Clear();
 
     using PlayerAdapter = ecs::LegacySystemAdapter<PlayerControlSystem>;
+    using AssemblyAdapter = ecs::LegacySystemAdapter<ShipAssemblySystem>;
     using SpaceshipAdapter = ecs::LegacySystemAdapter<SpaceshipPhysicsSystem>;
     using MovementAdapter = ecs::LegacySystemAdapter<MovementSystem>;
     using LocomotionAdapter = ecs::LegacySystemAdapter<LocomotionSystem>;
@@ -1050,9 +1053,14 @@ void Simulation::ConfigureSchedulerV2(EntityManager& entityManager) {
     playerConfig.phase = ecs::UpdatePhase::Input;
     schedulerV2_.RegisterSystem<PlayerAdapter>(entityManager, playerConfig);
 
+    ecs::LegacySystemAdapterConfig assemblyConfig;
+    assemblyConfig.phase = ecs::UpdatePhase::Input;
+    assemblyConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<PlayerAdapter>());
+    schedulerV2_.RegisterSystem<AssemblyAdapter>(entityManager, assemblyConfig);
+
     ecs::LegacySystemAdapterConfig spaceshipConfig;
     spaceshipConfig.phase = ecs::UpdatePhase::Input;
-    spaceshipConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<PlayerAdapter>());
+    spaceshipConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<AssemblyAdapter>());
     schedulerV2_.RegisterSystem<SpaceshipAdapter>(entityManager, spaceshipConfig);
 
     ecs::LegacySystemAdapterConfig movementConfig;

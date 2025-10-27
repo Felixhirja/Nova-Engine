@@ -2303,10 +2303,6 @@ void Viewport3D::Render(const class Camera* camera, double playerX, double playe
 
 #if defined(USE_GLFW) || defined(USE_SDL)
     if (IsUsingGLBackend() && camera) {
-        // Render ECS actors before camera debug
-        if (actorRenderer_ && entityManager) {
-            actorRenderer_->Render(*entityManager);
-        }
         if (debugLogging_) std::cout << "Viewport3D::Render() - drawing camera debug" << std::endl;
         DrawCameraDebug(camera, playerX, playerY, playerZ, ViewRole::Main, targetLocked);
     } else if (IsUsingSDLRenderer()) {

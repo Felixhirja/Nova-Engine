@@ -992,3 +992,31 @@ struct Communications : public Component {
     bool transponderOn = true;
     double broadcastRangeKm = 100.0;
 };
+
+// =============================================================================
+// SHIP ASSEMBLY AS ECS COMPONENTS
+// =============================================================================
+
+// Desired assembly spec attached to an entity (data-only)
+struct ShipAssemblySpec : public Component {
+    std::string hullId;                                           // Target hull blueprint id
+    std::unordered_map<std::string, std::string> slotAssignments; // slotId -> componentId
+};
+
+// Summary metrics from an assembly evaluation
+struct ShipAssemblyMetrics : public Component {
+    double massTons = 0.0;
+    double totalThrustKN = 0.0;
+    double mainThrustKN = 0.0;
+    double maneuverThrustKN = 0.0;
+    double powerOutputMW = 0.0;
+    double powerDrawMW = 0.0;
+    double netPowerMW = 0.0;
+    double heatGenerationMW = 0.0;
+    double heatDissipationMW = 0.0;
+    double netHeatMW = 0.0;
+    int crewRequired = 0;
+    int crewCapacity = 0;
+    int avionicsModuleCount = 0;
+    double avionicsPowerDrawMW = 0.0;
+};

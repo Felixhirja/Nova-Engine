@@ -1,7 +1,5 @@
 #include "ShipAssembly.h"
 
-#include "Spaceship.h"
-
 #include "ComponentJsonLoader.h"
 
 #include <algorithm>
@@ -166,7 +164,8 @@ ShipHullBlueprint ExpandDefinition(const SpaceshipClassDefinition& def, const st
     for (const auto& spec : def.componentSlots) {
         for (int i = 0; i < spec.count; ++i) {
             HullSlot slot;
-            slot.slotId = ToString(spec.category) + "_" + std::to_string(i);
+            // Ensure string concatenation (ToString may return const char*)
+            slot.slotId = std::string(ToString(spec.category)) + "_" + std::to_string(i);
             slot.category = spec.category;
             slot.size = spec.size;
             slot.notes = spec.notes;
