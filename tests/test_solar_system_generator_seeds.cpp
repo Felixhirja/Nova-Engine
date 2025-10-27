@@ -1,4 +1,4 @@
-#include "../src/SolarSystemGenerator.h"
+#include "../engine/SolarSystemGenerator.h"
 
 #include <cassert>
 

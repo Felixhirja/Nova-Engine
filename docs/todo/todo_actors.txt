@@ -1,0 +1,70 @@
+# Actors Todo List
+
+Tracking backlog items for the gameplay-facing facades under `actors/`. These
+classes bridge the ECS (`src/ecs/*`), ship assembly runtime (`src/ShipAssembly.*`),
+and the higher-level simulation/doc references (`docs/spaceship_taxonomy.md`,
+`docs/player_progression_system.md`, etc.).
+
+## Actor Architecture & Lifecycle
+
+- [x] Create a shared `ActorContext` (entity handle + `EntityManagerV2` pointer, scheduler hooks)
+      so future facades stop hand-rolling attachment logic. Wire it through
+      `EngineBootstrap` to keep actors discoverable during startup.
+      _See:_ `actors/ActorContext.h`, `src/EngineBootstrap.h/cpp`
+- [x] Port existing actor helpers to the V2 ECS APIs (`EntityManagerV2`, `SystemSchedulerV2`) and
+      delete the legacy manager dependency chain still present in `actors/Player.*`.
+      _See:_ `actors/Player.h/cpp`
+- [x] Move the inline-only `actors/Player.cpp` contents into proper definitions so the header stops
+      duplicating implementation, and add assertions/logging for invalid bindings.
+      _See:_ `actors/Player.cpp`
+- [x] Establish an actor registration table (name -> factory) to support scripting/editor spawning
+      in line with the guidance from `docs/repository_structure.md`.
+      _See:_ `actors/ActorRegistry.h/cpp`
+- [x] Document actor usage patterns in `docs/todo/README.md` or a dedicated `actors/README.md` so
+      contributors know when to author a façade versus adding logic directly to ECS systems.
+      _See:_ `actors/README.md`
+
+## Player Facade & Gameplay Hooks
+
+- [x] Flesh out the `Player` actor API with getters for locomotion, stamina, inventory, and camera
+      data (`LocomotionStateMachine`, `MovementParameters`, `PlayerPhysics`, etc.) so callers
+      stop fishing through raw ECS accessors.
+- [x] Implement progression/profile plumbing on the actor: persist XP, reputation, and skill nodes
+      described in `docs/player_progression_system.md`, and expose setters that feed UI + save data.
+- [x] Bridge actor-level input to the camera pipeline by publishing state needed by
+      `CameraFollowController` (yaw, thrust state, target lock), ensuring `Viewport3D` can query the
+      player façade instead of duplicated math.
+- [x] Emit actor events/hooks (e.g., `OnJump`, `OnDock`, `OnDamageTaken`) so gameplay systems and the
+      feedback pipeline can subscribe without polling ECS components every frame.
+- [x] Add focused unit tests (e.g., `tests/test_player_actor.cpp`) covering Attach/Bind behavior,
+      component pointer caching, and error handling when entities are destroyed mid-frame.
+      _Verified:_ Tests pass successfully, confirming Player actor facade functionality.
+
+## Spaceship Catalog & Ship Actors
+
+- [ ] Externalize the hard-coded catalog in `actors/Spaceship.cpp` into data-driven manifests
+      (`assets/ships/*.json`), then add a loader with validation against
+      `docs/spaceship_taxonomy.md` plus hot-reload for the ship editor.
+- [ ] Associate each `SpaceshipClassDefinition` with default component loadouts via
+      `ShipAssemblyRequest` templates so designers can preview factory configurations instantly.
+- [ ] Add progression metadata (min level, faction reputation, blueprint costs) onto the catalog
+      structs so the unlock rules from `docs/player_progression_system.md` can be enforced in code.
+- [ ] Surface faction variant deltas (hardpoint swaps, slot overrides, passive buffs) instead of
+      just storing descriptive text; feed this into diagnostics and the shipyard UI.
+- [ ] Provide helper APIs that translate `SpaceshipCatalog` data into ECS spawn bundles (entity +
+      component set) so missions, AI, and tests can spawn hulls without duplicating boilerplate.
+
+## Tooling, Serialization & QA
+
+- [ ] Build a lightweight CLI/editor report (`scripts/dump_actor_catalog.py`) that diff-checks actor
+      definitions (player defaults, ship layouts) and flags mismatches vs. docs.
+- [ ] Extend automated coverage (`tests/test_ship_assembly.cpp`, new actor-focused suites) to verify
+      every catalog entry has at least one valid loadout and that actor facades survive entity
+      migration/removal in ECS V2.
+- [ ] Serialize actor state (player progression, active ship loadout, damage state) so saves/restores
+      round-trip cleanly across sessions; document the schema in `docs/ship_assembly_schema.md`.
+- [ ] Integrate actor telemetry with the HUD (`Viewport3D::DrawHUD`) so designers can inspect current
+      actor bindings, component availability, and progression flags in-flight.
+- [ ] Capture onboarding docs for modders describing how to add new actors or extend existing ones,
+      referencing both the code (`actors/*.h/.cpp`) and data surfaces (`assets/ships/`, progression
+      JSON) to keep community contributions aligned.

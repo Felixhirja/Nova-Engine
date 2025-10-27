@@ -1,0 +1,19 @@
+{
+  "id": "sensor_targeting_mk1",
+  "displayName": "Combat Sensor Suite",
+  "description": "Targeting computer with enhanced tracking.",
+  "category": "Sensor",
+  "size": "Small",
+  "massTons": 1.4,
+  "powerOutputMW": 0.0,
+  "powerDrawMW": 1.2,
+  "thrustKN": 0.0,
+  "heatGenerationMW": 1.5,
+  "heatDissipationMW": 0.5,
+  "crewRequired": 0,
+  "crewSupport": 0,
+  "schemaVersion": 1,
+  "techTier": 1,
+  "manufacturer": "Quantum Sensors Inc.",
+  "factionRestrictions": []
+}

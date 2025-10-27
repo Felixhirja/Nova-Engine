@@ -1,8 +1,8 @@
-#include "../src/ShieldSystem.h"
-#include "../src/EnergyManagementSystem.h"
-#include "../src/ecs/EntityManager.h"
-#include "../src/ecs/Components.h"
-#include "../src/FeedbackEvent.h"
+#include "../engine/ShieldSystem.h"
+#include "../engine/EnergyManagementSystem.h"
+#include "../engine/ecs/EntityManager.h"
+#include "../engine/ecs/Components.h"
+#include "../engine/FeedbackEvent.h"
 
 #include <algorithm>
 #include <cmath>

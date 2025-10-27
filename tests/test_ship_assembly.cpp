@@ -1,15 +1,25 @@
-#include "../src/ShipAssembly.h"
+#include "../engine/ShipAssembly.h"
 
 #include <iostream>
 #include <cmath>
 
 int main() {
     // Ensure catalogs are initialized
+    std::cout << "Initializing catalogs..." << std::endl;
     const ShipHullBlueprint* fighterHull = ShipHullCatalog::Find("fighter_mk1");
     if (!fighterHull) {
         std::cerr << "Failed to locate fighter hull blueprint" << std::endl;
         return 1;
     }
+
+    // Check if components are loaded
+    std::cout << "Checking component catalog size: " << ShipComponentCatalog::All().size() << std::endl;
+    const ShipComponentBlueprint* testComponent = ShipComponentCatalog::Find("fusion_core_mk1");
+    if (!testComponent) {
+        std::cerr << "fusion_core_mk1 not found in catalog" << std::endl;
+        return 1;
+    }
+    std::cout << "Found fusion_core_mk1: " << testComponent->displayName << std::endl;
 
     ShipAssemblyRequest goodRequest;
     goodRequest.hullId = fighterHull->id;

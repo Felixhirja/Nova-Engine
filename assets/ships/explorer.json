@@ -1,0 +1,198 @@
+{
+  "type": "Explorer",
+  "displayName": "Explorer",
+  "conceptSummary": {
+    "elevatorPitch": "Long-range survey vessel outfitted for science expeditions and reconnaissance.",
+    "gameplayHooks": [
+      "Extended sensor suites and survey drones",
+      "Hybrid drives enabling atmospheric descent",
+      "Laboratory-grade module capacity"
+    ]
+  },
+  "baseline": {
+    "minMassTons": 80.0,
+    "maxMassTons": 95.0,
+    "minCrew": 3,
+    "maxCrew": 5,
+    "minPowerBudgetMW": 16.0,
+    "maxPowerBudgetMW": 22.0
+  },
+  "hardpoints": [
+    {
+      "category": "PrimaryWeapon",
+      "size": "Medium",
+      "count": 1,
+      "notes": "Defensive turret or rail repeater"
+    },
+    {
+      "category": "Utility",
+      "size": "Small",
+      "count": 3,
+      "notes": "Sensor array, drone control, repair beam"
+    },
+    {
+      "category": "Module",
+      "size": "Medium",
+      "count": 3,
+      "notes": "Labs, data core, stealth probe bay"
+    }
+  ],
+  "componentSlots": [
+    {
+      "category": "PowerPlant",
+      "size": "Medium",
+      "count": 1,
+      "notes": "Efficient long-range reactor"
+    },
+    {
+      "category": "MainThruster",
+      "size": "Medium",
+      "count": 1,
+      "notes": "Hybrid atmospheric/space engine"
+    },
+    {
+      "category": "ManeuverThruster",
+      "size": "Small",
+      "count": 6,
+      "notes": "Precision RCS clusters"
+    },
+    {
+      "category": "Shield",
+      "size": "Medium",
+      "count": 1,
+      "notes": "Adaptive shield lattice"
+    },
+    {
+      "category": "Sensor",
+      "size": "Large",
+      "count": 2,
+      "notes": "Long-range sensor and science array"
+    },
+    {
+      "category": "Support",
+      "size": "Medium",
+      "count": 2,
+      "notes": "Survey drone racks, repair gantry"
+    },
+    {
+      "category": "CrewQuarters",
+      "size": "Small",
+      "count": 1,
+      "notes": "Science team habitation pod"
+    },
+    {
+      "category": "Cargo",
+      "size": "Medium",
+      "count": 1,
+      "notes": "Sample containment hold"
+    }
+  ],
+  "progression": [
+    {
+      "tier": 1,
+      "name": "Survey Corvette",
+      "description": "Planetary mapping contracts and exploration."
+    },
+    {
+      "tier": 2,
+      "name": "Deep-space Scout",
+      "description": "Long-range jump matrix with cloaked probes."
+    },
+    {
+      "tier": 3,
+      "name": "Expedition Cruiser",
+      "description": "Onboard fabrication and anomaly shielding."
+    }
+  ],
+  "variants": [
+    {
+      "faction": "Academy of Sciences",
+      "codename": "Odyssey",
+      "description": "Enhanced lab capacity and science buffs.",
+      "hardpointDeltas": [
+        {
+          "category": "Module",
+          "sizeDelta": "Large",
+          "countDelta": 1
+        }
+      ],
+      "slotDeltas": [
+        {
+          "category": "Sensor",
+          "size": "XL",
+          "countDelta": 1
+        }
+      ],
+      "passiveBuffs": [
+        {
+          "type": "science_scan_rate",
+          "value": 0.3
+        },
+        {
+          "type": "research_output",
+          "value": 0.25
+        }
+      ]
+    },
+    {
+      "faction": "Free Horizon Cartographers",
+      "codename": "Pathfinder",
+      "description": "Jump range bonuses and terrain scanners.",
+      "hardpointDeltas": [],
+      "slotDeltas": [],
+      "passiveBuffs": [
+        {
+          "type": "jump_range",
+          "value": 0.2
+        },
+        {
+          "type": "terrain_scan_quality",
+          "value": 0.4
+        }
+      ]
+    },
+    {
+      "faction": "Shadow Consortium",
+      "codename": "Phantom",
+      "description": "Sensor-masking systems and covert data vaults.",
+      "hardpointDeltas": [],
+      "slotDeltas": [
+        {
+          "category": "Cargo",
+          "size": "Small",
+          "countDelta": 1
+        }
+      ],
+      "passiveBuffs": [
+        {
+          "type": "stealth_rating",
+          "value": 0.35
+        },
+        {
+          "type": "sensor_masking",
+          "value": 1.0
+        }
+      ]
+    }
+  ],
+  "progressionMetadata": {
+    "minLevel": 5,
+    "factionReputation": 20,
+    "blueprintCost": 3000
+  },
+  "defaultLoadouts": [
+    {
+      "name": "Science Surveyor",
+      "description": "Equipped for planetary exploration and data collection",
+      "components": [
+        "fusion_core_mk2",
+        "main_thruster_freighter",
+        "rcs_cluster_micro",
+        "shield_array_medium",
+        "sensor_targeting_mk1",
+        "cargo_rack_standard",
+        "support_life_pod"
+      ]
+    }
+  ]
+}

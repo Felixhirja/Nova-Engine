@@ -1,0 +1,68 @@
+# Components Todo List
+
+This backlog tracks the modular spaceship component pipeline that spans
+`src/ShipAssembly.*`, `actors/Spaceship.*`, the catalogs documented in
+`docs/ship_assembly_schema.md`, and the gameplay hooks captured in
+`docs/spaceship_implementation_status.md`. Use it to prioritize component work
+separately from the broader `todo_spaceship.txt` milestones.
+
+## Blueprint Catalog & Data Model
+
+- [ ] Externalize blueprint registration from `ShipComponentCatalog::RegisterDefaultComponents`
+      into data-driven manifests (e.g., `assets/components/*.json`) and keep the loader
+      hot-reloadable for the in-editor shipyard.
+- [ ] Introduce schema versioning plus compatibility metadata (`techTier`, `manufacturer`,
+      `factionRestrictions`) on `ShipComponentBlueprint` so saves and progression gates can
+      validate incoming data.
+- [ ] Add a lint/validation pass that loads every blueprint, enforces the constraints in
+      `docs/ship_assembly_schema.md`, and fails CI when stats are missing or out of bounds.
+- [ ] Provide catalog diff tooling that highlights mass/power/heat deltas between commits
+      and emits a summary into `docs/spaceship_taxonomy.md` or release notes.
+
+## Validation & Guidance
+
+- [x] Expand `ShipAssemblyDiagnostics::BuildUserFacingMessages` to emit structured reason
+      codes/severity so HUD/tooling can distinguish fatal slot violations from advisory warnings.
+      _Verified:_ Implementation includes DiagnosticReasonCode enum and structured message building.
+- [x] Implement the auto-suggestion flow promised by `ComponentSuggestion`: scan the catalog for
+      compatible replacements, rank by power/size fit, and expose the shortlist in the shipyard UI.
+      _Verified:_ ComponentSuggestion struct implemented with catalog scanning and ranking logic.
+- [x] Layer soft compatibility rules (manufacturer lineage, reactor power envelopes, slot adjacency)
+      atop the hard category/size checks and surface the offending rule in diagnostics.
+      _Verified:_ CheckManufacturerLineageCompatibility, CheckPowerEnvelopeCompatibility, CheckSlotAdjacencyCompatibility functions implemented and integrated.
+- [x] Extend `tests/test_ship_assembly_validation.cpp` with regression cases that cover invalid hull
+      IDs, slot/category mismatches, power/heat/crew deficits, and verify the diagnostics text stays actionable.
+      _Verified:_ Tests pass successfully with 12 regression cases covering all validation scenarios.
+
+## Simulation & Performance Modeling
+
+- [ ] Extend `ShipPerformanceMetrics` with time-based power distribution (load shedding, capacitor
+      recharge) so `EnergyManagementSystem` can query subsystem throttling states.
+- [ ] Model thermal inertia by iterating heat accumulation over time and exposing cooling warnings
+      back through diagnostics and `EnergyHUDTelemetry`.
+- [ ] Teach `PhysicsSystem` to read per-thruster vectors (main vs. maneuvering) from components so
+      gimbal limits, thrust-to-mass ratios, and RCS torque appear in the flight model.
+- [ ] Track crew workload modifiers (stations filled vs. required, fatigue penalties) and feed them
+      into the assembler result so AI planners and UI reflect performance penalties.
+
+## Progression, Cargo & Content
+
+- [ ] Finish the cargo hold component family (volume/mass tracking, inventory linkage) and pair it
+      with loading/unloading logic outlined in `docs/spaceship_implementation_status.md`.
+- [ ] Implement passenger quarters / habitation modules that contribute to crew capacity and needs,
+      referencing the hooks in `docs/spaceship_next_steps.md`.
+- [ ] Wire component unlocks into the research/progression tree so blueprint IDs can specify tech
+      tier requirements instead of being globally available.
+- [ ] Design salvage/cannibalization rules that allow damaged components to be reclaimed, repaired,
+      or downgraded in the assembler while keeping diagnostics transparent.
+
+## Tooling, UI & QA
+
+- [ ] Build an in-engine shipyard/inspector panel that lists installed components per subsystem,
+      powered by the data already exposed on `ShipAssemblyResult::subsystems`.
+- [ ] Surface component health/power/heat status inside `Viewport3D::DrawHUD()` using the HUD
+      pipeline so pilots immediately see which subsystem is throttled or failing.
+- [ ] Export catalog summaries (per-category mass/power ranges, unlock tiers) to
+      `docs/ship_assembly_schema.md` or a sibling quick reference so designers share a single source of truth.
+- [ ] Expand automated coverage by adding fuzz/stress fixtures in `tests/test_ship_assembly.cpp` that
+      assemble randomized loadouts, run performance computations, and assert stability across large permutations.

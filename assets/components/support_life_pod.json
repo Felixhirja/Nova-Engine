@@ -1,0 +1,19 @@
+{
+  "id": "support_life_pod",
+  "displayName": "Emergency Life Support Pod",
+  "description": "Sustains crew during hull breaches.",
+  "category": "Support",
+  "size": "XS",
+  "massTons": 1.2,
+  "powerOutputMW": 0.0,
+  "powerDrawMW": 0.6,
+  "thrustKN": 0.0,
+  "heatGenerationMW": 0.1,
+  "heatDissipationMW": 0.5,
+  "crewRequired": 0,
+  "crewSupport": 2,
+  "schemaVersion": 1,
+  "techTier": 1,
+  "manufacturer": "Life Systems Corp",
+  "factionRestrictions": []
+}

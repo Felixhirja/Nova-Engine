@@ -1,0 +1,23 @@
+{
+  "id": "shield_array_medium",
+  "displayName": "Medium Shield Array",
+  "description": "Balanced shield system for freighters and explorers.",
+  "category": "Shield",
+  "size": "Medium",
+  "massTons": 6.5,
+  "powerOutputMW": 0.0,
+  "powerDrawMW": 4.0,
+  "thrustKN": 0.0,
+  "heatGenerationMW": 5.0,
+  "heatDissipationMW": 1.0,
+  "crewRequired": 1,
+  "crewSupport": 0,
+  "shieldCapacityMJ": 300.0,
+  "shieldRechargeRateMJPerSec": 8.0,
+  "shieldRechargeDelaySeconds": 4.0,
+  "shieldDamageAbsorption": 0.85,
+  "schemaVersion": 1,
+  "techTier": 1,
+  "manufacturer": "Nova Dynamics",
+  "factionRestrictions": []
+}

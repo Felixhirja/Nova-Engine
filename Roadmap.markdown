@@ -19,7 +19,7 @@ Milestone 0 – Core Stability (in progress)
 - [x] GLFW + OpenGL rendering path up and running
 - [x] Fixed-timestep main loop with input abstraction
 - [x] Camera follow, presets, and zoom UX polishing
-- [ ] Document user controls (README update)
+- [x] Document user controls (README update)
 - [x] Continuous test suite hooked into CI (GitHub Actions or similar)
 
 Milestone 1 – Rendering & Visuals

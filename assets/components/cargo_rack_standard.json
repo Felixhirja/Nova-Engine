@@ -1,0 +1,19 @@
+{
+  "id": "cargo_rack_standard",
+  "displayName": "Cargo Rack",
+  "description": "Standard modular cargo rack.",
+  "category": "Cargo",
+  "size": "Large",
+  "massTons": 15.0,
+  "powerOutputMW": 0.0,
+  "powerDrawMW": 1.0,
+  "thrustKN": 0.0,
+  "heatGenerationMW": 0.4,
+  "heatDissipationMW": 0.5,
+  "crewRequired": 2,
+  "crewSupport": 0,
+  "schemaVersion": 1,
+  "techTier": 1,
+  "manufacturer": "Interstellar Logistics",
+  "factionRestrictions": []
+}

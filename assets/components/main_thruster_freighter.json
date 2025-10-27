@@ -1,0 +1,19 @@
+{
+  "id": "main_thruster_freighter",
+  "displayName": "Atlas Drive",
+  "description": "Cargo-optimized main thruster.",
+  "category": "MainThruster",
+  "size": "Medium",
+  "massTons": 12.0,
+  "powerOutputMW": 0.0,
+  "powerDrawMW": 6.0,
+  "thrustKN": 320.0,
+  "heatGenerationMW": 10.0,
+  "heatDissipationMW": 2.0,
+  "crewRequired": 1,
+  "crewSupport": 0,
+  "schemaVersion": 1,
+  "techTier": 1,
+  "manufacturer": "Stellar Forge",
+  "factionRestrictions": []
+}

@@ -1,0 +1,51 @@
+# Simple spaceship sprite (ASCII art representation)
+# This will be converted to a texture for rendering
+# Fighter ship design - compact and agile
+
+SHIP_FIGHTER = """
+   /\\
+  //\\
+ ///\\\\
+|||||||
+ \\\\///
+  \\//
+   \\/
+"""
+
+SHIP_FREIGHTER = """
+  ______
+ /      \\
+|  CARGO |
+ \\______/
+   ||||
+   ||||
+"""
+
+SHIP_STATION = """
+   _______
+  /       \\
+ /  STATION \\
+|           |
+ \\_________/
+     ||
+     ||
+"""
+
+SHIP_PROJECTILE = """
+  *
+ /|\\
+*/ \\
+ \\*
+  |
+"""
+
+PARTICLE_SPARK = """
+  .
+ .*.
+*   *
+ .*.
+  .
+"""
+
+# Export these as simple colored rectangles for now
+# In a real implementation, these would be proper texture files

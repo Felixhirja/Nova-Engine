@@ -1,0 +1,23 @@
+{
+  "id": "shield_array_light",
+  "displayName": "Light Shield Array",
+  "description": "Directional shield generator for fighters.",
+  "category": "Shield",
+  "size": "Small",
+  "massTons": 3.2,
+  "powerOutputMW": 0.0,
+  "powerDrawMW": 2.5,
+  "thrustKN": 0.0,
+  "heatGenerationMW": 3.0,
+  "heatDissipationMW": 0.5,
+  "crewRequired": 0,
+  "crewSupport": 0,
+  "shieldCapacityMJ": 150.0,
+  "shieldRechargeRateMJPerSec": 5.0,
+  "shieldRechargeDelaySeconds": 3.0,
+  "shieldDamageAbsorption": 0.8,
+  "schemaVersion": 1,
+  "techTier": 1,
+  "manufacturer": "Nova Dynamics",
+  "factionRestrictions": []
+}

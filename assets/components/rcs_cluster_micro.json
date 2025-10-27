@@ -1,0 +1,19 @@
+{
+  "id": "rcs_cluster_micro",
+  "displayName": "Micro RCS Cluster",
+  "description": "Reaction control thrusters for fine maneuvers.",
+  "category": "ManeuverThruster",
+  "size": "XS",
+  "massTons": 0.8,
+  "powerOutputMW": 0.0,
+  "powerDrawMW": 0.5,
+  "thrustKN": 35.0,
+  "heatGenerationMW": 0.3,
+  "heatDissipationMW": 0.3,
+  "crewRequired": 0,
+  "crewSupport": 0,
+  "schemaVersion": 1,
+  "techTier": 1,
+  "manufacturer": "Stellar Forge",
+  "factionRestrictions": []
+}

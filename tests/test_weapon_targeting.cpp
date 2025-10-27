@@ -1,8 +1,8 @@
-#include "../src/WeaponSystem.h"
-#include "../src/TargetingSystem.h"
-#include "../src/FeedbackEvent.h"
-#include "../src/ecs/Components.h"
-#include "../src/ecs/EntityManager.h"
+#include "../engine/WeaponSystem.h"
+#include "../engine/TargetingSystem.h"
+#include "../engine/FeedbackEvent.h"
+#include "../engine/ecs/Components.h"
+#include "../engine/ecs/EntityManager.h"
 #include <cmath>
 #include <iostream>
 #include <memory>

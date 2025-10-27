@@ -1,0 +1,204 @@
+{
+  "type": "Industrial",
+  "displayName": "Industrial",
+  "conceptSummary": {
+    "elevatorPitch": "Heavy utility platform supporting mining, salvage, and construction operations.",
+    "gameplayHooks": [
+      "High-capacity power distribution for industrial tools",
+      "Expanded utility slots for drones and fabrication rigs",
+      "Armored hull optimized for hazardous environments"
+    ]
+  },
+  "baseline": {
+    "minMassTons": 140.0,
+    "maxMassTons": 180.0,
+    "minCrew": 4,
+    "maxCrew": 6,
+    "minPowerBudgetMW": 24.0,
+    "maxPowerBudgetMW": 34.0
+  },
+  "hardpoints": [
+    {
+      "category": "PrimaryWeapon",
+      "size": "Medium",
+      "count": 2,
+      "notes": "Defensive cannons covering broad arcs"
+    },
+    {
+      "category": "Utility",
+      "size": "Medium",
+      "count": 2,
+      "notes": "Tractor beams, repair projectors"
+    },
+    {
+      "category": "Module",
+      "size": "Large",
+      "count": 4,
+      "notes": "Mining rigs, fabrication arrays, salvage bay, shield inducers"
+    }
+  ],
+  "componentSlots": [
+    {
+      "category": "PowerPlant",
+      "size": "Large",
+      "count": 1,
+      "notes": "Industrial-grade reactor core"
+    },
+    {
+      "category": "MainThruster",
+      "size": "Large",
+      "count": 2,
+      "notes": "Heavy-duty propulsion blocks"
+    },
+    {
+      "category": "ManeuverThruster",
+      "size": "Medium",
+      "count": 8,
+      "notes": "Directional thruster girdles"
+    },
+    {
+      "category": "Shield",
+      "size": "Large",
+      "count": 1,
+      "notes": "Reinforced containment shields"
+    },
+    {
+      "category": "Industrial",
+      "size": "Large",
+      "count": 4,
+      "notes": "Mining lasers, repair gantries, fabrication rigs"
+    },
+    {
+      "category": "Cargo",
+      "size": "Large",
+      "count": 2,
+      "notes": "Bulk ore hoppers or construction material bins"
+    },
+    {
+      "category": "Support",
+      "size": "Medium",
+      "count": 2,
+      "notes": "Drone hangars or crane assemblies"
+    },
+    {
+      "category": "CrewQuarters",
+      "size": "Medium",
+      "count": 1,
+      "notes": "Work crew habitation"
+    }
+  ],
+  "progression": [
+    {
+      "tier": 1,
+      "name": "Utility Platform",
+      "description": "Salvage and repair missions in low-risk zones."
+    },
+    {
+      "tier": 2,
+      "name": "Deep-core Miner",
+      "description": "Armored drill heads with ore refineries."
+    },
+    {
+      "tier": 3,
+      "name": "Construction Platform",
+      "description": "Deploys outposts and orbital structures."
+    }
+  ],
+  "variants": [
+    {
+      "faction": "Union of Labor",
+      "codename": "Forge",
+      "description": "Resilient hull with redundant systems.",
+      "hardpointDeltas": [],
+      "slotDeltas": [],
+      "passiveBuffs": [
+        {
+          "type": "hull_integrity",
+          "value": 0.2
+        },
+        {
+          "type": "system_redundancy",
+          "value": 0.3
+        }
+      ]
+    },
+    {
+      "faction": "Corporate Combine",
+      "codename": "Constructor",
+      "description": "Advanced fabrication modules and supply bonuses.",
+      "hardpointDeltas": [
+        {
+          "category": "Module",
+          "sizeDelta": "XL",
+          "countDelta": 1
+        }
+      ],
+      "slotDeltas": [
+        {
+          "category": "Industrial",
+          "size": "XL",
+          "countDelta": 1
+        }
+      ],
+      "passiveBuffs": [
+        {
+          "type": "fabrication_speed",
+          "value": 0.4
+        },
+        {
+          "type": "supply_chain_efficiency",
+          "value": 0.25
+        }
+      ]
+    },
+    {
+      "faction": "Scavenger Clans",
+      "codename": "Scrap Queen",
+      "description": "Expanded salvage bays and crane arms.",
+      "hardpointDeltas": [
+        {
+          "category": "Utility",
+          "sizeDelta": "Large",
+          "countDelta": 1
+        }
+      ],
+      "slotDeltas": [
+        {
+          "category": "Cargo",
+          "size": "XL",
+          "countDelta": 1
+        }
+      ],
+      "passiveBuffs": [
+        {
+          "type": "salvage_yield",
+          "value": 0.35
+        },
+        {
+          "type": "wreck_processing",
+          "value": 1.0
+        }
+      ]
+    }
+  ],
+  "progressionMetadata": {
+    "minLevel": 7,
+    "factionReputation": 30,
+    "blueprintCost": 4000
+  },
+  "defaultLoadouts": [
+    {
+      "name": "Mining Platform",
+      "description": "Configured for asteroid mining and resource extraction",
+      "components": [
+        "fusion_core_mk2",
+        "main_thruster_freighter",
+        "rcs_cluster_micro",
+        "shield_array_heavy",
+        "cargo_rack_standard",
+        "sensor_targeting_mk1",
+        "support_life_pod"
+      ]
+    }
+  ]
+}

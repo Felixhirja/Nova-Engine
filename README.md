@@ -98,26 +98,57 @@ Use WASD to move and the mouse to look around. Press Q to quit.
 
 ## Controls
 
+### Movement
+
 - `W` / `S`: Move forward / backward
 - `A` / `D`: Strafe left / right
-- `Space`: Jump (jump mode) or ascend thruster (thrust mode)
-- `C`: Descend when in thrust mode
-- `T`: Toggle between jump gravity mode and continuous thrust mode
-- `Q`: Quit the application
+- `Space`: Ascend (thrust mode) or jump (gravity mode)
+- `C`: Descend (thrust mode)
 
-Additional debug bindings exist in `src/Input.cpp`. Check the source for the
-latest experimental controls and gameplay toggles.
+### Camera & View
+
+- **Mouse**: Look around (pitch/yaw)
+- **Mouse Wheel**: Zoom in/out
+- **Arrow Keys + Space**: Move camera up/down/left/right
+- `Z` / `X`: Zoom in/out (alternative to mouse wheel)
+- `1` / `2` / `3`: Apply camera preset positions
+
+### Gameplay
+
+- `T`: Toggle between jump gravity mode and continuous thrust mode
+- `Tab`: Toggle target lock mode (mouse controls targeting reticle)
+- `P`: Pause/unpause simulation
+
+### Visual Effects
+
+- `B`: Toggle bloom post-processing effect
+- `L`: Toggle letterbox HUD overlay
+
+### Development & Debug
+
+- `I`: Toggle ECS inspector (entity component system debugger)
+- `[` / `]`: Cycle through ECS inspector filters
+- `0`: Clear ECS inspector filter
+- `F8`: Toggle world coordinate axes (debug only)
+- `F9`: Toggle mini axes gizmo (debug only)
+- `F11`: Toggle fullscreen mode
+
+### System
+
+- `Q` / `Esc`: Quit the application
+
+Additional experimental controls may exist in `engine/Input.cpp`. The HUD displays control hints for the first 5 seconds of gameplay.
 
 ## Architecture highlights
 
-- `src/main.cpp`: Entry point
-- `src/MainLoop.cpp`: Game loop and timing
-- `src/Viewport3D.cpp`: Window and rendering management
-- `src/Input.cpp`: Input handling
-- `src/Simulation.cpp`: Game logic and entities
-- `src/ResourceManager.cpp`: Asset loading
-- `src/ecs/`: Entity-component system
-- `src/graphics/`: Rendering pipeline, post-processing, and text systems
+- `engine/main.cpp`: Entry point
+- `engine/MainLoop.cpp`: Game loop and timing
+- `engine/Viewport3D.cpp`: Window and rendering management
+- `engine/Input.cpp`: Input handling
+- `engine/Simulation.cpp`: Game logic and entities
+- `engine/ResourceManager.cpp`: Asset loading
+- `engine/ecs/`: Entity-component system
+- `engine/graphics/`: Rendering pipeline, post-processing, and text systems
 
 ## Repository layout
 

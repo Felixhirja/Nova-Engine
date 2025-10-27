@@ -1,0 +1,209 @@
+{
+  "type": "Freighter",
+  "displayName": "Freighter",
+  "conceptSummary": {
+    "elevatorPitch": "Versatile cargo hauler that anchors trade routes and logistics chains.",
+    "gameplayHooks": [
+      "Modular container bays and detachable cargo pods",
+      "Reinforced frames for micro-jump stability",
+      "Defensive focus on countermeasures and drone escorts"
+    ]
+  },
+  "baseline": {
+    "minMassTons": 90.0,
+    "maxMassTons": 120.0,
+    "minCrew": 2,
+    "maxCrew": 4,
+    "minPowerBudgetMW": 18.0,
+    "maxPowerBudgetMW": 26.0
+  },
+  "hardpoints": [
+    {
+      "category": "PrimaryWeapon",
+      "size": "Medium",
+      "count": 1,
+      "notes": "Defensive turret covering dorsal arc"
+    },
+    {
+      "category": "Utility",
+      "size": "Small",
+      "count": 2,
+      "notes": "Countermeasures, tractor beam, or repair drone"
+    },
+    {
+      "category": "Module",
+      "size": "Medium",
+      "count": 3,
+      "notes": "Cargo bay extensions, shield capacitor, drone bay"
+    }
+  ],
+  "componentSlots": [
+    {
+      "category": "PowerPlant",
+      "size": "Medium",
+      "count": 1,
+      "notes": "High-endurance reactor core"
+    },
+    {
+      "category": "MainThruster",
+      "size": "Medium",
+      "count": 2,
+      "notes": "Dual main engines with cargo-tuned exhaust"
+    },
+    {
+      "category": "ManeuverThruster",
+      "size": "Small",
+      "count": 6,
+      "notes": "Station-keeping thruster clusters"
+    },
+    {
+      "category": "Shield",
+      "size": "Medium",
+      "count": 1,
+      "notes": "Omni-directional cargo shield generator"
+    },
+    {
+      "category": "Cargo",
+      "size": "Large",
+      "count": 3,
+      "notes": "Container racks or specialized payload modules"
+    },
+    {
+      "category": "CrewQuarters",
+      "size": "Small",
+      "count": 1,
+      "notes": "Extended crew habitation module"
+    },
+    {
+      "category": "Sensor",
+      "size": "Medium",
+      "count": 1,
+      "notes": "Logistics-grade navigation array"
+    },
+    {
+      "category": "Support",
+      "size": "Medium",
+      "count": 1,
+      "notes": "Docking collar or drone control bay"
+    }
+  ],
+  "progression": [
+    {
+      "tier": 1,
+      "name": "Light Hauler",
+      "description": "Compact freighters for intra-system trade."
+    },
+    {
+      "tier": 2,
+      "name": "Convoy Freighter",
+      "description": "Detachable cargo pods with improved security."
+    },
+    {
+      "tier": 3,
+      "name": "Heavy Transport",
+      "description": "Jump-capable cargo frames with automated loaders."
+    }
+  ],
+  "variants": [
+    {
+      "faction": "Terran Commerce Guild",
+      "codename": "Atlas",
+      "description": "Security seals and customs compliance modules.",
+      "hardpointDeltas": [],
+      "slotDeltas": [
+        {
+          "category": "Support",
+          "size": "Small",
+          "countDelta": 1
+        }
+      ],
+      "passiveBuffs": [
+        {
+          "type": "cargo_security",
+          "value": 1.0
+        },
+        {
+          "type": "trade_efficiency",
+          "value": 0.15
+        }
+      ]
+    },
+    {
+      "faction": "Frontier Miners Union",
+      "codename": "Prospector",
+      "description": "Swappable mining rigs and ore refining bay.",
+      "hardpointDeltas": [
+        {
+          "category": "Module",
+          "sizeDelta": "Large",
+          "countDelta": 1
+        }
+      ],
+      "slotDeltas": [
+        {
+          "category": "Industrial",
+          "size": "Medium",
+          "countDelta": 2
+        }
+      ],
+      "passiveBuffs": [
+        {
+          "type": "mining_yield",
+          "value": 0.25
+        },
+        {
+          "type": "ore_processing",
+          "value": 1.0
+        }
+      ]
+    },
+    {
+      "faction": "Free Traders League",
+      "codename": "Nomad",
+      "description": "Expanded crew quarters and smuggling compartments.",
+      "hardpointDeltas": [],
+      "slotDeltas": [
+        {
+          "category": "CrewQuarters",
+          "size": "Medium",
+          "countDelta": 1
+        },
+        {
+          "category": "Cargo",
+          "size": "Medium",
+          "countDelta": 1
+        }
+      ],
+      "passiveBuffs": [
+        {
+          "type": "crew_morale",
+          "value": 0.2
+        },
+        {
+          "type": "smuggling_capacity",
+          "value": 1.0
+        }
+      ]
+    }
+  ],
+  "progressionMetadata": {
+    "minLevel": 3,
+    "factionReputation": 10,
+    "blueprintCost": 2500
+  },
+  "defaultLoadouts": [
+    {
+      "name": "Standard Cargo Hauler",
+      "description": "Reliable configuration for general freight operations",
+      "components": [
+        "fusion_core_mk2",
+        "main_thruster_freighter",
+        "rcs_cluster_micro",
+        "shield_array_medium",
+        "cargo_rack_standard",
+        "sensor_targeting_mk1",
+        "support_life_pod"
+      ]
+    }
+  ]
+}

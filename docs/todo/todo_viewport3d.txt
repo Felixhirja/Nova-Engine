@@ -1,8 +1,10 @@
 # Viewport3D Todo List
 [ ] 
 ## Rendering Pipeline
-- [ ] Replace legacy OpenGL immediate-mode helpers with retained-mode buffers (VAO/VBO) for cubes, HUD, and debug meshes.
-- [ ] Abstract mesh building so animated sprites and 3D props share a single draw submission path.
+- [ ] Replace legacy OpenGL immediate-mode helpers with retained-mode buffers (VAO/VBO) for cubes, HUD, and debug meshes. (Cubes + HUD migrated to `PrimitiveMesh` on 2025-10-26; remaining work: camera debug solids and any ad-hoc GL_QUADS overlays.)
+- [x] Abstract mesh building so animated sprites and 3D props share a single draw submission path. (Converted to MeshSubmission builder + PrimitiveMesh caching on 2025-10-27.)
+- [ ] Hook the sprite renderer into `MeshSubmissionBuilder::SpriteFrame` and delete the legacy quad assembly path.
+- [ ] Cache animated sprite `MeshSubmission` data per frame to avoid rebuilding vertex buffers every draw call.
 - [ ] Profile GPU state changes during `Render` and batch entities by material/texture to cut redundant binds.
 - [ ] Centralize GL context binding so helpers rely on the `BeginFrame` invariant instead of thrashing make-current calls on hot paths.
 - [ ] Migrate the HUD/tiny-font paths to UIBatcher (or similar) so overlay draws coalesce into a handful of submissions.
@@ -35,10 +37,11 @@
 - [ ] Augment GL error logging with `gluErrorString` (or custom decoder) for human-readable diagnostics when GLU is present.
 
 ## Testing & Tooling
-- [ ] Add headless renderer smoke test that instantiates `Viewport3D` with an off-screen context.
+- [x] Add headless renderer smoke test that instantiates `Viewport3D` with an off-screen context. (Added `tests/test_viewport_headless` + CI job on 2025-10-24.)
 - [ ] Build automated screenshot comparisons for regression detection in HUD/camera visuals.
 - [ ] Document Viewport3D architecture and lifecycle in the README/design docs.
 - [ ] Add regression coverage for overlay depth clears to ensure the scissor-guarded path keeps main views intact.
+- [ ] Add unit test coverage validating `MeshSubmissionBuilder::SpriteFrame` UV packing for multi-column sprite sheets.
 High-impact issues (fix these first)
 
 [x] COMPLETED: Fixed Clear() depth buffer - added GL_DEPTH_BUFFER_BIT to glClear calls (2025-01-10)

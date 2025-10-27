@@ -1,0 +1,19 @@
+{
+  "id": "weapon_cooling_cannon",
+  "displayName": "Cannon Cooling Rack",
+  "description": "Stabilizes twin cannon mounts.",
+  "category": "Weapon",
+  "size": "Small",
+  "massTons": 2.8,
+  "powerOutputMW": 0.0,
+  "powerDrawMW": 1.5,
+  "thrustKN": 0.0,
+  "heatGenerationMW": 0.8,
+  "heatDissipationMW": 1.2,
+  "crewRequired": 0,
+  "crewSupport": 0,
+  "schemaVersion": 1,
+  "techTier": 1,
+  "manufacturer": "Armstrong Industries",
+  "factionRestrictions": []
+}

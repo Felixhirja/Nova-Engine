@@ -1,0 +1,23 @@
+{
+  "id": "shield_array_heavy",
+  "displayName": "Heavy Shield Array",
+  "description": "Capital-grade shield with rapid recharge.",
+  "category": "Shield",
+  "size": "Large",
+  "massTons": 12.0,
+  "powerOutputMW": 0.0,
+  "powerDrawMW": 8.0,
+  "thrustKN": 0.0,
+  "heatGenerationMW": 10.0,
+  "heatDissipationMW": 2.0,
+  "crewRequired": 2,
+  "crewSupport": 0,
+  "shieldCapacityMJ": 600.0,
+  "shieldRechargeRateMJPerSec": 12.0,
+  "shieldRechargeDelaySeconds": 5.0,
+  "shieldDamageAbsorption": 0.9,
+  "schemaVersion": 1,
+  "techTier": 1,
+  "manufacturer": "Nova Dynamics",
+  "factionRestrictions": []
+}

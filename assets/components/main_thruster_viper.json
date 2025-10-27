@@ -1,0 +1,19 @@
+{
+  "id": "main_thruster_viper",
+  "displayName": "Viper Main Thruster",
+  "description": "High thrust ratio for fighters.",
+  "category": "MainThruster",
+  "size": "Small",
+  "massTons": 4.0,
+  "powerOutputMW": 0.0,
+  "powerDrawMW": 4.0,
+  "thrustKN": 220.0,
+  "heatGenerationMW": 5.0,
+  "heatDissipationMW": 1.0,
+  "crewRequired": 0,
+  "crewSupport": 0,
+  "schemaVersion": 1,
+  "techTier": 1,
+  "manufacturer": "Stellar Forge",
+  "factionRestrictions": []
+}

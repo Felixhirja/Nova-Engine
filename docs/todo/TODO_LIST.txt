@@ -77,6 +77,8 @@ See `docs/game_design_enhancements.md` for enhancement roadmap
 □ Life support management (environmental controls, consumables, failure responses)
 
 See `todo_spaceship.txt` for complete detailed task list
+See `docs/todo/todo_components.txt` for the dedicated component backlog (catalog, validation, tooling)
+See `docs/todo/todo_actors.txt` for actor facade backlog (Player/Spaceship catalogs, progression hooks)
 See `docs/spaceship_implementation_status.md` for comprehensive assessment
 **Current Status:** Strong foundation complete - 100–150 hours to full feature completion
 **Estimated:** ~4–6 weeks for Phase 1 completion

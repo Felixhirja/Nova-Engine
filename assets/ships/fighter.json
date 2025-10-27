@@ -1,0 +1,182 @@
+{
+  "type": "Fighter",
+  "displayName": "Fighter",
+  "conceptSummary": {
+    "elevatorPitch": "Agile interception craft built for rapid-response dogfighting.",
+    "gameplayHooks": [
+      "High thrust-to-weight ratio enabling extreme acceleration",
+      "Compact profile optimized for carrier deployment",
+      "Limited endurance balanced by modular avionics upgrades"
+    ]
+  },
+  "baseline": {
+    "minMassTons": 25.0,
+    "maxMassTons": 35.0,
+    "minCrew": 1,
+    "maxCrew": 2,
+    "minPowerBudgetMW": 8.0,
+    "maxPowerBudgetMW": 12.0
+  },
+  "hardpoints": [
+    {
+      "category": "PrimaryWeapon",
+      "size": "Small",
+      "count": 2,
+      "notes": "Fixed or gimbaled energy/ballistic cannons"
+    },
+    {
+      "category": "Utility",
+      "size": "XS",
+      "count": 1,
+      "notes": "Countermeasure pod or sensor jammer"
+    },
+    {
+      "category": "Module",
+      "size": "Small",
+      "count": 1,
+      "notes": "Avionics suite, stealth package, or auxiliary fuel tank"
+    }
+  ],
+  "componentSlots": [
+    {
+      "category": "PowerPlant",
+      "size": "Small",
+      "count": 1,
+      "notes": "Compact fusion core"
+    },
+    {
+      "category": "MainThruster",
+      "size": "Small",
+      "count": 1,
+      "notes": "Main engine block with afterburner"
+    },
+    {
+      "category": "ManeuverThruster",
+      "size": "XS",
+      "count": 4,
+      "notes": "Vectored control thrusters"
+    },
+    {
+      "category": "Shield",
+      "size": "Small",
+      "count": 1,
+      "notes": "Lightweight directional shield generator"
+    },
+    {
+      "category": "Weapon",
+      "size": "Small",
+      "count": 2,
+      "notes": "Weapon cooling/targeting subsystems"
+    },
+    {
+      "category": "Sensor",
+      "size": "Small",
+      "count": 1,
+      "notes": "Combat-grade targeting computer"
+    },
+    {
+      "category": "Support",
+      "size": "XS",
+      "count": 1,
+      "notes": "Emergency life-support capsule"
+    }
+  ],
+  "progression": [
+    {
+      "tier": 1,
+      "name": "Starter Interceptor",
+      "description": "Entry-level hull unlocked during tutorial arc."
+    },
+    {
+      "tier": 2,
+      "name": "Specialist Interceptor",
+      "description": "Enhanced maneuvering thrusters and avionics."
+    },
+    {
+      "tier": 3,
+      "name": "Elite Strike Fighter",
+      "description": "Modular wing pylons with stealth/strike packages."
+    }
+  ],
+  "variants": [
+    {
+      "faction": "Terran Navy",
+      "codename": "Raptor",
+      "description": "Balanced stats with missile rack integration.",
+      "hardpointDeltas": [
+        {
+          "category": "Utility",
+          "sizeDelta": "Small",
+          "countDelta": 1
+        }
+      ],
+      "slotDeltas": [],
+      "passiveBuffs": [
+        {
+          "type": "missile_lock_time",
+          "value": -0.15
+        }
+      ]
+    },
+    {
+      "faction": "Outer Rim Syndicate",
+      "codename": "Viper",
+      "description": "Sacrifices armor for boosted engines and smuggling compartment.",
+      "hardpointDeltas": [],
+      "slotDeltas": [
+        {
+          "category": "Cargo",
+          "size": "XS",
+          "countDelta": 1
+        }
+      ],
+      "passiveBuffs": [
+        {
+          "type": "thrust_multiplier",
+          "value": 0.1
+        },
+        {
+          "type": "shield_capacity",
+          "value": -0.2
+        }
+      ]
+    },
+    {
+      "faction": "Zenith Collective",
+      "codename": "Aurora",
+      "description": "Energy re-routing module for sustained beam weapons.",
+      "hardpointDeltas": [],
+      "slotDeltas": [],
+      "passiveBuffs": [
+        {
+          "type": "beam_weapon_efficiency",
+          "value": 0.25
+        },
+        {
+          "type": "energy_weapon_heat",
+          "value": -0.1
+        }
+      ]
+    }
+  ],
+  "progressionMetadata": {
+    "minLevel": 1,
+    "factionReputation": 0,
+    "blueprintCost": 1000
+  },
+  "defaultLoadouts": [
+    {
+      "name": "Starter Fighter",
+      "description": "Basic fighter configuration for new pilots",
+      "components": [
+        "fusion_core_mk1",
+        "main_thruster_viper",
+        "rcs_cluster_micro",
+        "shield_array_light",
+        "weapon_twin_cannon",
+        "sensor_targeting_mk1",
+        "support_life_pod"
+      ]
+    }
+  ]
+}

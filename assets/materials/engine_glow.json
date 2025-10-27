@@ -1,0 +1,15 @@
+{
+  "name": "Engine_Glow",
+  "shader": "shaders/core/basic",
+  "textures": {
+    "albedo": "textures/engine_glow_d.png",
+    "emissive": "textures/engine_glow_e.png"
+  },
+  "parameters": {
+    "baseColor": [0.2, 0.3, 0.8],
+    "roughness": 0.3,
+    "metalness": 0.8,
+    "emissive": [0.5, 0.7, 1.0],
+    "alpha": 1.0
+  }
+}

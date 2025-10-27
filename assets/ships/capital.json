@@ -1,0 +1,204 @@
+{
+  "type": "Capital",
+  "displayName": "Capital",
+  "conceptSummary": {
+    "elevatorPitch": "Command-and-control flagships capable of projecting force and supporting fleets.",
+    "gameplayHooks": [
+      "Multiple subsystem redundancies and distributed crew stations",
+      "Acts as mobile base with hangar capacity",
+      "Hosts advanced command and logistics suites"
+    ]
+  },
+  "baseline": {
+    "minMassTons": 600.0,
+    "maxMassTons": 950.0,
+    "minCrew": 8,
+    "maxCrew": 18,
+    "minPowerBudgetMW": 60.0,
+    "maxPowerBudgetMW": 120.0
+  },
+  "hardpoints": [
+    {
+      "category": "PrimaryWeapon",
+      "size": "XL",
+      "count": 6,
+      "notes": "Turrets or beam arrays spanning ship arcs"
+    },
+    {
+      "category": "Utility",
+      "size": "Large",
+      "count": 4,
+      "notes": "Point-defense grids, sensor masts"
+    },
+    {
+      "category": "Module",
+      "size": "XL",
+      "count": 6,
+      "notes": "Hangars, shield amplifiers, command modules, medical bays"
+    }
+  ],
+  "componentSlots": [
+    {
+      "category": "PowerPlant",
+      "size": "XL",
+      "count": 2,
+      "notes": "Redundant flagship cores"
+    },
+    {
+      "category": "MainThruster",
+      "size": "XL",
+      "count": 4,
+      "notes": "Capital propulsion arrays"
+    },
+    {
+      "category": "ManeuverThruster",
+      "size": "Large",
+      "count": 12,
+      "notes": "Distributed RCS banks"
+    },
+    {
+      "category": "Shield",
+      "size": "XL",
+      "count": 2,
+      "notes": "Layered shield projectors"
+    },
+    {
+      "category": "Hangar",
+      "size": "XL",
+      "count": 2,
+      "notes": "Strike craft or shuttle hangars"
+    },
+    {
+      "category": "Support",
+      "size": "Large",
+      "count": 4,
+      "notes": "Command, medical, fabrication suites"
+    },
+    {
+      "category": "Sensor",
+      "size": "Large",
+      "count": 2,
+      "notes": "Long-range tactical sensor masts"
+    },
+    {
+      "category": "CrewQuarters",
+      "size": "Large",
+      "count": 3,
+      "notes": "Distributed crew habitats"
+    },
+    {
+      "category": "Industrial",
+      "size": "Large",
+      "count": 1,
+      "notes": "Fleet support fabrication plant"
+    }
+  ],
+  "progression": [
+    {
+      "tier": 2,
+      "name": "Escort Carrier",
+      "description": "Accessible via faction reputation milestones."
+    },
+    {
+      "tier": 3,
+      "name": "Battlecruiser",
+      "description": "Command dreadnought unlocked in endgame campaigns."
+    },
+    {
+      "tier": 4,
+      "name": "Legendary Flagship",
+      "description": "Narrative-locked capital hull with unique bonuses."
+    }
+  ],
+  "variants": [
+    {
+      "faction": "Terran Navy",
+      "codename": "Resolute",
+      "description": "Balanced defenses with fighter bay bonuses.",
+      "hardpointDeltas": [],
+      "slotDeltas": [],
+      "passiveBuffs": [
+        {
+          "type": "fighter_bay_capacity",
+          "value": 2
+        },
+        {
+          "type": "defensive_coordination",
+          "value": 0.2
+        }
+      ]
+    },
+    {
+      "faction": "Zenith Collective",
+      "codename": "Echelon",
+      "description": "Superior energy projectors and psionic shielding nodes.",
+      "hardpointDeltas": [
+        {
+          "category": "PrimaryWeapon",
+          "sizeDelta": "XXL",
+          "countDelta": 2
+        }
+      ],
+      "slotDeltas": [],
+      "passiveBuffs": [
+        {
+          "type": "energy_weapon_damage",
+          "value": 0.25
+        },
+        {
+          "type": "psionic_shielding",
+          "value": 1.0
+        }
+      ]
+    },
+    {
+      "faction": "Outer Rim Syndicate",
+      "codename": "Leviathan",
+      "description": "Heavy armor plating and boarding pod launchers.",
+      "hardpointDeltas": [
+        {
+          "category": "Utility",
+          "sizeDelta": "XL",
+          "countDelta": 2
+        }
+      ],
+      "slotDeltas": [
+        {
+          "category": "Support",
+          "size": "XL",
+          "countDelta": 1
+        }
+      ],
+      "passiveBuffs": [
+        {
+          "type": "armor_thickness",
+          "value": 0.4
+        },
+        {
+          "type": "boarding_efficiency",
+          "value": 1.0
+        }
+      ]
+    }
+  ],
+  "progressionMetadata": {
+    "minLevel": 15,
+    "factionReputation": 50,
+    "blueprintCost": 10000
+  },
+  "defaultLoadouts": [
+    {
+      "name": "Fleet Command Carrier",
+      "description": "Flagship configuration for fleet operations and command",
+      "components": [
+        "fusion_core_mk2",
+        "main_thruster_freighter",
+        "rcs_cluster_micro",
+        "shield_array_heavy",
+        "cargo_rack_standard",
+        "sensor_targeting_mk1",
+        "support_life_pod"
+      ]
+    }
+  ]
+}

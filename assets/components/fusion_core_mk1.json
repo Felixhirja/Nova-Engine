@@ -1,0 +1,19 @@
+{
+  "id": "fusion_core_mk1",
+  "displayName": "Fusion Core Mk.I",
+  "description": "Baseline fighter fusion core.",
+  "category": "PowerPlant",
+  "size": "Small",
+  "massTons": 6.5,
+  "powerOutputMW": 10.0,
+  "powerDrawMW": 0.2,
+  "thrustKN": 0.0,
+  "heatGenerationMW": 2.5,
+  "heatDissipationMW": 1.5,
+  "crewRequired": 1,
+  "crewSupport": 0,
+  "schemaVersion": 1,
+  "techTier": 1,
+  "manufacturer": "Nova Dynamics",
+  "factionRestrictions": []
+}

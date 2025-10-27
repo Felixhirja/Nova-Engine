@@ -1,0 +1,26 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#4A90E2"/>
+<stop offset="100%" stop-color="#2E5C8A"/>
+</linearGradient>
+<radialGradient id="engine" cx="0.5" cy="0.5" r="0.8">
+<stop offset="0%" stop-color="#FFD700"/>
+<stop offset="100%" stop-color="#FF4500"/>
+</radialGradient>
+</defs>
+
+<!-- Main hull -->
+<path d="M32 8 L44 20 L44 44 L32 56 L20 44 L20 20 Z" fill="url(#hull)" stroke="#1E3A5F" stroke-width="1"/>
+
+<!-- Cockpit -->
+<ellipse cx="32" cy="24" rx="8" ry="6" fill="#87CEEB" opacity="0.7"/>
+<ellipse cx="32" cy="24" rx="6" ry="4" fill="#4682B4" opacity="0.5"/>
+
+<!-- Wings -->
+<path d="M20 28 L8 32 L20 36" fill="#2E5C8A" stroke="#1E3A5F" stroke-width="1"/>
+<path d="M44 28 L56 32 L44 36" fill="#2E5C8A" stroke="#1E3A5F" stroke-width="1"/>
+
+<!-- Engine glow -->
+<ellipse cx="32" cy="50" rx="4" ry="3" fill="url(#engine)" opacity="0.8"/>
+</svg>

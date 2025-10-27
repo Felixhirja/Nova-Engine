@@ -1,0 +1,19 @@
+{
+  "id": "fusion_core_mk2",
+  "displayName": "Fusion Core Mk.II",
+  "description": "Enhanced output for larger hulls.",
+  "category": "PowerPlant",
+  "size": "Medium",
+  "massTons": 11.0,
+  "powerOutputMW": 18.0,
+  "powerDrawMW": 0.3,
+  "thrustKN": 0.0,
+  "heatGenerationMW": 6.0,
+  "heatDissipationMW": 2.5,
+  "crewRequired": 2,
+  "crewSupport": 0,
+  "schemaVersion": 1,
+  "techTier": 1,
+  "manufacturer": "Nova Dynamics",
+  "factionRestrictions": []
+}

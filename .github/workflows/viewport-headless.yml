@@ -1,0 +1,66 @@
+name: CI - Viewport headless smoke
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-run:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    name: Build and run headless smoke test on ${{ matrix.os }}
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Set up on Linux
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config libgl1-mesa-dev libglu1-mesa-dev libglfw3-dev libfreetype6-dev freeglut3-dev
+
+    - name: Set up MSYS2 on Windows
+      if: matrix.os == 'windows-latest'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+
+    - name: Install dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: msys2 {0}
+      run: |
+        pacman -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-glfw mingw-w64-x86_64-freeglut mingw-w64-x86_64-freetype pkg-config
+
+    - name: Build headless smoke test
+      shell: bash -l -c
+      run: |
+        # Capture build output to build.log for inspection
+        make tests/test_viewport_headless 2>&1 | tee build.log
+
+    - name: Run headless smoke test (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      shell: bash -l -c
+      run: |
+        # Run the test and capture stdout/stderr to test.log
+        ./tests/test_viewport_headless 2>&1 | tee test.log
+
+    - name: Run headless smoke test (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: msys2 {0}
+      run: |
+        # In MSYS2 shell tee should be available; capture output to test.log
+        ./tests/test_viewport_headless.exe 2>&1 | tee test.log
+
+    - name: Upload build & test logs
+      uses: actions/upload-artifact@v4
+      with:
+        name: viewport-headless-logs-${{ matrix.os }}
+        path: |
+          build.log
+          test.log

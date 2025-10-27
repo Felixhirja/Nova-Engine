@@ -1,0 +1,16 @@
+{
+  "name": "HullPlate_Rough",
+  "shader": "shaders/core/basic",
+  "textures": {
+    "albedo": "textures/hull_plate_d.png",
+    "normal": "textures/hull_plate_n.png",
+    "metallic": "textures/hull_plate_m.png"
+  },
+  "parameters": {
+    "baseColor": [0.8, 0.8, 0.8],
+    "roughness": 0.72,
+    "metalness": 0.65,
+    "emissive": [0.0, 0.0, 0.0],
+    "alpha": 1.0
+  }
+}

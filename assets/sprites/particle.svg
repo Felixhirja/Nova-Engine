@@ -1,0 +1,11 @@
+<svg width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<radialGradient id="particle" cx="0.5" cy="0.5" r="0.8">
+<stop offset="0%" stop-color="#FFFFFF"/>
+<stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+</radialGradient>
+</defs>
+
+<!-- Particle -->
+<circle cx="4" cy="4" r="4" fill="url(#particle)"/>
+</svg>

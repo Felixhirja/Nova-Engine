@@ -51,19 +51,19 @@
 * [x] Implement soft ground clamp with spring-based easing (use groundClampHz config)
 * [x] Add obstacle avoidance: raycast from player to desired camera position, push forward on hit (placeholder - needs physics raycast API)
 * [x] Implement dynamic shoulder offset based on target screen position
-* [ ] Add adaptive smoothing: increase rotResponsiveness when target is moving fast
-* [ ] Add camera shake effects for impacts/explosions with configurable intensity/duration
-* [ ] Implement camera bookmarks/presets system with save/load functionality
-* [ ] Add cinematic camera paths for scripted sequences
-* [ ] Implement camera occlusion fade-out for objects between camera and target
-* [ ] Add camera auto-framing for multiple targets (e.g., fleet view)
-* [ ] Implement camera prediction for high-velocity targets to reduce lag
+* [x] Add adaptive smoothing: increase rotResponsiveness when target is moving fast
+* [x] Add camera shake effects for impacts/explosions with configurable intensity/duration
+* [x] Implement camera bookmarks/presets system with save/load functionality
+* [x] Add cinematic camera paths for scripted sequences
+* [x] Implement camera occlusion fade-out for objects between camera and target
+* [x] Add camera auto-framing for multiple targets (e.g., fleet view)
+* [x] Implement camera prediction for high-velocity targets to reduce lag
 
 ---
 
 ## New Pending (added 2025-10-25)
 
-* [ ] **Fix transform space bug:** ensure rotations/translation apply to the camera rig, not the world root; add a unit test to prevent regressions.
+* [x] **Fix transform space bug:** ensure rotations/translation apply to the camera rig, not the world root; add a unit test to prevent regressions.
 * [ ] **Invert axes options:** configurable invert X/Y for mouse and controller.
 * [ ] **Gamepad support:** right-stick look, zoom on triggers/bumpers; deadzones and response curves.
 * [ ] **Smooth zoom:** mouse wheel/controller zoom with easing and min/max bounds; optional per-zoom FOV.
