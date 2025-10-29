@@ -107,9 +107,10 @@ TEST_BINS := tests/test_simulation tests/test_camera tests/test_camera_follow \
         tests/test_simulation_scheduler tests/test_weapon_targeting \
 	tests/test_ship_battle_benchmark tests/test_ship_assembly_validation \
 	tests/test_physics_behaviors tests/test_subsystem_damage_stress \
-	tests/test_frame_pacing_controller tests/test_mesh_submission_standalone \
-	tests/test_system_manager tests/test_system_integration \
-	tests/test_player_actor test_actor_rendering_full
+        tests/test_frame_pacing_controller tests/test_mesh_submission_standalone \
+        tests/test_system_manager tests/test_system_integration \
+        tests/test_ecs_transition_fuzz tests/bench_ecs_hot_paths \
+        tests/test_player_actor test_actor_rendering_full
 
 # Files and binaries that should be removed by "make clean" on every platform.
 CLEAN_TARGETS := $(OBJ) $(GLAD_OBJ) $(TARGET) $(TARGET).exe $(TEST_BINS) \
@@ -173,6 +174,9 @@ tests/test_text_rendering: tests/test_text_rendering.cpp $(filter-out engine/mai
 tests/test_ecs_v2: tests/test_ecs_v2.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ecs_v2.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
+tests/test_ecs_transition_fuzz: tests/test_ecs_transition_fuzz.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ecs_transition_fuzz.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+
 tests/test_physics: tests/test_physics.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_physics.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
@@ -188,6 +192,9 @@ tests/test_weapon_targeting: tests/test_weapon_targeting.cpp $(filter-out engine
 
 tests/test_ship_battle_benchmark: tests/test_ship_battle_benchmark.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ship_battle_benchmark.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+
+tests/bench_ecs_hot_paths: tests/bench_ecs_hot_paths.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/bench_ecs_hot_paths.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
 tests/test_ship_assembly_validation: tests/test_ship_assembly_validation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ship_assembly_validation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)

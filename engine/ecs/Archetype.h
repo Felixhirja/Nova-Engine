@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ComponentTraits.h"
+
 namespace ecs {
 
 // Type-erased component array storage
@@ -24,9 +26,13 @@ public:
     virtual size_t Capacity() const = 0;
     virtual void Clear() = 0;
     virtual std::unique_ptr<ComponentArray> Clone() const = 0;
-    
+
     // Copy component from another array (for archetype transitions)
     virtual void CopyFrom(const ComponentArray* src, size_t srcIndex) = 0;
+    virtual void CopyBlockFrom(const ComponentArray* src, size_t srcIndex, size_t count) = 0;
+
+    virtual bool IsTriviallyCopyable() const = 0;
+    virtual size_t ElementSize() const = 0;
 };
 
 // Typed component storage - contiguous array (SoA layout)
@@ -86,26 +92,49 @@ public:
     void Clear() override {
         components_.clear();
     }
-    
+
     std::unique_ptr<ComponentArray> Clone() const override {
         auto clone = std::make_unique<TypedComponentArray<T>>();
         clone->components_ = components_;
         return clone;
     }
-    
+
     // Copy component from another array (for archetype transitions)
     void CopyFrom(const ComponentArray* src, size_t srcIndex) override {
         const TypedComponentArray<T>* typedSrc = static_cast<const TypedComponentArray<T>*>(src);
         assert(typedSrc != nullptr && "Source array type mismatch");
         assert(srcIndex < typedSrc->Size() && "Source index out of bounds");
-        components_.push_back(typedSrc->GetTyped(srcIndex));
+        AppendRange(&typedSrc->GetTyped(srcIndex), 1);
     }
-    
+
+    void CopyBlockFrom(const ComponentArray* src, size_t srcIndex, size_t count) override {
+        const TypedComponentArray<T>* typedSrc = static_cast<const TypedComponentArray<T>*>(src);
+        assert(typedSrc != nullptr && "Source array type mismatch");
+        assert(srcIndex + count <= typedSrc->Size() && "Source range out of bounds");
+        AppendRange(&typedSrc->components_[srcIndex], count);
+    }
+
     // Direct access to underlying vector for fast iteration
     std::vector<T>& GetVector() { return components_; }
     const std::vector<T>& GetVector() const { return components_; }
-    
+
+    bool IsTriviallyCopyable() const override {
+        return IsTriviallyRelocatable<T>;
+    }
+
+    size_t ElementSize() const override { return sizeof(T); }
+
 private:
+    void AppendRange(const T* data, size_t count) {
+        if (count == 0) {
+            return;
+        }
+        size_t oldSize = components_.size();
+        components_.resize(oldSize + count);
+        T* dst = components_.data() + oldSize;
+        ComponentTraits<T>::CopyRange(dst, data, count);
+    }
+
     std::vector<T> components_;  // Contiguous storage for cache locality
 };
 
@@ -189,13 +218,7 @@ public:
     size_t AddEntity(EntityHandle entity) {
         size_t index = entities_.size();
         entities_.push_back(entity);
-        
-        // Also add default-constructed components for all types in this archetype
-        for (auto& [typeIndex, array] : componentArrays_) {
-            // This is a placeholder - components should be emplaced separately
-            // We ensure arrays stay in sync with entity count
-        }
-        
+
         return index;
     }
     
@@ -204,9 +227,8 @@ public:
     EntityHandle RemoveEntity(size_t index) {
         assert(index < entities_.size() && "Entity index out of bounds");
         
-        EntityHandle removed = entities_[index]; // not used but could be useful
         EntityHandle swapped = EntityHandle::Null();
-        
+
         // Swap with last entity (if not already last)
         if (index < entities_.size() - 1) {
             swapped = entities_.back();
@@ -259,7 +281,7 @@ public:
     
     // Add component for entity at index
     template<typename T, typename... Args>
-    T& EmplaceComponent(size_t entityIndex, Args&&... args) {
+    T& EmplaceComponent([[maybe_unused]] size_t entityIndex, Args&&... args) {
         auto* array = GetComponentArray<T>();
         assert(array != nullptr && "Component type not registered in archetype");
         // Component array should grow to match entity index
@@ -313,30 +335,70 @@ public:
     const std::vector<EntityHandle>& GetEntities() const {
         return entities_;
     }
-    
+
+    bool ValidateIntegrity() const {
+        const size_t entityCount = entities_.size();
+        for (const auto& [typeIndex, array] : componentArrays_) {
+            (void)typeIndex;
+            if (array->Size() != entityCount) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     // Copy component from another archetype (for archetype transitions)
     // Returns true if the component type exists in both archetypes and was copied
-    bool CopyComponentFrom(const Archetype* srcArchetype, size_t srcIndex, 
+    bool CopyComponentFrom(const Archetype* srcArchetype, size_t srcIndex,
                           std::type_index typeIndex) {
         // Check if both archetypes have this component type
         auto srcIt = srcArchetype->componentArrays_.find(typeIndex);
         auto dstIt = componentArrays_.find(typeIndex);
-        
-        if (srcIt == srcArchetype->componentArrays_.end() || 
+
+        if (srcIt == srcArchetype->componentArrays_.end() ||
             dstIt == componentArrays_.end()) {
             return false;
         }
-        
+
         // Copy the component
         dstIt->second->CopyFrom(srcIt->second.get(), srcIndex);
         return true;
     }
-    
+
+    void CopyComponentBlockFrom(const Archetype* srcArchetype, size_t srcIndex,
+                                size_t count, std::type_index typeIndex, bool useBlockCopy) {
+        auto srcIt = srcArchetype->componentArrays_.find(typeIndex);
+        auto dstIt = componentArrays_.find(typeIndex);
+        if (srcIt == srcArchetype->componentArrays_.end() ||
+            dstIt == componentArrays_.end()) {
+            return;
+        }
+
+        if (useBlockCopy) {
+            dstIt->second->CopyBlockFrom(srcIt->second.get(), srcIndex, count);
+        } else {
+            for (size_t i = 0; i < count; ++i) {
+                dstIt->second->CopyFrom(srcIt->second.get(), srcIndex + i);
+            }
+        }
+    }
+
+    const ComponentArray* GetComponentArrayRaw(std::type_index typeIndex) const {
+        auto it = componentArrays_.find(typeIndex);
+        return it != componentArrays_.end() ? it->second.get() : nullptr;
+    }
+
+    ComponentArray* GetComponentArrayRaw(std::type_index typeIndex) {
+        auto it = componentArrays_.find(typeIndex);
+        return it != componentArrays_.end() ? it->second.get() : nullptr;
+    }
+
 private:
     uint32_t id_;
     ComponentSignature signature_;
     std::vector<EntityHandle> entities_;
     std::unordered_map<std::type_index, std::unique_ptr<ComponentArray>> componentArrays_;
+    friend class TransitionPlan;
 };
 
 } // namespace ecs
