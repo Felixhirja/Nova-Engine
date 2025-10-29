@@ -1,7 +1,11 @@
 #pragma once
 
 #include <glad/glad.h>
+#include <array>
+#include <memory>
 #include <vector>
+
+class ShaderProgram;
 
 // Modern GPU-based UI quad batcher using VAO/VBO
 // Replaces immediate mode glBegin(GL_QUADS) with efficient batched rendering
@@ -76,4 +80,11 @@ private:
     
     // Helper: Resize buffers if needed
     void EnsureCapacity(size_t requiredVertices, size_t requiredIndices);
+
+    // Helper: Rebuild orthographic projection when the viewport changes
+    void UpdateProjectionMatrix();
+
+    std::unique_ptr<ShaderProgram> shader_;
+    std::array<float, 16> projectionMatrix_{};
+    bool projectionDirty_ = true;
 };
