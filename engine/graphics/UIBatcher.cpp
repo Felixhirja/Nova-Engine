@@ -1,5 +1,8 @@
 #include "UIBatcher.h"
+#include "ShaderProgram.h"
+
 #include <algorithm>
+#include <cstddef>
 
 UIBatcher::UIBatcher() {
     // Constructor - resources initialized in Init()
@@ -74,11 +77,22 @@ bool UIBatcher::Init() {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, iboCapacity_ * sizeof(GLuint),
                 nullptr, GL_STREAM_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    
+
+    shader_ = std::make_unique<ShaderProgram>();
+    if (!shader_->LoadFromFiles("shaders/core/ui_batcher.vert", "shaders/core/ui_batcher.frag")) {
+        Cleanup();
+        return false;
+    }
+
     return true;
 }
 
 void UIBatcher::Cleanup() {
+    if (shader_) {
+        shader_->Cleanup();
+        shader_.reset();
+    }
+
     if (ibo_ != 0) {
         glDeleteBuffers(1, &ibo_);
         ibo_ = 0;
@@ -135,7 +149,9 @@ void UIBatcher::EnsureCapacity(size_t requiredVertices, size_t requiredIndices) 
 void UIBatcher::Begin(int screenWidth, int screenHeight) {
     screenWidth_ = screenWidth;
     screenHeight_ = screenHeight;
-    
+
+    projectionDirty_ = true;
+
     // Clear batch
     vertices_.clear();
     indices_.clear();
@@ -203,14 +219,16 @@ void UIBatcher::AddTriangle(float x1, float y1,
 }
 
 void UIBatcher::Flush() {
-    if (vertices_.empty() || vao_ == 0) {
+    if (vertices_.empty() || vao_ == 0 || !shader_) {
         lastRenderCount_ = 0;
         return;
     }
-    
+
     // Ensure buffers have enough capacity
     EnsureCapacity(vertices_.size(), indices_.size());
-    
+
+    UpdateProjectionMatrix();
+
     // Upload vertex data
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glBufferSubData(GL_ARRAY_BUFFER, 0,
@@ -223,20 +241,72 @@ void UIBatcher::Flush() {
                    indices_.size() * sizeof(GLuint),
                    indices_.data());
     
+    shader_->Use();
+    shader_->SetUniformMatrix4("uProjection", projectionMatrix_.data());
+
     // Bind VAO and draw
     glBindVertexArray(vao_);
     glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices_.size()),
                   GL_UNSIGNED_INT, nullptr);
-    
+
     // Unbind
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    
+    ShaderProgram::Unuse();
+
     lastRenderCount_ = quadCount_;
-    
+
     // Clear batch for next frame
     vertices_.clear();
     indices_.clear();
     quadCount_ = 0;
+}
+
+void UIBatcher::UpdateProjectionMatrix() {
+    if (!projectionDirty_) {
+        return;
+    }
+
+    if (screenWidth_ <= 0 || screenHeight_ <= 0) {
+        projectionMatrix_ = {
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f,
+        };
+        projectionDirty_ = false;
+        return;
+    }
+
+    const float left = 0.0f;
+    const float right = static_cast<float>(screenWidth_);
+    const float top = 0.0f;
+    const float bottom = static_cast<float>(screenHeight_);
+    const float nearPlane = -1.0f;
+    const float farPlane = 1.0f;
+
+    const float rl = right - left;
+    const float tb = top - bottom;
+    const float fn = farPlane - nearPlane;
+
+    if (rl == 0.0f || tb == 0.0f || fn == 0.0f) {
+        projectionMatrix_ = {
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f,
+        };
+        projectionDirty_ = false;
+        return;
+    }
+
+    projectionMatrix_ = {
+        2.0f / rl,                0.0f,                0.0f,                 0.0f,
+        0.0f,                     2.0f / tb,           0.0f,                 0.0f,
+        0.0f,                     0.0f,               -2.0f / fn,            0.0f,
+       -(right + left) / rl,     -(top + bottom) / tb, -(farPlane + nearPlane) / fn, 1.0f,
+    };
+
+    projectionDirty_ = false;
 }
