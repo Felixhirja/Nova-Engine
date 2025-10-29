@@ -8,7 +8,8 @@ The `Camera` class stores position, orientation, and field-of-view state while p
 
 * Position/orientation/zoom are available through `SetPosition`, `SetOrientation`, and `SetZoom`, plus read-only accessors used by the rest of the engine. The constructor clamps FOV to the `[30°, 90°]` guardrails so callers never see invalid zoom values. 【F:engine/Camera.h†L21-L48】【F:engine/Camera.cpp†L14-L55】
 * `SetTargetZoom` and `UpdateZoom` implement a simple exponential lerp toward a desired FOV, allowing smooth zoom transitions driven by input or scripted events. 【F:engine/Camera.h†L39-L44】【F:engine/Camera.cpp†L38-L53】
-* `ApplyToOpenGL` writes the camera transform into the fixed-function model-view matrix whenever GLFW/SDL builds are active, while headless builds provide a no-op stub. 【F:engine/Camera.h†L31-L34】【F:engine/Camera.cpp†L56-L76】
+* `ApplyToOpenGL` writes the camera transform into the fixed-function model-view matrix whenever GLFW/SDL builds are active, while headless builds provide a no-op stub. 【F:engine/Camera.h†L33-L36】【F:engine/Camera.cpp†L56-L76】
+* Modern renderers can fetch column-major view/projection matrices via `GetViewMatrix` and `GetProjectionMatrix`, removing the dependency on legacy OpenGL state. 【F:engine/Camera.h†L38-L45】【F:engine/Camera.cpp†L128-L164】
 * `BuildBasis` returns an orthonormal forward/right/up triple that downstream systems reuse for navigation, input, and debugging gizmos. It includes safeguards for degenerate cases near the poles. 【F:engine/Camera.h†L45-L48】【F:engine/Camera.cpp†L78-L126】
 
 ## Target-lock follow module
