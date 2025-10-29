@@ -1,0 +1,31 @@
+# Engine Framework TODOs
+
+## Engine Bootstrap & Lifecycle
+- [ ] Document the initialization order inside `engine/EngineBootstrap.cpp` and expose a checklist for mandatory subsystems (input, audio, rendering) so new frameworks can hook in without breaking startup assumptions.
+- [ ] Add shutdown/teardown pathways to `EngineBootstrap` that call into `ResourceManager`, `AudioSystem`, and ECS cleanup helpers to avoid leaks when running automated harnesses.
+- [ ] Introduce a bootstrap configuration asset (JSON/TOML) that declares which frameworks load on startup so experiments can toggle systems without recompiling.
+
+## Frame Scheduling & Timing
+- [ ] Extend `engine/FrameScheduler.cpp` to surface per-stage timing (input, simulation, render prep, present) and store rolling averages for HUD display.
+- [ ] Wire the scheduler metrics into `FramePacingController` so VSync/offline frame pacing choices are data-driven instead of hardcoded constants.
+- [ ] Provide a headless mode flag that skips rendering work but keeps simulation ticking for automated soak tests.
+
+## System Manager & Scheduler Integration
+- [ ] Flesh out `SystemManager` so systems register their dependencies and update phases, then feed that graph into `SystemSchedulerV2` for consistent execution ordering.
+- [ ] Emit diagnostic warnings when two systems declare conflicting read/write access to the same component sets to help teams debug framework collisions.
+- [ ] Mirror the dependency metadata into `engine/docs` so designers can review which frameworks are mandatory per gameplay feature.
+
+## Resource & Asset Frameworks
+- [ ] Audit `ResourceManager.cpp` load paths to ensure async streaming hooks call back on the main thread before touching OpenGL objects.
+- [ ] Add telemetry for asset cache hits/misses and expose a debug HUD overlay to monitor streaming health during playtests.
+- [ ] Build a smoke test that iterates every entry in `assets/` and validates the loader registered for that resource type, logging missing frameworks.
+
+## Diagnostics & Tooling
+- [ ] Create a developer console command that prints the active framework list (audio, UI batching, physics, etc.) along with initialization success/failure state.
+- [ ] Capture framework init/shutdown events in the existing logging system with timestamps so QA can correlate failures with runtime telemetry.
+- [ ] Generate a markdown status report under `artifacts/framework_status.md` during CI that summarizes enabled frameworks and outstanding warnings.
+
+## Documentation
+- [ ] Update `docs/engine_overview.md` (create if missing) with a section per framework describing ownership, key headers, and extension hooks.
+- [ ] Author quick-start snippets showing how to register a new framework subsystem and plug it into the bootstrap + scheduler pipeline.
+- [ ] Cross-link the new documentation from `README.md` and the relevant subsystem quickstart guides so contributors can find framework guidance quickly.
