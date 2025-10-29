@@ -62,7 +62,10 @@ endif
 endif
 
 # Include graphics subsystem and GLAD loader
-SRC := $(wildcard engine/*.cpp) $(wildcard actors/*.cpp) $(wildcard engine/ecs/*.cpp) $(wildcard engine/physics/*.cpp)
+SRC := $(wildcard engine/*.cpp) $(wildcard actors/*.cpp) \
+       $(wildcard engine/ecs/*.cpp) $(wildcard engine/physics/*.cpp) \
+       $(wildcard engine/ai/*.cpp) $(wildcard engine/navigation/*.cpp) \
+       $(wildcard engine/gameplay/*.cpp)
 GLAD_SRC :=
 GLAD_OBJ :=
 

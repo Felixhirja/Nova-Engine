@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <limits>
 
 PhysicsSystem::PhysicsSystem(EntityManager* em)
     : entityManager_(em)
@@ -47,7 +48,7 @@ void PhysicsSystem::RunBuiltinSimulation(double dt) {
     IntegrateVelocities(dt);
 
     if (collisionEnabled_) {
-        DetectCollisions();
+        DetectCollisions(dt);
         ResolveCollisions(dt);
     }
 
@@ -83,6 +84,12 @@ void PhysicsSystem::ApplyGravity(double dt) {
                 vel.vx += globalGravityX_ * dt;
                 vel.vy += globalGravityY_ * dt;
                 vel.vz += globalGravityZ_ * dt;
+                if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(e)) {
+                    double mass = (rb.inverseMass > 0.0) ? (1.0 / rb.inverseMass) : rb.mass;
+                    accum->accumulatedForceX += globalGravityX_ * mass;
+                    accum->accumulatedForceY += globalGravityY_ * mass;
+                    accum->accumulatedForceZ += globalGravityZ_ * mass;
+                }
             }
         });
     
@@ -95,12 +102,18 @@ void PhysicsSystem::ApplyGravity(double dt) {
         entityManager_->ForEach<RigidBody, Position, Velocity>(
             [this, dt, source, sourcePos](Entity e, RigidBody& rb, Position& pos, Velocity& vel) {
                 if (!rb.useGravity || rb.isKinematic) return;
-                
+
                 if (source->isUniform) {
                     // Uniform gravity (like Earth's surface)
                     vel.vx += source->directionX * source->strength * dt;
                     vel.vy += source->directionY * source->strength * dt;
                     vel.vz += source->directionZ * source->strength * dt;
+                    if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(e)) {
+                        double mass = (rb.inverseMass > 0.0) ? (1.0 / rb.inverseMass) : rb.mass;
+                        accum->accumulatedForceX += source->directionX * source->strength * mass;
+                        accum->accumulatedForceY += source->directionY * source->strength * mass;
+                        accum->accumulatedForceZ += source->directionZ * source->strength * mass;
+                    }
                 } else {
                     // Point gravity (like a planet/star)
                     double dx = sourcePos->x - pos.x;
@@ -121,6 +134,12 @@ void PhysicsSystem::ApplyGravity(double dt) {
                     vel.vx += nx * force * dt;
                     vel.vy += ny * force * dt;
                     vel.vz += nz * force * dt;
+                    if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(e)) {
+                        double mass = (rb.inverseMass > 0.0) ? (1.0 / rb.inverseMass) : rb.mass;
+                        accum->accumulatedForceX += nx * force * mass;
+                        accum->accumulatedForceY += ny * force * mass;
+                        accum->accumulatedForceZ += nz * force * mass;
+                    }
                 }
             });
     }
@@ -130,29 +149,35 @@ void PhysicsSystem::ApplyConstantForces(double dt) {
     entityManager_->ForEach<RigidBody, ConstantForce, Velocity>(
         [dt](Entity e, RigidBody& rb, ConstantForce& cf, Velocity& vel) {
             if (rb.isKinematic) return;
-            
+
             double fx = cf.forceX;
             double fy = cf.forceY;
             double fz = cf.forceZ;
-            
+
             // TODO: Transform force if in local space
-            
+
             // F = ma, so a = F/m
             double ax = fx * rb.inverseMass;
             double ay = fy * rb.inverseMass;
             double az = fz * rb.inverseMass;
-            
+
             vel.vx += ax * dt;
             vel.vy += ay * dt;
             vel.vz += az * dt;
+
+            if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(e)) {
+                accum->accumulatedForceX += fx;
+                accum->accumulatedForceY += fy;
+                accum->accumulatedForceZ += fz;
+            }
         });
 }
 
 void PhysicsSystem::ApplyForces(double dt) {
     entityManager_->ForEach<RigidBody, Force, Velocity>(
-        [dt](Entity e, RigidBody& rb, Force& force, Velocity& vel) {
+        [this, dt](Entity e, RigidBody& rb, Force& force, Velocity& vel) {
             if (rb.isKinematic) return;
-            
+
             switch (force.mode) {
                 case Force::Mode::Force: {
                     // F = ma, so a = F/m
@@ -162,6 +187,11 @@ void PhysicsSystem::ApplyForces(double dt) {
                     vel.vx += ax * dt;
                     vel.vy += ay * dt;
                     vel.vz += az * dt;
+                    if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(e)) {
+                        accum->accumulatedForceX += force.fx;
+                        accum->accumulatedForceY += force.fy;
+                        accum->accumulatedForceZ += force.fz;
+                    }
                     break;
                 }
                 case Force::Mode::Impulse: {
@@ -169,6 +199,11 @@ void PhysicsSystem::ApplyForces(double dt) {
                     vel.vx += force.fx * rb.inverseMass;
                     vel.vy += force.fy * rb.inverseMass;
                     vel.vz += force.fz * rb.inverseMass;
+                    if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(e)) {
+                        accum->accumulatedImpulseX += force.fx * rb.inverseMass;
+                        accum->accumulatedImpulseY += force.fy * rb.inverseMass;
+                        accum->accumulatedImpulseZ += force.fz * rb.inverseMass;
+                    }
                     force.lifetime = 0.0;  // Mark for removal
                     break;
                 }
@@ -177,6 +212,12 @@ void PhysicsSystem::ApplyForces(double dt) {
                     vel.vx += force.fx * dt;
                     vel.vy += force.fy * dt;
                     vel.vz += force.fz * dt;
+                    if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(e)) {
+                        double mass = (rb.inverseMass > 0.0) ? (1.0 / rb.inverseMass) : rb.mass;
+                        accum->accumulatedForceX += force.fx * mass;
+                        accum->accumulatedForceY += force.fy * mass;
+                        accum->accumulatedForceZ += force.fz * mass;
+                    }
                     break;
                 }
                 case Force::Mode::VelocityChange: {
@@ -184,6 +225,12 @@ void PhysicsSystem::ApplyForces(double dt) {
                     vel.vx += force.fx;
                     vel.vy += force.fy;
                     vel.vz += force.fz;
+                    if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(e)) {
+                        double mass = (rb.inverseMass > 0.0) ? (1.0 / rb.inverseMass) : rb.mass;
+                        accum->accumulatedImpulseX += force.fx * mass;
+                        accum->accumulatedImpulseY += force.fy * mass;
+                        accum->accumulatedImpulseZ += force.fz * mass;
+                    }
                     force.lifetime = 0.0;  // Mark for removal
                     break;
                 }
@@ -239,25 +286,52 @@ void PhysicsSystem::IntegrateVelocities(double dt) {
         });
 }
 
-void PhysicsSystem::DetectCollisions() {
+void PhysicsSystem::DetectCollisions(double dt) {
     // Clear previous frame collisions
     entityManager_->ForEach<CollisionInfo>([](Entity e, CollisionInfo& info) {
         info.Clear();
     });
-    
-    // Detect new collisions
-    auto collisionPairs = DetectCollisionPairs();
-    
-    // Store collision information
-    for (const auto& pair : collisionPairs) {
-        // Add to entity A's collision info
-        auto* infoA = entityManager_->GetComponent<CollisionInfo>(pair.entityA);
-        if (!infoA) {
-            entityManager_->EmplaceComponent<CollisionInfo>(pair.entityA);
-            infoA = entityManager_->GetComponent<CollisionInfo>(pair.entityA);
+
+    currentCollisions_.clear();
+
+    auto staticPairs = DetectCollisionPairs();
+    auto sweptPairs = DetectSweptCollisionPairs(dt);
+
+    auto appendIfUnique = [this](const CollisionPair& candidate) {
+        auto exists = std::find_if(currentCollisions_.begin(), currentCollisions_.end(),
+                                   [&candidate](const CollisionPair& existing) {
+                                       return (existing.entityA == candidate.entityA &&
+                                               existing.entityB == candidate.entityB) ||
+                                              (existing.entityA == candidate.entityB &&
+                                               existing.entityB == candidate.entityA);
+                                   });
+        if (exists == currentCollisions_.end()) {
+            currentCollisions_.push_back(candidate);
         }
-        
-        if (infoA) {
+    };
+
+    for (auto& pair : staticPairs) {
+        pair.timeOfImpact = 0.0;
+        pair.dynamic = false;
+        appendIfUnique(pair);
+    }
+
+    for (auto& pair : sweptPairs) {
+        appendIfUnique(pair);
+    }
+
+    // Store collision information for systems that rely on contact data
+    for (const auto& pair : currentCollisions_) {
+        auto ensureInfo = [this](unsigned int entity) -> CollisionInfo* {
+            auto* info = entityManager_->GetComponent<CollisionInfo>(entity);
+            if (!info) {
+                entityManager_->EmplaceComponent<CollisionInfo>(entity);
+                info = entityManager_->GetComponent<CollisionInfo>(entity);
+            }
+            return info;
+        };
+
+        if (auto* infoA = ensureInfo(pair.entityA)) {
             CollisionInfo::Contact contact;
             contact.otherEntity = pair.entityB;
             contact.normalX = pair.normalX;
@@ -267,18 +341,13 @@ void PhysicsSystem::DetectCollisions() {
             contact.contactPointX = pair.contactX;
             contact.contactPointY = pair.contactY;
             contact.contactPointZ = pair.contactZ;
+            contact.timeOfImpact = pair.timeOfImpact;
+            contact.timestamp = pair.timeOfImpact * dt;
             infoA->contacts.push_back(contact);
             infoA->collisionCount++;
         }
-        
-        // Add to entity B's collision info (with inverted normal)
-        auto* infoB = entityManager_->GetComponent<CollisionInfo>(pair.entityB);
-        if (!infoB) {
-            entityManager_->EmplaceComponent<CollisionInfo>(pair.entityB);
-            infoB = entityManager_->GetComponent<CollisionInfo>(pair.entityB);
-        }
-        
-        if (infoB) {
+
+        if (auto* infoB = ensureInfo(pair.entityB)) {
             CollisionInfo::Contact contact;
             contact.otherEntity = pair.entityA;
             contact.normalX = -pair.normalX;
@@ -288,6 +357,8 @@ void PhysicsSystem::DetectCollisions() {
             contact.contactPointX = pair.contactX;
             contact.contactPointY = pair.contactY;
             contact.contactPointZ = pair.contactZ;
+            contact.timeOfImpact = pair.timeOfImpact;
+            contact.timestamp = pair.timeOfImpact * dt;
             infoB->contacts.push_back(contact);
             infoB->collisionCount++;
         }
@@ -321,6 +392,8 @@ std::vector<PhysicsSystem::CollisionPair> PhysicsSystem::DetectCollisionPairs() 
             if (CheckBoxBox(*colliderA, *posA, *colliderB, *posB, pair)) {
                 pair.entityA = entityA;
                 pair.entityB = entityB;
+                pair.timeOfImpact = 0.0;
+                pair.dynamic = false;
                 pairs.push_back(pair);
             }
         }
@@ -345,6 +418,8 @@ std::vector<PhysicsSystem::CollisionPair> PhysicsSystem::DetectCollisionPairs() 
             if (CheckSphereSphere(*colliderA, *posA, *colliderB, *posB, pair)) {
                 pair.entityA = entityA;
                 pair.entityB = entityB;
+                pair.timeOfImpact = 0.0;
+                pair.dynamic = false;
                 pairs.push_back(pair);
             }
         }
@@ -366,12 +441,166 @@ std::vector<PhysicsSystem::CollisionPair> PhysicsSystem::DetectCollisionPairs() 
             if (CheckBoxSphere(*boxCollider, *boxPos, *sphereCollider, *spherePos, pair)) {
                 pair.entityA = boxEntity;
                 pair.entityB = sphereEntity;
+                pair.timeOfImpact = 0.0;
+                pair.dynamic = false;
                 pairs.push_back(pair);
             }
         }
     }
     
     return pairs;
+}
+
+std::vector<PhysicsSystem::CollisionPair> PhysicsSystem::DetectSweptCollisionPairs(double dt) {
+    std::vector<CollisionPair> pairs;
+    if (dt <= 0.0) {
+        return pairs;
+    }
+
+    auto boxColliders = entityManager_->GetAllWith<BoxCollider>();
+    for (size_t i = 0; i < boxColliders.size(); ++i) {
+        for (size_t j = i + 1; j < boxColliders.size(); ++j) {
+            auto [entityA, colliderA] = boxColliders[i];
+            auto [entityB, colliderB] = boxColliders[j];
+
+            if (!colliderA->isEnabled || !colliderB->isEnabled) continue;
+            if (!(colliderA->collisionLayer & colliderB->collisionMask)) continue;
+            if (!(colliderB->collisionLayer & colliderA->collisionMask)) continue;
+
+            auto* posA = entityManager_->GetComponent<Position>(entityA);
+            auto* posB = entityManager_->GetComponent<Position>(entityB);
+            if (!posA || !posB) continue;
+
+            const auto* velA = entityManager_->GetComponent<Velocity>(entityA);
+            const auto* velB = entityManager_->GetComponent<Velocity>(entityB);
+
+            if (!velA && !velB) {
+                continue;  // No relative motion
+            }
+
+            CollisionPair pair;
+            if (ComputeSweptAABB(*colliderA, *posA, velA, *colliderB, *posB, velB, dt, pair)) {
+                pair.entityA = entityA;
+                pair.entityB = entityB;
+                pair.dynamic = true;
+                pairs.push_back(pair);
+            }
+        }
+    }
+
+    return pairs;
+}
+
+bool PhysicsSystem::ComputeSweptAABB(const BoxCollider& a, const Position& posA,
+                                     const Velocity* velA,
+                                     const BoxCollider& b, const Position& posB,
+                                     const Velocity* velB, double dt,
+                                     CollisionPair& result) {
+    const double velAx = velA ? velA->vx : 0.0;
+    const double velAy = velA ? velA->vy : 0.0;
+    const double velAz = velA ? velA->vz : 0.0;
+    const double velBx = velB ? velB->vx : 0.0;
+    const double velBy = velB ? velB->vy : 0.0;
+    const double velBz = velB ? velB->vz : 0.0;
+
+    const double relVelX = velBx - velAx;
+    const double relVelY = velBy - velAy;
+    const double relVelZ = velBz - velAz;
+
+    if (std::abs(relVelX) < 1e-8 && std::abs(relVelY) < 1e-8 && std::abs(relVelZ) < 1e-8) {
+        return false;
+    }
+
+    const double aMinX = posA.x + a.offsetX - a.width * 0.5;
+    const double aMaxX = posA.x + a.offsetX + a.width * 0.5;
+    const double aMinY = posA.y + a.offsetY - a.height * 0.5;
+    const double aMaxY = posA.y + a.offsetY + a.height * 0.5;
+    const double aMinZ = posA.z + a.offsetZ - a.depth * 0.5;
+    const double aMaxZ = posA.z + a.offsetZ + a.depth * 0.5;
+
+    const double bMinX = posB.x + b.offsetX - b.width * 0.5;
+    const double bMaxX = posB.x + b.offsetX + b.width * 0.5;
+    const double bMinY = posB.y + b.offsetY - b.height * 0.5;
+    const double bMaxY = posB.y + b.offsetY + b.height * 0.5;
+    const double bMinZ = posB.z + b.offsetZ - b.depth * 0.5;
+    const double bMaxZ = posB.z + b.offsetZ + b.depth * 0.5;
+
+    auto computeAxis = [](double minA, double maxA, double minB, double maxB, double vel) {
+        double entry, exit;
+        if (vel > 0.0) {
+            entry = (minA - maxB) / vel;
+            exit = (maxA - minB) / vel;
+        } else if (vel < 0.0) {
+            entry = (maxA - minB) / vel;
+            exit = (minA - maxB) / vel;
+        } else {
+            if (maxB < minA || minB > maxA) {
+                entry = std::numeric_limits<double>::infinity();
+                exit = -std::numeric_limits<double>::infinity();
+            } else {
+                entry = -std::numeric_limits<double>::infinity();
+                exit = std::numeric_limits<double>::infinity();
+            }
+        }
+        return std::pair<double, double>(entry, exit);
+    };
+
+    auto [entryX, exitX] = computeAxis(aMinX, aMaxX, bMinX, bMaxX, relVelX);
+    auto [entryY, exitY] = computeAxis(aMinY, aMaxY, bMinY, bMaxY, relVelY);
+    auto [entryZ, exitZ] = computeAxis(aMinZ, aMaxZ, bMinZ, bMaxZ, relVelZ);
+
+    double entryTime = std::max({entryX, entryY, entryZ});
+    double exitTime = std::min({exitX, exitY, exitZ});
+
+    if (entryTime > exitTime) {
+        return false;
+    }
+
+    if (exitTime < 0.0) {
+        return false;
+    }
+
+    if (entryTime > dt) {
+        return false;
+    }
+
+    if (entryTime < 0.0) {
+        // Already overlapping or touching; handled by static detection
+        return false;
+    }
+
+    double normalX = 0.0;
+    double normalY = 0.0;
+    double normalZ = 0.0;
+
+    if (entryTime == entryX) {
+        normalX = (relVelX > 0.0) ? -1.0 : 1.0;
+    } else if (entryTime == entryY) {
+        normalY = (relVelY > 0.0) ? -1.0 : 1.0;
+    } else {
+        normalZ = (relVelZ > 0.0) ? -1.0 : 1.0;
+    }
+
+    double clampedToi = Clamp(entryTime / dt, 0.0, 1.0);
+
+    double hitPosAx = posA.x + velAx * entryTime;
+    double hitPosAy = posA.y + velAy * entryTime;
+    double hitPosAz = posA.z + velAz * entryTime;
+    double hitPosBx = posB.x + velBx * entryTime;
+    double hitPosBy = posB.y + velBy * entryTime;
+    double hitPosBz = posB.z + velBz * entryTime;
+
+    result.normalX = normalX;
+    result.normalY = normalY;
+    result.normalZ = normalZ;
+    result.penetration = 0.0;
+    result.timeOfImpact = clampedToi;
+    result.dynamic = true;
+    result.contactX = (hitPosAx + hitPosBx) * 0.5;
+    result.contactY = (hitPosAy + hitPosBy) * 0.5;
+    result.contactZ = (hitPosAz + hitPosBz) * 0.5;
+
+    return true;
 }
 
 bool PhysicsSystem::CheckBoxBox(const BoxCollider& a, const Position& posA,
@@ -532,17 +761,23 @@ bool PhysicsSystem::CheckBoxSphere(const BoxCollider& box, const Position& boxPo
 }
 
 void PhysicsSystem::ResolveCollisions(double dt) {
-    auto collisionPairs = DetectCollisionPairs();
-    
-    for (const auto& pair : collisionPairs) {
+    if (currentCollisions_.empty()) {
+        return;
+    }
+
+    std::sort(currentCollisions_.begin(), currentCollisions_.end(),
+              [](const CollisionPair& lhs, const CollisionPair& rhs) {
+                  return lhs.timeOfImpact < rhs.timeOfImpact;
+              });
+
+    for (const auto& pair : currentCollisions_) {
         auto* colliderA = entityManager_->GetComponent<Collider>(pair.entityA);
         auto* colliderB = entityManager_->GetComponent<Collider>(pair.entityB);
-        
-        // Skip trigger colliders
+
         if ((colliderA && colliderA->isTrigger) || (colliderB && colliderB->isTrigger)) {
             continue;
         }
-        
+
         ResolveCollisionPair(pair, dt);
     }
 }
@@ -552,58 +787,127 @@ void PhysicsSystem::ResolveCollisionPair(const CollisionPair& pair, double dt) {
     auto* rbB = entityManager_->GetComponent<RigidBody>(pair.entityB);
     auto* velA = entityManager_->GetComponent<Velocity>(pair.entityA);
     auto* velB = entityManager_->GetComponent<Velocity>(pair.entityB);
-    
-    // Separate objects
-    SeparateColliders(pair.entityA, pair.entityB,
-                     pair.normalX, pair.normalY, pair.normalZ,
-                     pair.penetration);
-    
-    if (!velA || !velB) return;
-    if ((rbA && rbA->isKinematic) && (rbB && rbB->isKinematic)) return;
-    
-    // Calculate relative velocity
-    double relVelX = velB->vx - velA->vx;
-    double relVelY = velB->vy - velA->vy;
-    double relVelZ = velB->vz - velA->vz;
-    
-    // Velocity along collision normal
-    double velAlongNormal = DotProduct(relVelX, relVelY, relVelZ,
-                                      pair.normalX, pair.normalY, pair.normalZ);
-    
-    // Objects moving apart, don't resolve
-    if (velAlongNormal > 0.0) return;
-    
-    // Calculate restitution (bounciness)
-    double restitution = 0.5;
-    if (rbA && rbB) {
-        restitution = std::min(rbA->restitution, rbB->restitution);
-    } else if (rbA) {
-        restitution = rbA->restitution;
-    } else if (rbB) {
-        restitution = rbB->restitution;
+    auto* posA = entityManager_->GetComponent<Position>(pair.entityA);
+    auto* posB = entityManager_->GetComponent<Position>(pair.entityB);
+
+    CollisionPair workingPair = pair;
+
+    if (pair.dynamic && dt > 0.0) {
+        double rollback = (1.0 - Clamp(pair.timeOfImpact, 0.0, 1.0)) * dt;
+        if (rollback > 0.0) {
+            if (posA && velA && rbA && !rbA->isKinematic) {
+                posA->x -= velA->vx * rollback;
+                posA->y -= velA->vy * rollback;
+                posA->z -= velA->vz * rollback;
+            }
+            if (posB && velB && rbB && !rbB->isKinematic) {
+                posB->x -= velB->vx * rollback;
+                posB->y -= velB->vy * rollback;
+                posB->z -= velB->vz * rollback;
+            }
+        }
+
+        if (posA && posB) {
+            if (auto* boxA = entityManager_->GetComponent<BoxCollider>(pair.entityA)) {
+                if (auto* boxB = entityManager_->GetComponent<BoxCollider>(pair.entityB)) {
+                    CollisionPair recalculated;
+                    if (CheckBoxBox(*boxA, *posA, *boxB, *posB, recalculated)) {
+                        recalculated.entityA = pair.entityA;
+                        recalculated.entityB = pair.entityB;
+                        recalculated.timeOfImpact = pair.timeOfImpact;
+                        recalculated.dynamic = pair.dynamic;
+                        workingPair = recalculated;
+                    }
+                }
+            }
+        }
     }
-    
-    // Calculate impulse scalar
-    double j = -(1.0 + restitution) * velAlongNormal;
-    
+
+    SeparateColliders(workingPair.entityA, workingPair.entityB,
+                      workingPair.normalX, workingPair.normalY, workingPair.normalZ,
+                      workingPair.penetration);
+
+    if ((rbA && rbA->isKinematic) && (rbB && rbB->isKinematic)) return;
+
+    const double velAx = velA ? velA->vx : 0.0;
+    const double velAy = velA ? velA->vy : 0.0;
+    const double velAz = velA ? velA->vz : 0.0;
+    const double velBx = velB ? velB->vx : 0.0;
+    const double velBy = velB ? velB->vy : 0.0;
+    const double velBz = velB ? velB->vz : 0.0;
+
+    double relVelX = velBx - velAx;
+    double relVelY = velBy - velAy;
+    double relVelZ = velBz - velAz;
+
+    double velAlongNormal = DotProduct(relVelX, relVelY, relVelZ,
+                                       workingPair.normalX, workingPair.normalY, workingPair.normalZ);
+
+    if (velAlongNormal > 0.0) return;
+
+    double restitution = 0.5;
+
+    auto* colliderA = entityManager_->GetComponent<Collider>(pair.entityA);
+    auto* colliderB = entityManager_->GetComponent<Collider>(pair.entityB);
+    auto* materialA = entityManager_->GetComponent<PhysicsMaterial>(pair.entityA);
+    auto* materialB = entityManager_->GetComponent<PhysicsMaterial>(pair.entityB);
+
+    if (materialA) {
+        restitution = materialA->restitution;
+    }
+    if (materialB) {
+        restitution = materialA ? std::min(restitution, materialB->restitution) : materialB->restitution;
+    }
+
+    if (colliderA && colliderA->materialRestitution >= 0.0) {
+        restitution = colliderA->materialRestitution;
+    }
+    if (colliderB && colliderB->materialRestitution >= 0.0) {
+        restitution = std::min(restitution, colliderB->materialRestitution);
+    }
+
+    if (rbA && !rbB) {
+        restitution = rbA->restitution;
+    } else if (!rbA && rbB) {
+        restitution = rbB->restitution;
+    } else if (rbA && rbB) {
+        restitution = std::min(rbA->restitution, rbB->restitution);
+    }
+
     double invMassA = (rbA && !rbA->isKinematic) ? rbA->inverseMass : 0.0;
     double invMassB = (rbB && !rbB->isKinematic) ? rbB->inverseMass : 0.0;
     double invMassSum = invMassA + invMassB;
-    
-    if (invMassSum > 0.0) {
-        j /= invMassSum;
 
-        // Apply impulse
-        if (rbA && !rbA->isKinematic) {
-            velA->vx -= j * invMassA * pair.normalX;
-            velA->vy -= j * invMassA * pair.normalY;
-            velA->vz -= j * invMassA * pair.normalZ;
+    if (invMassSum <= 0.0) {
+        return;
+    }
+
+    double j = -(1.0 + restitution) * velAlongNormal;
+    j /= invMassSum;
+
+    const double nx = workingPair.normalX;
+    const double ny = workingPair.normalY;
+    const double nz = workingPair.normalZ;
+
+    if (rbA && !rbA->isKinematic && velA) {
+        velA->vx -= j * invMassA * nx;
+        velA->vy -= j * invMassA * ny;
+        velA->vz -= j * invMassA * nz;
+        if (auto* accumA = entityManager_->GetComponent<ForceAccumulator>(pair.entityA)) {
+            accumA->accumulatedImpulseX -= j * invMassA * nx;
+            accumA->accumulatedImpulseY -= j * invMassA * ny;
+            accumA->accumulatedImpulseZ -= j * invMassA * nz;
         }
+    }
 
-        if (rbB && !rbB->isKinematic) {
-            velB->vx += j * invMassB * pair.normalX;
-            velB->vy += j * invMassB * pair.normalY;
-            velB->vz += j * invMassB * pair.normalZ;
+    if (rbB && !rbB->isKinematic && velB) {
+        velB->vx += j * invMassB * nx;
+        velB->vy += j * invMassB * ny;
+        velB->vz += j * invMassB * nz;
+        if (auto* accumB = entityManager_->GetComponent<ForceAccumulator>(pair.entityB)) {
+            accumB->accumulatedImpulseX += j * invMassB * nx;
+            accumB->accumulatedImpulseY += j * invMassB * ny;
+            accumB->accumulatedImpulseZ += j * invMassB * nz;
         }
     }
 
@@ -621,8 +925,8 @@ void PhysicsSystem::ResolveCollisionPair(const CollisionPair& pair, double dt) {
         }
     };
 
-    updateGrounding(pair.entityA, -pair.normalZ);
-    updateGrounding(pair.entityB, pair.normalZ);
+    updateGrounding(pair.entityA, -nz);
+    updateGrounding(pair.entityB, nz);
 }
 
 void PhysicsSystem::SeparateColliders(unsigned int entityA, unsigned int entityB,
@@ -632,13 +936,14 @@ void PhysicsSystem::SeparateColliders(unsigned int entityA, unsigned int entityB
     auto* rbB = entityManager_->GetComponent<RigidBody>(entityB);
     auto* posA = entityManager_->GetComponent<Position>(entityA);
     auto* posB = entityManager_->GetComponent<Position>(entityB);
-    
+
     if (!posA || !posB) return;
-    
+    if (penetration <= 0.0) return;
+
     double invMassA = (rbA && !rbA->isKinematic) ? rbA->inverseMass : 0.0;
     double invMassB = (rbB && !rbB->isKinematic) ? rbB->inverseMass : 0.0;
     double invMassSum = invMassA + invMassB;
-    
+
     if (invMassSum <= 0.0) return;  // Both kinematic
     
     // Separate proportional to inverse mass
@@ -674,6 +979,13 @@ void PhysicsSystem::ClearFrameForces() {
     for (auto [entity, force] : forces) {
         if (force->lifetime == 0.0) {
             entityManager_->RemoveComponent<Force>(entity);
+        }
+    }
+
+    auto accumulators = entityManager_->GetAllWith<ForceAccumulator>();
+    for (auto [entity, accumulator] : accumulators) {
+        if (accumulator) {
+            accumulator->Clear();
         }
     }
 }
@@ -716,17 +1028,29 @@ void PhysicsSystem::ApplyForce(unsigned int entity, double fx, double fy, double
     force->fy += fy;
     force->fz += fz;
     force->mode = Force::Mode::Force;
+
+    if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(entity)) {
+        accum->accumulatedForceX += fx;
+        accum->accumulatedForceY += fy;
+        accum->accumulatedForceZ += fz;
+    }
 }
 
 void PhysicsSystem::ApplyImpulse(unsigned int entity, double ix, double iy, double iz) {
     if (!entityManager_->IsAlive(entity)) return;
-    
+
     auto& force = entityManager_->EmplaceComponent<Force>(entity);
     force.fx = ix;
     force.fy = iy;
     force.fz = iz;
     force.mode = Force::Mode::Impulse;
     force.lifetime = 0.0;
+
+    if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(entity)) {
+        accum->accumulatedImpulseX += ix;
+        accum->accumulatedImpulseY += iy;
+        accum->accumulatedImpulseZ += iz;
+    }
 }
 
 void PhysicsSystem::ApplyForceAtPoint(unsigned int entity,double fx, double fy, double fz,
