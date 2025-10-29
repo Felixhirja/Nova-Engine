@@ -48,7 +48,7 @@ int main() {
         Camera::Basis basis = camera.BuildBasis(true);
         assert(nearlyEqual(basis.forwardX, 0.0));
         assert(nearlyEqual(basis.forwardY, 0.0));
-        assert(nearlyEqual(basis.forwardZ, -1.0));
+        assert(nearlyEqual(basis.forwardZ, 1.0));
         assert(nearlyEqual(basis.rightX, 1.0));
         assert(nearlyEqual(basis.rightY, 0.0));
         assert(nearlyEqual(basis.rightZ, 0.0));
@@ -62,12 +62,12 @@ int main() {
         const double yaw = M_PI * 0.5; // 90° yaw
         Camera camera(0.0, 0.0, 0.0, 0.0, yaw, Camera::kDefaultFovDegrees);
         Camera::Basis basis = camera.BuildBasis(true);
-        assert(nearlyEqual(basis.forwardX, -1.0));
+        assert(nearlyEqual(basis.forwardX, 1.0));
         assert(nearlyEqual(basis.forwardY, 0.0));
         assert(nearlyEqual(basis.forwardZ, 0.0));
         assert(nearlyEqual(basis.rightX, 0.0));
         assert(nearlyEqual(basis.rightY, 0.0));
-    assert(nearlyEqual(basis.rightZ, 1.0));
+        assert(nearlyEqual(basis.rightZ, -1.0));
         assert(isOrthonormal(basis));
     }
 

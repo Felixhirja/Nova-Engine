@@ -64,7 +64,7 @@ void CameraFollowController::ApplyFreeCameraMovement(Camera& camera,
         (movementInput.sprint ? config.sprintMultiplier : 1.0) *
         (movementInput.slow   ? 0.5                      : 1.0);
 
-    // --- Build camera basis (Y up, forward ≈ -Z) ---
+    // --- Build camera basis (X right, Y up, Z forward) ---
     const double yaw   = camera.yaw();
     const double pitch = camera.pitch();
 

@@ -272,8 +272,8 @@ void UpdateTargetLockCamera(Camera& camera,
     const double nearVertRad = clamp(config.nearVerticalDeg, 0.0, 89.9) * (CameraFollow::kPI / 180.0);
     const bool   nearVertical = std::abs(elev) > (CameraFollow::kPI / 2.0 - nearVertRad);
 
-    // yawToTarget = atan2(-dx, -dz) assumes +Z-forward / yaw=0 down -Z convention
-    const double yawToTarget = std::atan2(-dx, -dz);
+    // yawToTarget = atan2(dx, dz) assumes +Z-forward / yaw=0 aligns with +Z
+    const double yawToTarget = std::atan2(dx, dz);
     const double yawLocked   = nearVertical ? camYaw : yawToTarget;
 
     const double pitchLocked = -std::atan2(dy, horiz) + config.pitchBias + (pitchInput * t);
