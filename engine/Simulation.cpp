@@ -1,12 +1,16 @@
 #include "Simulation.h"
 #include "ecs/AnimationSystem.h"
+#include "ecs/BehaviorTreeSystem.h"
 #include "ecs/LegacySystemAdapter.h"
 #include "ecs/LocomotionSystem.h"
+#include "ecs/NavigationSystem.h"
 #include "ecs/MovementSystem.h"
 #include "ecs/PhysicsSystem.h"
 #include "ecs/PlayerControlSystem.h"
 #include "ecs/SpaceshipPhysicsSystem.h"
 #include "ecs/ShipAssemblySystem.h"
+#include "gameplay/GameplayEventSystem.h"
+#include "gameplay/MissionScriptSystem.h"
 #include "TargetingSystem.h"
 #include "WeaponSystem.h"
 #include "ShieldSystem.h"
@@ -569,8 +573,12 @@ Simulation::Simulation()
       useMovementParametersFile(true),
       movementBoundsConfigPath("assets/config/movement_bounds.ini"),
       movementBoundsProfile("default"),
-      useMovementBoundsFile(true) {
+      useMovementBoundsFile(true),
+      elapsedTimeSeconds_(0.0) {
     activeEm = &em;
+    randomManager_.SetGlobalSeed(0u);
+    replayRecorder_.StopRecording();
+    replayPlayer_.StopPlayback();
 }
 
 Simulation::~Simulation() {}
@@ -595,6 +603,13 @@ void Simulation::Init(EntityManager* externalEm) {
     activeEm = externalEm ? externalEm : &em;
     EntityManager* useEm = activeEm;
 
+    elapsedTimeSeconds_ = 0.0;
+    replayPlayer_.StopPlayback();
+    if (replayRecorder_.IsRecording()) {
+        replayRecorder_.StartRecording(randomManager_.GetGlobalSeed());
+    }
+    randomManager_.RegisterNamedStream("combat", randomManager_.GetGlobalSeed() + 1u);
+
     schedulerConfigured_ = false;
 
     DestroyEnvironmentColliders(*useEm);
@@ -614,6 +629,11 @@ void Simulation::Init(EntityManager* externalEm) {
     systemManager.RegisterSystem<TargetingSystem>();
     systemManager.RegisterSystem<WeaponSystem>();
     systemManager.RegisterSystem<ShieldSystem>();
+    auto& behaviorSystem = systemManager.RegisterSystem<BehaviorTreeSystem>();
+    behaviorSystem.SetRandomManager(&randomManager_);
+    systemManager.RegisterSystem<NavigationSystem>();
+    systemManager.RegisterSystem<GameplayEventSystem>();
+    systemManager.RegisterSystem<MissionScriptSystem>();
 
     // Create player entity in ECS
     playerEntity = useEm->CreateEntity();
@@ -773,6 +793,28 @@ void Simulation::Update(double dt) {
 
     EntityManager* useEm = activeEm ? activeEm : &em;
 
+    if (replayPlayer_.IsPlaying()) {
+        if (const ReplayFrame* frame = replayPlayer_.ConsumeNextFrame()) {
+            inputForward = frame->input.forward;
+            inputBackward = frame->input.backward;
+            inputUp = frame->input.up;
+            inputDown = frame->input.down;
+            inputStrafeLeft = frame->input.strafeLeft;
+            inputStrafeRight = frame->input.strafeRight;
+            inputSprint = frame->input.sprint;
+            inputCrouch = frame->input.crouch;
+            inputSlide = frame->input.slide;
+            inputBoost = frame->input.boost;
+            inputLeft = frame->input.left;
+            inputRight = frame->input.right;
+            inputCameraYaw = frame->input.cameraYaw;
+            randomManager_.RestoreState(frame->randomState);
+            replayPlayer_.ApplyFrameToEntities(*frame, *useEm);
+        } else {
+            replayPlayer_.StopPlayback();
+        }
+    }
+
     if (auto* controller = useEm->GetComponent<PlayerController>(playerEntity)) {
         bool jumpJustPressed = inputUp && !prevJumpHeld;
         controller->moveLeft = inputLeft;
@@ -808,6 +850,27 @@ void Simulation::Update(double dt) {
     }
 
     prevJumpHeld = inputUp;
+
+    elapsedTimeSeconds_ += dt;
+
+    if (replayRecorder_.IsRecording()) {
+        PlayerInputSnapshot snapshot;
+        snapshot.forward = inputForward;
+        snapshot.backward = inputBackward;
+        snapshot.up = inputUp;
+        snapshot.down = inputDown;
+        snapshot.strafeLeft = inputStrafeLeft;
+        snapshot.strafeRight = inputStrafeRight;
+        snapshot.sprint = inputSprint;
+        snapshot.crouch = inputCrouch;
+        snapshot.slide = inputSlide;
+        snapshot.boost = inputBoost;
+        snapshot.left = inputLeft;
+        snapshot.right = inputRight;
+        snapshot.cameraYaw = inputCameraYaw;
+
+        replayRecorder_.RecordFrame(elapsedTimeSeconds_, snapshot, randomManager_.GetState(), *useEm);
+    }
 }
 
 double Simulation::GetPosition() const {
@@ -935,6 +998,39 @@ void Simulation::SetMovementBoundsProfile(const std::string& profile) {
     movementBoundsProfile = profile;
 }
 
+void Simulation::StartReplayRecording(uint64_t seed) {
+    if (seed != randomManager_.GetGlobalSeed()) {
+        randomManager_.SetGlobalSeed(seed);
+    }
+    replayRecorder_.StartRecording(randomManager_.GetGlobalSeed());
+    replayPlayer_.StopPlayback();
+}
+
+void Simulation::StopReplayRecording(const std::string& path) {
+    if (!replayRecorder_.IsRecording()) {
+        return;
+    }
+    replayRecorder_.StopRecording();
+    if (!path.empty()) {
+        replayRecorder_.SaveToFile(path);
+    }
+}
+
+bool Simulation::LoadReplay(const std::string& path) {
+    bool loaded = replayPlayer_.LoadFromFile(path);
+    if (loaded) {
+        replayRecorder_.StopRecording();
+    }
+    return loaded;
+}
+
+void Simulation::PlayLoadedReplay() {
+    replayPlayer_.BeginPlayback();
+}
+
+void Simulation::StopReplayPlayback() {
+    replayPlayer_.StopPlayback();
+}
 
 void Simulation::DestroyEnvironmentColliders(EntityManager& entityManager) {
     for (Entity colliderEntity : environmentColliderEntities) {

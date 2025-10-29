@@ -2,10 +2,16 @@
 #include "Component.h"
 #include "EntityHandle.h"
 #include <cmath>
+#include <deque>
+#include <functional>
 #include <limits>
+#include <map>
+#include <queue>
+#include <random>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 #include <vector>
 
 struct Position : public Component {
@@ -44,6 +50,13 @@ struct PhysicsBody : public Component {
     double mass = 1.0;
     double drag = 0.0;
     bool affectedByGravity = true;
+};
+
+struct PhysicsMaterial : public Component {
+    double staticFriction = 0.6;
+    double dynamicFriction = 0.4;
+    double restitution = 0.1;
+    double density = 1.0;
 };
 
 struct Hitbox : public Component {
@@ -393,9 +406,27 @@ struct Force : public Component {
     
     // Lifetime (-1 = permanent, 0 = applied and cleared, >0 = duration in seconds)
     double lifetime = -1.0;
-    
+
     // Whether this is a local or world-space force
     bool isLocalSpace = false;
+};
+
+struct ForceAccumulator : public Component {
+    double accumulatedForceX = 0.0;
+    double accumulatedForceY = 0.0;
+    double accumulatedForceZ = 0.0;
+    double accumulatedImpulseX = 0.0;
+    double accumulatedImpulseY = 0.0;
+    double accumulatedImpulseZ = 0.0;
+
+    void Clear() {
+        accumulatedForceX = 0.0;
+        accumulatedForceY = 0.0;
+        accumulatedForceZ = 0.0;
+        accumulatedImpulseX = 0.0;
+        accumulatedImpulseY = 0.0;
+        accumulatedImpulseZ = 0.0;
+    }
 };
 
 /**
@@ -488,11 +519,12 @@ struct CollisionInfo : public Component {
         double contactPointZ = 0.0;
         double impulse = 0.0;          // Magnitude of collision impulse
         double timestamp = 0.0;        // When collision occurred
+        double timeOfImpact = 0.0;     // Normalized time of impact within frame (0..1)
     };
-    
+
     std::vector<Contact> contacts;     // All active contacts this frame
     int collisionCount = 0;            // Number of collisions this frame
-    
+
     void Clear() {
         contacts.clear();
         collisionCount = 0;
@@ -715,6 +747,24 @@ struct NavigationState : public Component {
     bool hasTarget = false;
 };
 
+struct NavigationGrid : public Component {
+    int width = 0;
+    int height = 0;
+    int layers = 1;
+    double cellSize = 1.0;
+    Point3D origin;
+    std::vector<uint8_t> walkableMask;
+
+    bool IsWalkable(int x, int y, int layer = 0) const {
+        if (x < 0 || y < 0 || layer < 0) return false;
+        if (x >= width || y >= height || layer >= layers) return false;
+        size_t index = static_cast<size_t>(layer) * static_cast<size_t>(width * height)
+                     + static_cast<size_t>(y * width + x);
+        if (index >= walkableMask.size()) return false;
+        return walkableMask[index] != 0;
+    }
+};
+
 enum class AIState {
     Idle,
     Patrolling,
@@ -731,6 +781,110 @@ struct AIBehavior : public Component {
     ecs::EntityHandle targetEntity = ecs::EntityHandle::Null();
     float aggressionLevel = 0.5f; // 0.0 = peaceful, 1.0 = aggressive
     float cautionLevel = 0.5f;    // 0.0 = reckless, 1.0 = cautious
+};
+
+struct BehaviorTreeHandle : public Component {
+    std::string treeId;
+    bool autoActivate = true;
+};
+
+struct MissionObjective : public Component {
+    enum class State {
+        Inactive,
+        Active,
+        Completed,
+        Failed
+    };
+
+    struct Trigger {
+        std::string id;
+        std::string description;
+        double threshold = 0.0;
+    };
+
+    std::string id;
+    std::string description;
+    State state = State::Inactive;
+    std::vector<Trigger> successConditions;
+    std::vector<Trigger> failureConditions;
+};
+
+struct MissionState : public Component {
+    std::string missionId;
+    std::deque<std::string> objectiveOrder;
+    std::unordered_map<std::string, MissionObjective::State> objectiveStates;
+    bool failed = false;
+    bool completed = false;
+};
+
+struct StatusEffect : public Component {
+    std::string id;
+    double magnitude = 0.0;
+    double duration = 0.0;
+    double elapsed = 0.0;
+    bool stacks = false;
+};
+
+struct ScriptedTrigger : public Component {
+    std::string id;
+    std::string description;
+    bool oneShot = true;
+    bool active = true;
+    std::function<bool(const Position&)> condition;
+};
+
+struct DamageEvent {
+    double amount = 0.0;
+    unsigned int sourceEntity = 0;
+    std::string damageType;
+};
+
+struct StatusEffectEvent {
+    std::string effectId;
+    double magnitude = 0.0;
+    double duration = 0.0;
+};
+
+struct GameplayEvent : public Component {
+    enum class Type {
+        Damage,
+        StatusEffectApplied,
+        TriggerActivated
+    } type = Type::Damage;
+
+    std::variant<std::monostate, DamageEvent, StatusEffectEvent, std::string> payload;
+    double timestamp = 0.0;
+};
+
+struct GameplayEventBuffer : public Component {
+    std::deque<GameplayEvent> events;
+    double lastDispatchTime = 0.0;
+
+    void Push(const GameplayEvent& event) {
+        events.push_back(event);
+    }
+
+    std::vector<GameplayEvent> ConsumeAll() {
+        std::vector<GameplayEvent> result(events.begin(), events.end());
+        events.clear();
+        return result;
+    }
+};
+
+struct DeterministicRandomSeed : public Component {
+    uint64_t baseSeed = 0u;
+    uint64_t entitySeed = 0u;
+    std::mt19937_64 generator{0u};
+
+    void Reseed(uint64_t newSeed) {
+        entitySeed = newSeed;
+        generator.seed(newSeed);
+    }
+};
+
+struct ReplayBookmark : public Component {
+    std::string label;
+    size_t frameIndex = 0u;
 };
 
 /**

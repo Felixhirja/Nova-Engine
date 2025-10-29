@@ -88,7 +88,7 @@ private:
     void ApplyForces(double dt);
     void ApplyConstantForces(double dt);
     void IntegrateVelocities(double dt);
-    void DetectCollisions();
+    void DetectCollisions(double dt);
     void ResolveCollisions(double dt);
     void UpdateCharacterControllers(double dt);
     void UpdateJoints(double dt);
@@ -103,9 +103,17 @@ private:
         double normalX, normalY, normalZ;
         double penetration;
         double contactX, contactY, contactZ;
+        double timeOfImpact = 0.0;
+        bool dynamic = false;
     };
-    
+
     std::vector<CollisionPair> DetectCollisionPairs();
+    std::vector<CollisionPair> DetectSweptCollisionPairs(double dt);
+    bool ComputeSweptAABB(const struct BoxCollider& a, const struct Position& posA,
+                          const struct Velocity* velA,
+                          const struct BoxCollider& b, const struct Position& posB,
+                          const struct Velocity* velB, double dt,
+                          CollisionPair& result);
     bool CheckBoxBox(const struct BoxCollider& a, const struct Position& posA,
                      const struct BoxCollider& b, const struct Position& posB,
                      CollisionPair& result);
@@ -127,4 +135,6 @@ private:
     double VectorLength(double x, double y, double z) const;
     void Normalize(double& x, double& y, double& z) const;
     double Clamp(double value, double min, double max) const;
+
+    std::vector<CollisionPair> currentCollisions_;
 };

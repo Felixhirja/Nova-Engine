@@ -1,6 +1,8 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
+#include "DeterministicRandom.h"
+#include "ReplaySystem.h"
 #include "ecs/Components.h"
 #include "ecs/EntityManager.h"
 #include "ecs/System.h"
@@ -50,6 +52,18 @@ public:
     ecs::SystemSchedulerV2* GetSchedulerV2() { return &schedulerV2_; }
     const ecs::SystemSchedulerV2* GetSchedulerV2() const { return &schedulerV2_; }
 
+    DeterministicRandom& GetRandomManager() { return randomManager_; }
+    const DeterministicRandom& GetRandomManager() const { return randomManager_; }
+
+    void StartReplayRecording(uint64_t seed = 0u);
+    void StopReplayRecording(const std::string& path = "");
+    bool IsReplayRecording() const { return replayRecorder_.IsRecording(); }
+
+    bool LoadReplay(const std::string& path);
+    void PlayLoadedReplay();
+    void StopReplayPlayback();
+    bool IsReplayPlaying() const { return replayPlayer_.IsPlaying(); }
+
 private:
     // Basic simulation state implemented with ECS
     EntityManager em;
@@ -87,6 +101,11 @@ private:
 
     PhysicsSystem* physicsSystem = nullptr;
     std::vector<Entity> environmentColliderEntities;
+
+    DeterministicRandom randomManager_;
+    DeterministicReplayRecorder replayRecorder_;
+    DeterministicReplayPlayer replayPlayer_;
+    double elapsedTimeSeconds_ = 0.0;
 
     void DestroyEnvironmentColliders(EntityManager& entityManager);
     void RebuildEnvironmentColliders(EntityManager& entityManager);
