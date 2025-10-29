@@ -70,17 +70,35 @@ sudo apt-get update
 sudo apt-get install build-essential libglfw3-dev libglu1-mesa-dev
 ```
 
+#### macOS
+
+Homebrew provides the easiest path to the dependencies on macOS. Install
+[Homebrew](https://brew.sh/) if you do not already have it, then run:
+
+```bash
+brew update
+brew install glfw glew freetype
+```
+
+The default Apple Clang compiler works well; if you prefer GCC, install it via
+`brew install gcc` and export `CXX=g++-<version>` before invoking `make`.
+
 ### Build
 
 Run `make` from the repository root. The Makefile auto-detects GLFW via
 `pkg-config` and falls back to bundled DLLs when cross-compiling on Windows.
 
 ```bash
-make
+make              # Compile the engine
+make run          # Build (if necessary) and launch the executable
+make test         # Compile the full suite of test harnesses
+make clean        # Remove build artifacts
 ```
 
 Artifacts (executables, tests, cached objects) are written alongside the source
-tree, so running `make clean` resets the build output.
+tree, so running `make clean` resets the build output. If `make run` or
+`make test` fail, re-running the command with `V=1` provides the underlying
+compiler and linker invocations for easier debugging.
 
 ## Running
 
@@ -177,6 +195,19 @@ make test
 
 Each target is emitted to `tests/<test_name>` and can be launched individually.
 Use `make clean` to remove generated binaries.
+
+## Troubleshooting
+
+- **GLFW fails to create a context:** Double-check that your GPU drivers support
+  OpenGL 4.3 or newer. On Linux, the `glxinfo | grep "OpenGL version"` command
+  reports the active context version. On macOS you may need to force the project
+  to build with the Apple-provided OpenGL 4.1 Core profile.
+- **Missing DLLs on Windows:** Re-run `pwsh -File scripts/check_dlls.ps1` from a
+  PowerShell prompt. The script synchronizes bundled DLLs with the MSYS2
+  installation.
+- **Actor registration errors:** Delete `engine/Actors.h` and rebuild. The build
+  system regenerates the header from the contents of the `actors/` directory on
+  every run.
 
 ## Migration from SDL
 
