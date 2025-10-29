@@ -1,6 +1,6 @@
 #include "InstancedMeshRenderer.h"
 #include <iostream>
-#include <cstring>
+#include <cstddef>
 
 namespace Nova {
 
@@ -24,6 +24,11 @@ bool InstancedMeshRenderer::Initialize() {
 
 void InstancedMeshRenderer::Submit(const MeshHandle& mesh, const std::shared_ptr<Material>& material,
                                   const glm::mat4& transform, const glm::vec3& colorTint, float customScalar) {
+    Submit(mesh, material, transform, glm::vec4(colorTint, 1.0f), customScalar);
+}
+
+void InstancedMeshRenderer::Submit(const MeshHandle& mesh, const std::shared_ptr<Material>& material,
+                                  const glm::mat4& transform, const glm::vec4& colorTint, float customScalar) {
     BatchKey key{mesh, material};
 
     auto& batch = m_batches[key];
@@ -68,24 +73,29 @@ void InstancedMeshRenderer::Flush(const glm::mat4& viewProjectionMatrix) {
         glBindBuffer(GL_ARRAY_BUFFER, batch.instanceVBO);
 
         // Setup instance attribute pointers
+        const GLsizei stride = static_cast<GLsizei>(INSTANCE_DATA_SIZE);
+        const std::size_t matrixOffset = offsetof(InstanceData, modelMatrix);
+        const std::size_t colorOffset = offsetof(InstanceData, colorTint);
+        const std::size_t scalarOffset = offsetof(InstanceData, customScalar);
+
         // Model matrix (4 vec4s)
         for (int i = 0; i < 4; ++i) {
             glEnableVertexAttribArray(3 + i);
             glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE,
-                                INSTANCE_DATA_SIZE, (void*)(i * sizeof(glm::vec4)));
+                                stride, reinterpret_cast<const void*>(matrixOffset + i * sizeof(glm::vec4)));
             glVertexAttribDivisor(3 + i, 1); // Advance per instance
         }
 
-        // Color tint (vec3)
+        // Color tint (vec4)
         glEnableVertexAttribArray(7);
-        glVertexAttribPointer(7, 3, GL_FLOAT, GL_FALSE,
-                            INSTANCE_DATA_SIZE, (void*)(sizeof(glm::mat4)));
+        glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE,
+                            stride, reinterpret_cast<const void*>(colorOffset));
         glVertexAttribDivisor(7, 1);
 
         // Custom scalar (float)
         glEnableVertexAttribArray(8);
         glVertexAttribPointer(8, 1, GL_FLOAT, GL_FALSE,
-                            INSTANCE_DATA_SIZE, (void*)(sizeof(glm::mat4) + sizeof(glm::vec3)));
+                            stride, reinterpret_cast<const void*>(scalarOffset));
         glVertexAttribDivisor(8, 1);
 
         // Draw instances
@@ -132,8 +142,8 @@ void InstancedMeshRenderer::SetupInstanceBuffer(Batch& batch) {
     glGenBuffers(1, &batch.instanceVBO);
     glBindBuffer(GL_ARRAY_BUFFER, batch.instanceVBO);
     // Allocate buffer (will be updated in UpdateInstanceBuffer)
-    glBufferData(GL_ARRAY_BUFFER, batch.instances.size() * INSTANCE_DATA_SIZE,
-                 nullptr, GL_DYNAMIC_DRAW);
+    const GLsizeiptr bufferSize = static_cast<GLsizeiptr>(batch.instances.size() * INSTANCE_DATA_SIZE);
+    glBufferData(GL_ARRAY_BUFFER, bufferSize, nullptr, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -142,26 +152,8 @@ void InstancedMeshRenderer::UpdateInstanceBuffer(Batch& batch) {
 
     glBindBuffer(GL_ARRAY_BUFFER, batch.instanceVBO);
 
-    // Prepare instance data
-    std::vector<unsigned char> instanceData(batch.instances.size() * INSTANCE_DATA_SIZE);
-    unsigned char* ptr = instanceData.data();
-
-    for (const auto& instance : batch.instances) {
-        // Copy model matrix
-        std::memcpy(ptr, &instance.modelMatrix, sizeof(glm::mat4));
-        ptr += sizeof(glm::mat4);
-
-        // Copy color tint
-        std::memcpy(ptr, &instance.colorTint, sizeof(glm::vec3));
-        ptr += sizeof(glm::vec3);
-
-        // Copy custom scalar
-        std::memcpy(ptr, &instance.customScalar, sizeof(float));
-        ptr += sizeof(float);
-    }
-
-    // Update buffer
-    glBufferData(GL_ARRAY_BUFFER, instanceData.size(), instanceData.data(), GL_DYNAMIC_DRAW);
+    const GLsizeiptr byteSize = static_cast<GLsizeiptr>(batch.instances.size() * INSTANCE_DATA_SIZE);
+    glBufferData(GL_ARRAY_BUFFER, byteSize, batch.instances.data(), GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
