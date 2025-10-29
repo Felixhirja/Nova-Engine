@@ -604,6 +604,7 @@ void Simulation::Init(EntityManager* externalEm) {
     }
 
     systemManager.Clear();
+    systemManager.SetDocumentationOutputPath("engine/docs/system_dependency_map.md");
     systemManager.RegisterSystem<PlayerControlSystem>();
     systemManager.RegisterSystem<ShipAssemblySystem>();
     systemManager.RegisterSystem<SpaceshipPhysicsSystem>();

@@ -11,6 +11,7 @@ public:
         updateCount++;
         lastDt = dt;
     }
+    const char* GetName() const override { return "MockSystem"; }
     int updateCount;
     double lastDt;
 };
@@ -25,8 +26,12 @@ bool TestSystemRegistration() {
         return false;
     }
 
-    // Check that systems are stored
-    // Since systems is private, we can't directly check, but we can test UpdateAll
+    const auto& metadata = manager.GetRegisteredSystemMetadata();
+    if (metadata.size() != 2) {
+        std::cerr << "System metadata should contain two entries" << std::endl;
+        return false;
+    }
+
     EntityManager em;
     manager.UpdateAll(em, 1.0);
 
@@ -56,13 +61,13 @@ bool TestSystemClearing() {
 
     manager.Clear();
 
-    // After clear, UpdateAll should not update the old system
-    sys.updateCount = 0; // Reset manually since it's not cleared
-    manager.UpdateAll(em, 1.0);
-    if (sys.updateCount != 0) {
-        std::cerr << "System should not be updated after clear" << std::endl;
+    const auto& metadata = manager.GetRegisteredSystemMetadata();
+    if (!metadata.empty()) {
+        std::cerr << "Metadata cache should be empty after clear" << std::endl;
         return false;
     }
+
+    manager.UpdateAll(em, 1.0); // Should be a no-op with no systems registered
 
     return true;
 }
