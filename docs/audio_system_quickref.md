@@ -1,5 +1,8 @@
 # Audio System Quick Reference
 
+> For context on how audio fits alongside other engine frameworks, review the
+> [Engine Framework Overview](engine_overview.md).
+
 ## ✅ Status
 **Core System**: Fully implemented and compiling  
 **Library**: SDL2_mixer + SDL2  

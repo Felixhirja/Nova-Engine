@@ -150,6 +150,9 @@ Additional experimental controls may exist in `engine/Input.cpp`. The HUD displa
 - `engine/ecs/`: Entity-component system
 - `engine/graphics/`: Rendering pipeline, post-processing, and text systems
 
+For a subsystem-by-subsystem overview of the major runtime frameworks, see the
+[Engine Framework Overview](docs/engine_overview.md) guide.
+
 ## Repository layout
 
 The repository root concentrates on build scripts, source code, and high-level
