@@ -27,6 +27,7 @@ class Input {
 public:
     static void Init();
     static void Shutdown();
+    static bool IsInitialized();
     // Returns -1 if no key, otherwise ASCII code of key.
     static int PollKey();
     
@@ -58,6 +59,7 @@ public:
     
 private:
     static bool keyStates[256]; // Track which keys are currently held
+    static bool initialized;
 #ifdef USE_GLFW
     static void* glfwWindow; // GLFW window pointer
 #endif
