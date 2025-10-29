@@ -1,5 +1,6 @@
 #pragma once
 #include "EntityManagerV2.h"
+#include "SystemTypes.h"
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -19,63 +20,6 @@
 #include "SystemEventBus.h"
 
 namespace ecs {
-
-// Component access pattern for dependency analysis
-enum class ComponentAccess {
-    Read,       // System only reads component
-    Write,      // System writes to component
-    ReadWrite   // System both reads and writes
-};
-
-// System component dependency declaration
-struct ComponentDependency {
-    std::type_index type;
-    ComponentAccess access;
-    
-    ComponentDependency(std::type_index t, ComponentAccess a)
-        : type(t), access(a) {}
-    
-    template<typename T>
-    static ComponentDependency Read() {
-        return {std::type_index(typeid(T)), ComponentAccess::Read};
-    }
-    
-    template<typename T>
-    static ComponentDependency Write() {
-        return {std::type_index(typeid(T)), ComponentAccess::Write};
-    }
-    
-    template<typename T>
-    static ComponentDependency ReadWrite() {
-        return {std::type_index(typeid(T)), ComponentAccess::ReadWrite};
-    }
-};
-
-// Execution stage for individual system updates
-enum class UpdateStage {
-    PreUpdate,
-    Update,
-    PostUpdate
-};
-
-// System execution dependency declaration
-struct SystemDependency {
-    std::type_index type;
-
-    explicit SystemDependency(std::type_index t) : type(t) {}
-
-    template<typename T>
-    static SystemDependency Requires() {
-        return SystemDependency(std::type_index(typeid(T)));
-    }
-};
-
-// Update phase for system ordering
-enum class UpdatePhase {
-    Input,          // Input handling and preprocessing
-    Simulation,     // Simulation and gameplay logic
-    RenderPrep      // Prepare data for rendering
-};
 
 // Base class for systems in V2 architecture
 class SystemV2 {
@@ -137,6 +81,8 @@ public:
     };
     
     const ProfileData& GetProfileData() const { return profileData_; }
+
+    virtual bool SupportsDuplicateRegistration() const { return false; }
     
 protected:
     template<typename Event>
@@ -303,17 +249,29 @@ public:
     // Register a system
     template<typename T, typename... Args>
     T& RegisterSystem(Args&&... args) {
-        static_assert(std::is_base_of<SystemV2, T>::value, 
+        static_assert(std::is_base_of<SystemV2, T>::value,
                      "System must derive from SystemV2");
-        
+
         auto system = std::make_unique<T>(std::forward<Args>(args)...);
         T& ref = *system;
         system->SetEventBus(&eventBus_);
         systems_.emplace_back(std::move(system));
-        
+
         // Rebuild schedule after adding system
         needsReschedule_ = true;
-        
+
+        return ref;
+    }
+
+    SystemV2& RegisterSystemInstance(std::unique_ptr<SystemV2> system) {
+        if (!system) {
+            throw std::invalid_argument("Cannot register null system instance");
+        }
+
+        SystemV2& ref = *system;
+        system->SetEventBus(&eventBus_);
+        systems_.emplace_back(std::move(system));
+        needsReschedule_ = true;
         return ref;
     }
     
@@ -530,7 +488,9 @@ private:
         for (auto& systemPtr : systems_) {
             SystemV2* system = systemPtr.get();
             std::type_index type(typeid(*system));
-            if (!typeToSystem.emplace(type, system).second) {
+            auto [it, inserted] = typeToSystem.emplace(type, system);
+            if (!inserted && !system->SupportsDuplicateRegistration() &&
+                !(it->second && it->second->SupportsDuplicateRegistration())) {
                 throw std::runtime_error(std::string("Duplicate system registration detected for type: ") + system->GetName());
             }
         }

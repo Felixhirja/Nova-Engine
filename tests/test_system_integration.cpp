@@ -10,6 +10,7 @@ public:
         // Simulate physics update
         updated = true;
     }
+    const char* GetName() const override { return "PhysicsSystem"; }
     bool updated = false;
 };
 
@@ -23,6 +24,10 @@ public:
         }
         updated = true;
     }
+    std::vector<ecs::SystemDependency> GetSystemDependencies() const override {
+        return {ecs::SystemDependency::Requires<PhysicsSystem>()};
+    }
+    const char* GetName() const override { return "AISystem"; }
     PhysicsSystem& physics_;
     bool updated = false;
     bool orderError = false;
@@ -38,6 +43,14 @@ public:
         }
         updated = true;
     }
+    std::vector<ecs::SystemDependency> GetSystemDependencies() const override {
+        return {ecs::SystemDependency::Requires<PhysicsSystem>(),
+                ecs::SystemDependency::Requires<AISystem>()};
+    }
+    ecs::UpdatePhase GetUpdatePhase() const override {
+        return ecs::UpdatePhase::RenderPrep;
+    }
+    const char* GetName() const override { return "RenderSystem"; }
     PhysicsSystem& physics_;
     AISystem& ai_;
     bool updated = false;
@@ -62,6 +75,28 @@ bool TestDependencyOrder() {
 
     if (ai.orderError || render.orderError) {
         std::cerr << "Dependency order not respected" << std::endl;
+        return false;
+    }
+
+    const auto& metadata = manager.GetRegisteredSystemMetadata();
+    bool renderMetadataVerified = false;
+    for (const auto& entry : metadata) {
+        if (entry.name == "RenderSystem") {
+            if (entry.phase != ecs::UpdatePhase::RenderPrep) {
+                std::cerr << "RenderSystem should be registered in RenderPrep phase" << std::endl;
+                return false;
+            }
+            if (entry.systemDependencies.size() != 2) {
+                std::cerr << "RenderSystem should declare two dependencies" << std::endl;
+                return false;
+            }
+            renderMetadataVerified = true;
+            break;
+        }
+    }
+
+    if (!renderMetadataVerified) {
+        std::cerr << "RenderSystem metadata not found" << std::endl;
         return false;
     }
 
