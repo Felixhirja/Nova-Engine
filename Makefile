@@ -74,11 +74,17 @@ ACTOR_HEADERS := $(wildcard actors/*.h)
 ACTOR_INCLUDES := $(foreach header,$(ACTOR_HEADERS),#include "$(header)")
 
 # Generate Actors.h automatically
+ifeq ($(OS),Windows_NT)
 engine/Actors.h: $(ACTOR_HEADERS)
 	generate_actors.bat
+else
+engine/Actors.h: $(ACTOR_HEADERS)
+	python3 scripts/generate_actors_header.py
+endif
 
 ifeq ($(GLFW_LIBS),)
 SRC := $(filter-out engine/PostProcessPipeline.cpp engine/TextRenderer.cpp,$(SRC))
+SRC := $(filter-out engine/MainLoop.cpp engine/Viewport3D.cpp,$(SRC))
 else
 SRC += $(wildcard engine/graphics/*.cpp)
 GLAD_SRC := lib/glad/src/glad.c

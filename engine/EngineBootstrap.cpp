@@ -9,6 +9,7 @@
 #include "Spaceship.h"
 #include "ecs/EntityManager.h"
 #include "ecs/Components.h"
+#include "ecs/SystemSchedulerV2.h"
 
 #include <array>
 #include <cstdio>

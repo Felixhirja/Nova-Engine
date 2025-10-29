@@ -14,6 +14,7 @@ enum class SpaceshipClassType {
     Fighter,
     Freighter,
     Explorer,
+    Industrial,
     Corvette,
     Cruiser,
     Capital
@@ -44,6 +45,7 @@ inline const char* ToString(SpaceshipClassType t) {
         case SpaceshipClassType::Fighter:  return "Fighter";
         case SpaceshipClassType::Freighter:return "Freighter";
         case SpaceshipClassType::Explorer: return "Explorer";
+        case SpaceshipClassType::Industrial: return "Industrial";
         case SpaceshipClassType::Corvette: return "Corvette";
         case SpaceshipClassType::Cruiser:  return "Cruiser";
         case SpaceshipClassType::Capital:  return "Capital";
@@ -90,6 +92,7 @@ struct SpaceshipBaselineSpec {
     double maxMassTons = 0.0;
     int minCrew = 0;
     int maxCrew = 0;
+    double minPowerBudgetMW = 0.0;
     double maxPowerBudgetMW = 0.0;
 };
 
