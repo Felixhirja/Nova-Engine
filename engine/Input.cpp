@@ -1,7 +1,8 @@
 #include "Input.h"
-#include <fstream>
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 
 #ifdef USE_SDL
 #if defined(USE_SDL3)
@@ -18,6 +19,7 @@
 
 // Static member definitions
 bool Input::keyStates[256] = {false};
+bool Input::initialized = false;
 void* Input::sdlWindow = nullptr;
 #ifdef USE_GLFW
 void* Input::glfwWindow = nullptr;
@@ -32,9 +34,23 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 }
 #endif
 
-void Input::Init() {}
+void Input::Init() {
+    initialized = true;
+}
 
-void Input::Shutdown() {}
+void Input::Shutdown() {
+    initialized = false;
+    std::fill(std::begin(keyStates), std::end(keyStates), false);
+    mouseWheelDelta = 0.0;
+    sdlWindow = nullptr;
+#ifdef USE_GLFW
+    glfwWindow = nullptr;
+#endif
+}
+
+bool Input::IsInitialized() {
+    return initialized;
+}
 
 bool Input::HasWindowFocus() {
 #ifdef USE_GLFW

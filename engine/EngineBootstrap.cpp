@@ -2,18 +2,43 @@
 
 #include "ActorRegistry.h"
 #include "Actors.h"  // Include all actor headers for automatic registration
+#include "AudioSystem.h"
+#include "BootstrapConfiguration.h"
+#include "Input.h"
 #include "ResourceManager.h"
 #include "Spaceship.h"
 #include "ecs/EntityManager.h"
 #include "ecs/Components.h"
 
-#include <filesystem>
-#include <iostream>
-#include <iomanip>
+#include <array>
 #include <cstdio>
+#include <filesystem>
+#include <iomanip>
+#include <iostream>
 #include <memory>
 
 namespace {
+
+// Initialization roadmap for bootstrap.  This mirrors the logical sequencing in
+// EngineBootstrap::Run and is exposed through InitializationSequence() so that
+// external launchers can coordinate subsystem bring-up before invoking Run().
+const std::array<EngineBootstrap::InitializationStep, 7> kInitializationSequence = {{
+    {"Configure ECS façade", "Enable archetype façade so ActorContext uses the modern entity storage."},
+    {"Bind actor context", "Populate ActorContext with entity manager, scheduler, and debug name."},
+    {"Discover actor registry", "Query ActorRegistry for all statically registered actors."},
+    {"Inspect spaceship catalog", "Ensure spaceship class definitions are loaded before HUD assembly."},
+    {"Build default HUD assembly", "Assemble a baseline ship loadout used by the HUD and sample scenes."},
+    {"Prepare sprite assets", "Create sprite directories, emit demo textures, and register sprite metadata."},
+    {"Spawn demo entities", "Instantiate sample entities to validate ECS wiring and rendering hooks."}
+}};
+
+bool RenderingBackendAvailable() {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    return true;
+#else
+    return false;
+#endif
+}
 
 ShipAssemblyResult BuildHudAssembly() {
     ShipAssemblyResult result;
@@ -164,6 +189,17 @@ EngineBootstrap::Result EngineBootstrap::Run(ResourceManager& resourceManager,
                                              ecs::SystemSchedulerV2* scheduler) const {
     Result result;
 
+    std::vector<std::string> warnings;
+    const std::filesystem::path configPath{"assets/bootstrap.json"};
+    result.configuration = BootstrapConfiguration::LoadFromFile(configPath, &warnings);
+    result.subsystemChecklist = BuildSubsystemChecklist(result.configuration);
+
+    for (const auto& status : result.subsystemChecklist) {
+        if (status.required && status.enabled && !status.ready) {
+            warnings.push_back("Subsystem '" + status.name + "' is required but not initialized when bootstrap runs.");
+        }
+    }
+
     // Actors are now automatically registered via static initialization
     entityManager.EnableArchetypeFacade();
     result.actorContext.entityManager = &entityManager.GetArchetypeManager();
@@ -203,5 +239,65 @@ EngineBootstrap::Result EngineBootstrap::Run(ResourceManager& resourceManager,
     RegisterDemoEntity(entityManager, demoHandle1, -2.0);
     RegisterDemoEntity(entityManager, demoHandle2, 2.0);
 
+    result.warnings = std::move(warnings);
     return result;
+}
+
+const std::vector<EngineBootstrap::InitializationStep>& EngineBootstrap::InitializationSequence() {
+    static const std::vector<InitializationStep> steps(kInitializationSequence.begin(), kInitializationSequence.end());
+    return steps;
+}
+
+std::vector<EngineBootstrap::SubsystemStatus> EngineBootstrap::BuildSubsystemChecklist(const BootstrapConfiguration& config) {
+    std::vector<SubsystemStatus> checklist;
+    checklist.push_back(SubsystemStatus{
+        "input",
+        "Keyboard/mouse device abstraction (Input::Init must run before bootstrap).",
+        true,
+        config.loadInput,
+        config.loadInput ? Input::IsInitialized() : false});
+
+    checklist.push_back(SubsystemStatus{
+        "audio",
+        "SDL_mixer driven audio playback via AudioSystem::Initialize().",
+        true,
+        config.loadAudio,
+        config.loadAudio ? AudioSystem::IsInitialized() : false});
+
+    checklist.push_back(SubsystemStatus{
+        "rendering",
+        "Windowing/renderer bootstrap (SDL or GLFW must create a renderer before Run).",
+        true,
+        config.loadRendering,
+        config.loadRendering ? RenderingBackendAvailable() : false});
+
+    for (const auto& framework : config.optionalFrameworks) {
+        checklist.push_back(SubsystemStatus{
+            framework,
+            "Optional framework requested via bootstrap configuration.",
+            false,
+            true,
+            false});
+    }
+
+    return checklist;
+}
+
+void EngineBootstrap::Shutdown(ResourceManager& resourceManager,
+                               EntityManager& entityManager,
+                               ecs::SystemSchedulerV2* scheduler) const {
+    entityManager.Clear();
+    if (scheduler) {
+        scheduler->Clear();
+    }
+
+    resourceManager.Shutdown();
+
+    if (AudioSystem::IsInitialized()) {
+        AudioSystem::Shutdown();
+    }
+
+    if (Input::IsInitialized()) {
+        Input::Shutdown();
+    }
 }

@@ -1,0 +1,8 @@
+{
+  "frameworks": {
+    "input": true,
+    "audio": true,
+    "rendering": true
+  },
+  "optionalFrameworks": []
+}

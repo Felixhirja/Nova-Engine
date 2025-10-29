@@ -17,6 +17,8 @@ public:
     int Load(const std::string &path);
     bool Exists(int handle) const;
 
+    void Shutdown();
+
     // Sprite-sheet metadata: frame size and count
     struct SpriteInfo { int frameW; int frameH; int frames; int fps; };
     void RegisterSprite(int handle, const SpriteInfo& info);
@@ -49,4 +51,7 @@ private:
 #ifdef USE_GLFW
     std::unique_ptr<SpriteMetadataBuffer> spriteMetadataBuffer_;
 #endif
+    bool shutdown_ = false;
+
+    void EnsureActive();
 };

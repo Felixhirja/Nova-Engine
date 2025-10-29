@@ -18,30 +18,18 @@
 #include <mutex>
 
 ResourceManager::ResourceManager() {
+    shutdown_ = false;
 #ifdef USE_GLFW
     spriteMetadataBuffer_ = std::make_unique<SpriteMetadataBuffer>();
 #endif
 }
 
 ResourceManager::~ResourceManager() {
-#ifdef USE_SDL
-    for (auto &p : surfaces_) {
-#if SDL_MAJOR_VERSION >= 3
-        if (p.second) compat_DestroySurface(static_cast<SDL_Surface*>(p.second));
-#else
-        if (p.second) SDL_FreeSurface(static_cast<SDL_Surface*>(p.second));
-#endif
-    }
-    // free textures
-    for (auto &r : textures_) {
-        for (auto &p : r.second) {
-            if (p.second) SDL_DestroyTexture(static_cast<SDL_Texture*>(p.second));
-        }
-    }
-#endif
+    Shutdown();
 }
 
 int ResourceManager::Load(const std::string &path) {
+    EnsureActive();
     int h = nextHandle_++;
     map_[h] = path;
 #ifdef USE_SDL
@@ -52,6 +40,39 @@ int ResourceManager::Load(const std::string &path) {
 
 bool ResourceManager::Exists(int handle) const {
     return map_.find(handle) != map_.end();
+}
+
+void ResourceManager::Shutdown() {
+    if (shutdown_) {
+        return;
+    }
+    shutdown_ = true;
+
+#ifdef USE_SDL
+    for (auto &p : surfaces_) {
+#if SDL_MAJOR_VERSION >= 3
+        if (p.second) compat_DestroySurface(static_cast<SDL_Surface*>(p.second));
+#else
+        if (p.second) SDL_FreeSurface(static_cast<SDL_Surface*>(p.second));
+#endif
+    }
+    surfaces_.clear();
+
+    for (auto &r : textures_) {
+        for (auto &p : r.second) {
+            if (p.second) SDL_DestroyTexture(static_cast<SDL_Texture*>(p.second));
+        }
+    }
+    textures_.clear();
+    spriteInfo_.clear();
+#endif
+
+    map_.clear();
+    nextHandle_ = 1;
+
+#ifdef USE_GLFW
+    spriteMetadataBuffer_.reset();
+#endif
 }
 
 #ifdef USE_SDL
@@ -108,6 +129,7 @@ void* ResourceManager::GetTexture(void* rendererPtr, int handle) {
 #endif
 
 void ResourceManager::RegisterSprite(int handle, const SpriteInfo& info) {
+    EnsureActive();
 #ifdef USE_SDL
     spriteInfo_[handle] = info;
 #else
@@ -133,6 +155,18 @@ void ResourceManager::RegisterSprite(int handle, const SpriteInfo& info) {
                                             info.fps,
                                             textureWidth,
                                             textureHeight);
+    }
+#endif
+}
+
+void ResourceManager::EnsureActive() {
+    if (!shutdown_) {
+        return;
+    }
+    shutdown_ = false;
+#ifdef USE_GLFW
+    if (!spriteMetadataBuffer_) {
+        spriteMetadataBuffer_ = std::make_unique<SpriteMetadataBuffer>();
     }
 #endif
 }
