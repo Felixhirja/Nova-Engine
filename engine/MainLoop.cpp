@@ -150,6 +150,7 @@ void MainLoop::Init() {
 
     if (viewport) {
         viewport->ConfigureLayouts(Viewport3D::CreateDefaultLayouts());
+        viewport->SetLayoutConfigPath("assets/config/viewport_layouts.json");
         viewport->SetFramePacingHint(framePacingController.IsVSyncEnabled(), framePacingController.TargetFPS());
         std::ofstream log2("sdl_diag.log", std::ios::app);
         if (log2) log2 << "Layouts configured & frame pacing hint set" << std::endl;

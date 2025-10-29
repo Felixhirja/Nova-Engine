@@ -22,6 +22,7 @@
 #include <vector>
 #include <chrono>
 #include <unordered_map>
+#include <filesystem>
 
 enum class RenderBackend {
     None,
@@ -99,6 +100,7 @@ public:
     size_t GetActiveViewCount() const;
     ViewRole GetViewRole(size_t viewIndex) const;
     bool IsOverlayView(size_t viewIndex) const;
+    void SetLayoutConfigPath(const std::filesystem::path& path);
     void DrawMinimapOverlay(double playerX, double playerY, double playerZ);
     void Resize(int width, int height);
     // Draw a player at world x coordinate (for simple ASCII demo)
@@ -265,6 +267,13 @@ private:
     void RenderOpenGLViews(const class Camera* camera, double playerX, double playerY, double playerZ);
     void ActivateOpenGLView(const ViewportView& view, const class Camera* camera, double playerX, double playerY, double playerZ);
     void ActivateSDLView(const ViewportView& view);
+    void RenderViewContent(const ViewportView& view,
+                           const class Camera* camera,
+                           double playerX,
+                           double playerY,
+                           double playerZ,
+                           bool targetLocked,
+                           ecs::EntityManagerV2* entityManager);
 #ifdef USE_SDL
     void EnsureSpaceshipHudTexture();
 #endif
@@ -297,6 +306,7 @@ private:
                     float scale,
                     char asciiChar);
         void DrawStaticGrid();
+    void DrawMinimapOverlay(double playerX, double playerY, double playerZ);
 
     // Ensure line batcher exists and initialized
     void EnsureLineBatcher3D();
@@ -315,4 +325,30 @@ private:
     double SampleSpeed(double x, double y, double z);
 
     std::unordered_map<Entity, EntityMeshBinding> entityMeshes_;
+
+    struct ViewRenderTiming {
+        std::string name;
+        ViewRole role = ViewRole::Main;
+        bool overlay = false;
+        double lastMilliseconds = 0.0;
+        double smoothedMilliseconds = 0.0;
+        int sampleCount = 0;
+    };
+
+    std::vector<ViewRenderTiming> viewRenderTimings_;
+    std::vector<std::string> viewTimingOverlayLines_;
+    std::string layoutEditorStatus_;
+    std::string layoutEditorError_;
+    std::filesystem::path layoutConfigPath_;
+    std::filesystem::file_time_type layoutConfigTimestamp_{};
+    std::chrono::steady_clock::time_point lastLayoutFileCheck_{};
+    bool layoutHotReloadEnabled_ = false;
+    std::chrono::steady_clock::duration layoutFileCheckInterval_ = std::chrono::milliseconds(500);
+
+    void TickLayoutHotReload();
+    bool LoadLayoutsFromJsonFile(const std::filesystem::path& path);
+    void UpdateViewTiming(size_t viewIndex, const ViewportView& view, double milliseconds);
+    void RebuildViewTimingOverlayLines();
+    static ViewRole ParseViewRole(const std::string& name);
+    static const char* ViewRoleToString(ViewRole role);
 };

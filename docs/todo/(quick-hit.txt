@@ -22,8 +22,8 @@
 * [x] clang-format/clang-tidy config + pre-commit; CI gates with autofix in PRs.
 * [x] Crash handling: integrate Crashpad/Breakpad + symbol upload pipeline.
 * [x] Settings schema (JSON/TOML) with versioning + **Safe Mode** boot flag.
-* [ ] Viewport3D: instrument per-view render timing and stream to diagnostics overlay.
-* [ ] Viewport layout editor prototype with live hot-reloadable JSON configs.
+* [x] Viewport3D: instrument per-view render timing and stream to diagnostics overlay.
+* [x] Viewport layout editor prototype with live hot-reloadable JSON configs.
 
 ## Next 14 Days
 
@@ -73,4 +73,4 @@
 **Owner placeholders**
 Rendering: ___ • Systems/ECS: ___ • Tooling/CI: ___ • Input: ___ • Docs: ___
 
-*Last updated: 2025‑10‑26*
+*Last updated: 2025‑10‑29*

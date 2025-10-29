@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <cstdint>
+#include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -15,6 +16,11 @@
 #include <functional>
 #include <sstream>
 #include <array>
+#include <map>
+#include <limits>
+#include <iomanip>
+#include <system_error>
+#include <iterator>
 #include "SVGSurfaceLoader.h"
 #ifdef _WIN32
 #include <windows.h>
@@ -88,6 +94,313 @@ const char* RenderBackendToString(RenderBackend backend) {
     }
     return "Unknown";
 }
+
+struct SimpleJsonValue {
+    enum class Type { Null, Bool, Number, String, Object, Array };
+    using Object = std::map<std::string, SimpleJsonValue>;
+    using Array = std::vector<SimpleJsonValue>;
+
+    Type type = Type::Null;
+    double number = 0.0;
+    bool boolean = false;
+    std::string string;
+    Object object;
+    Array array;
+
+    bool IsObject() const { return type == Type::Object; }
+    bool IsArray() const { return type == Type::Array; }
+    bool IsString() const { return type == Type::String; }
+    bool IsNumber() const { return type == Type::Number; }
+    bool IsBool() const { return type == Type::Bool; }
+
+    const SimpleJsonValue* Find(const std::string& key) const {
+        if (!IsObject()) {
+            return nullptr;
+        }
+        auto it = object.find(key);
+        return it != object.end() ? &it->second : nullptr;
+    }
+
+    double AsNumber(double fallback = 0.0) const { return IsNumber() ? number : fallback; }
+    bool AsBool(bool fallback = false) const { return IsBool() ? boolean : fallback; }
+    std::string AsString(const std::string& fallback = std::string()) const {
+        return IsString() ? string : fallback;
+    }
+};
+
+class SimpleJsonParser {
+public:
+    explicit SimpleJsonParser(const std::string& input) : input_(input) {}
+
+    bool Parse(SimpleJsonValue& out) {
+        pos_ = 0;
+        error_.clear();
+        SkipWhitespace();
+        SimpleJsonValue value = ParseValue();
+        SkipWhitespace();
+        if (!error_.empty()) {
+            return false;
+        }
+        if (pos_ != input_.size()) {
+            SetError("Unexpected trailing data");
+            return false;
+        }
+        out = std::move(value);
+        return true;
+    }
+
+    const std::string& Error() const { return error_; }
+
+private:
+    SimpleJsonValue ParseValue() {
+        SkipWhitespace();
+        char c = Peek();
+        if (c == '{') {
+            return ParseObject();
+        }
+        if (c == '[') {
+            return ParseArray();
+        }
+        if (c == '"') {
+            SimpleJsonValue value;
+            value.type = SimpleJsonValue::Type::String;
+            value.string = ParseStringLiteral();
+            return value;
+        }
+        if (c == '-' || std::isdigit(static_cast<unsigned char>(c))) {
+            SimpleJsonValue value;
+            value.type = SimpleJsonValue::Type::Number;
+            value.number = ParseNumberLiteral();
+            return value;
+        }
+        if (c == 't') {
+            if (MatchLiteral("true")) {
+                SimpleJsonValue value;
+                value.type = SimpleJsonValue::Type::Bool;
+                value.boolean = true;
+                return value;
+            }
+        } else if (c == 'f') {
+            if (MatchLiteral("false")) {
+                SimpleJsonValue value;
+                value.type = SimpleJsonValue::Type::Bool;
+                value.boolean = false;
+                return value;
+            }
+        } else if (c == 'n') {
+            if (MatchLiteral("null")) {
+                SimpleJsonValue value;
+                value.type = SimpleJsonValue::Type::Null;
+                return value;
+            }
+        }
+
+        if (c == '\0') {
+            SetError("Unexpected end of input");
+        } else if (error_.empty()) {
+            SetError(std::string("Unexpected token: ") + c);
+        }
+        return SimpleJsonValue{};
+    }
+
+    SimpleJsonValue ParseObject() {
+        SimpleJsonValue value;
+        value.type = SimpleJsonValue::Type::Object;
+        value.object.clear();
+
+        if (!Match('{')) {
+            SetError("Expected '{'");
+            return value;
+        }
+
+        SkipWhitespace();
+        if (Match('}')) {
+            return value;
+        }
+
+        while (error_.empty()) {
+            SkipWhitespace();
+            if (Peek() != '"') {
+                SetError("Expected string key");
+                break;
+            }
+            std::string key = ParseStringLiteral();
+            SkipWhitespace();
+            if (!Match(':')) {
+                SetError("Expected ':' after key");
+                break;
+            }
+            SimpleJsonValue child = ParseValue();
+            value.object.emplace(std::move(key), std::move(child));
+            SkipWhitespace();
+            if (Match('}')) {
+                break;
+            }
+            if (!Match(',')) {
+                SetError("Expected ',' between object members");
+                break;
+            }
+        }
+        return value;
+    }
+
+    SimpleJsonValue ParseArray() {
+        SimpleJsonValue value;
+        value.type = SimpleJsonValue::Type::Array;
+        value.array.clear();
+
+        if (!Match('[')) {
+            SetError("Expected '['");
+            return value;
+        }
+
+        SkipWhitespace();
+        if (Match(']')) {
+            return value;
+        }
+
+        while (error_.empty()) {
+            SimpleJsonValue element = ParseValue();
+            value.array.push_back(std::move(element));
+            SkipWhitespace();
+            if (Match(']')) {
+                break;
+            }
+            if (!Match(',')) {
+                SetError("Expected ',' between array items");
+                break;
+            }
+        }
+        return value;
+    }
+
+    std::string ParseStringLiteral() {
+        std::string result;
+        if (!Match('"')) {
+            SetError("Expected '\"' to begin string");
+            return result;
+        }
+        while (pos_ <= input_.size()) {
+            if (pos_ == input_.size()) {
+                SetError("Unterminated string literal");
+                break;
+            }
+            char c = input_[pos_++];
+            if (c == '"') {
+                break;
+            }
+            if (c == '\\') {
+                if (pos_ >= input_.size()) {
+                    SetError("Invalid escape sequence");
+                    break;
+                }
+                char esc = input_[pos_++];
+                switch (esc) {
+                case '"': result.push_back('"'); break;
+                case '\\': result.push_back('\\'); break;
+                case '/': result.push_back('/'); break;
+                case 'b': result.push_back('\b'); break;
+                case 'f': result.push_back('\f'); break;
+                case 'n': result.push_back('\n'); break;
+                case 'r': result.push_back('\r'); break;
+                case 't': result.push_back('\t'); break;
+                case 'u':
+                    // Skip simple \uXXXX escapes for now (treat as literal)
+                    if (pos_ + 4 <= input_.size()) {
+                        result.append("?");
+                        pos_ += 4;
+                    } else {
+                        SetError("Incomplete unicode escape");
+                    }
+                    break;
+                default:
+                    result.push_back(esc);
+                    break;
+                }
+            } else {
+                result.push_back(c);
+            }
+            if (!error_.empty()) {
+                break;
+            }
+        }
+        return result;
+    }
+
+    double ParseNumberLiteral() {
+        size_t start = pos_;
+        if (Peek() == '-') {
+            ++pos_;
+        }
+        while (std::isdigit(static_cast<unsigned char>(Peek()))) {
+            ++pos_;
+        }
+        if (Peek() == '.') {
+            ++pos_;
+            while (std::isdigit(static_cast<unsigned char>(Peek()))) {
+                ++pos_;
+            }
+        }
+        if (Peek() == 'e' || Peek() == 'E') {
+            ++pos_;
+            if (Peek() == '+' || Peek() == '-') {
+                ++pos_;
+            }
+            while (std::isdigit(static_cast<unsigned char>(Peek()))) {
+                ++pos_;
+            }
+        }
+        std::string token = input_.substr(start, pos_ - start);
+        if (token.empty()) {
+            SetError("Invalid number literal");
+            return 0.0;
+        }
+        try {
+            return std::stod(token);
+        } catch (...) {
+            SetError("Invalid number literal");
+            return 0.0;
+        }
+    }
+
+    void SkipWhitespace() {
+        while (pos_ < input_.size() && std::isspace(static_cast<unsigned char>(input_[pos_]))) {
+            ++pos_;
+        }
+    }
+
+    char Peek() const {
+        return pos_ < input_.size() ? input_[pos_] : '\0';
+    }
+
+    bool Match(char expected) {
+        if (Peek() == expected) {
+            ++pos_;
+            return true;
+        }
+        return false;
+    }
+
+    bool MatchLiteral(const char* literal) {
+        size_t len = std::strlen(literal);
+        if (input_.compare(pos_, len, literal) == 0) {
+            pos_ += len;
+            return true;
+        }
+        SetError(std::string("Expected literal '") + literal + "'");
+        return false;
+    }
+
+    void SetError(const std::string& message) {
+        if (error_.empty()) {
+            error_ = message;
+        }
+    }
+
+    const std::string& input_;
+    size_t pos_ = 0;
+    std::string error_;
+};
 
 std::string DescribeGlError(GLenum err) {
 #if defined(GLU_VERSION_1_1) || defined(GLU_VERSION)
@@ -1639,6 +1952,146 @@ bool Viewport3D::IsOverlayView(size_t viewIndex) const {
     return layouts_[activeLayoutIndex_].views[viewIndex].overlay;
 }
 
+void Viewport3D::SetLayoutConfigPath(const std::filesystem::path& path) {
+    layoutConfigPath_ = path;
+    layoutHotReloadEnabled_ = !layoutConfigPath_.empty();
+    layoutConfigTimestamp_ = std::filesystem::file_time_type{};
+    lastLayoutFileCheck_ = std::chrono::steady_clock::time_point{};
+    if (layoutHotReloadEnabled_) {
+        LoadLayoutsFromJsonFile(layoutConfigPath_);
+        std::error_code ec;
+        auto stamp = std::filesystem::last_write_time(layoutConfigPath_, ec);
+        if (!ec) {
+            layoutConfigTimestamp_ = stamp;
+        }
+    }
+}
+
+void Viewport3D::TickLayoutHotReload() {
+    if (!layoutHotReloadEnabled_ || layoutConfigPath_.empty()) {
+        return;
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    if (lastLayoutFileCheck_.time_since_epoch().count() != 0 &&
+        now - lastLayoutFileCheck_ < layoutFileCheckInterval_) {
+        return;
+    }
+
+    lastLayoutFileCheck_ = now;
+
+    std::error_code ec;
+    if (!std::filesystem::exists(layoutConfigPath_, ec)) {
+        layoutEditorError_ = "Layout config missing: " + layoutConfigPath_.string();
+        return;
+    }
+
+    auto stamp = std::filesystem::last_write_time(layoutConfigPath_, ec);
+    if (ec) {
+        layoutEditorError_ = "Unable to stat layout config: " + layoutConfigPath_.string();
+        return;
+    }
+
+    if (layoutConfigTimestamp_.time_since_epoch().count() == 0 || stamp != layoutConfigTimestamp_) {
+        if (LoadLayoutsFromJsonFile(layoutConfigPath_)) {
+            layoutConfigTimestamp_ = stamp;
+        }
+    }
+}
+
+bool Viewport3D::LoadLayoutsFromJsonFile(const std::filesystem::path& path) {
+    std::ifstream file(path);
+    if (!file) {
+        layoutEditorError_ = "Failed to open layout config: " + path.string();
+        return false;
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+
+    SimpleJsonParser parser(buffer.str());
+    SimpleJsonValue root;
+    if (!parser.Parse(root)) {
+        layoutEditorError_ = "Layout JSON parse error: " + parser.Error();
+        return false;
+    }
+
+    const SimpleJsonValue* layoutsValue = root.Find("layouts");
+    if (!layoutsValue || !layoutsValue->IsArray()) {
+        layoutEditorError_ = "Layout JSON missing 'layouts' array";
+        return false;
+    }
+
+    std::vector<ViewportLayout> loadedLayouts;
+    loadedLayouts.reserve(layoutsValue->array.size());
+
+    for (const auto& layoutValue : layoutsValue->array) {
+        if (!layoutValue.IsObject()) {
+            continue;
+        }
+
+        ViewportLayout layout;
+        if (const auto* nameValue = layoutValue.Find("name")) {
+            layout.name = nameValue->AsString("Layout");
+        } else {
+            layout.name = "Layout";
+        }
+
+        const SimpleJsonValue* viewsValue = layoutValue.Find("views");
+        if (!viewsValue || !viewsValue->IsArray()) {
+            continue;
+        }
+
+        for (const auto& viewValue : viewsValue->array) {
+            if (!viewValue.IsObject()) {
+                continue;
+            }
+
+            ViewportView view;
+            if (const auto* viewName = viewValue.Find("name")) {
+                view.name = viewName->AsString("View");
+            } else {
+                view.name = "View";
+            }
+
+            view.normalizedX = std::clamp(viewValue.Find("x") ? viewValue.Find("x")->AsNumber(0.0) : 0.0, 0.0, 1.0);
+            view.normalizedY = std::clamp(viewValue.Find("y") ? viewValue.Find("y")->AsNumber(0.0) : 0.0, 0.0, 1.0);
+            view.normalizedWidth = std::clamp(viewValue.Find("width") ? viewValue.Find("width")->AsNumber(1.0) : 1.0, 0.0, 1.0);
+            view.normalizedHeight = std::clamp(viewValue.Find("height") ? viewValue.Find("height")->AsNumber(1.0) : 1.0, 0.0, 1.0);
+
+            if (const auto* roleValue = viewValue.Find("role")) {
+                view.role = ParseViewRole(roleValue->AsString("Main"));
+            }
+            if (const auto* overlayValue = viewValue.Find("overlay")) {
+                view.overlay = overlayValue->AsBool(false);
+            }
+
+            layout.views.push_back(view);
+        }
+
+        if (!layout.views.empty()) {
+            loadedLayouts.push_back(std::move(layout));
+        }
+    }
+
+    if (loadedLayouts.empty()) {
+        layoutEditorError_ = "Layout JSON contained no usable layouts";
+        return false;
+    }
+
+    const std::size_t layoutCount = loadedLayouts.size();
+    ConfigureLayouts(std::move(loadedLayouts));
+
+    std::ostringstream status;
+    status << "Loaded " << layoutCount << " layout" << (layoutCount == 1 ? "" : "s")
+           << " from " << path.filename().string();
+    status << " • Active: " << GetActiveLayoutName();
+    layoutEditorStatus_ = status.str();
+    layoutEditorError_.clear();
+
+    return true;
+}
+
 void Viewport3D::SetFramePacingHint(bool vsyncEnabled, double fps) {
     vsyncEnabled_ = vsyncEnabled;
     frameRateLimitHint_ = fps;
@@ -1842,6 +2295,47 @@ void Viewport3D::ActivateSDLView(const ViewportView& view) {
     ApplyViewportView(view);
 #else
     (void)view;
+#endif
+}
+
+void Viewport3D::RenderViewContent(const ViewportView& view,
+                                   const class Camera* camera,
+                                   double playerX,
+                                   double playerY,
+                                   double playerZ,
+                                   bool targetLocked,
+                                   ecs::EntityManagerV2* entityManager) {
+    (void)entityManager;
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (IsUsingGLBackend()) {
+        if (view.role == ViewRole::Minimap) {
+            DrawMinimapOverlay(playerX, playerY, playerZ);
+        } else if (camera) {
+            DrawCameraDebug(camera, playerX, playerY, playerZ, view.role, targetLocked);
+        }
+    } else if (IsUsingSDLRenderer()) {
+        (void)view;
+        (void)camera;
+        (void)playerX;
+        (void)playerY;
+        (void)playerZ;
+        (void)targetLocked;
+    } else {
+        (void)view;
+        (void)camera;
+        (void)playerX;
+        (void)playerY;
+        (void)playerZ;
+        (void)targetLocked;
+    }
+#else
+    (void)view;
+    (void)camera;
+    (void)playerX;
+    (void)playerY;
+    (void)playerZ;
+    (void)targetLocked;
+    (void)entityManager;
 #endif
 }
 
@@ -2304,44 +2798,57 @@ void Viewport3D::Render(const class Camera* camera, double playerX, double playe
         glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 2, -1, "Viewport3D::Render");
     }
 #endif
-    if (debugLogging_) std::cout << "Viewport3D::Render() called with camera=" << (camera ? "valid" : "null") << std::endl;
+    if (debugLogging_) {
+        std::cout << "Viewport3D::Render() called with camera=" << (camera ? "valid" : "null") << std::endl;
+    }
+
+    TickLayoutHotReload();
     EnsureLayoutConfiguration();
-    if (debugLogging_) std::cout << "Viewport3D::Render() - after EnsureLayoutConfiguration()" << std::endl;
+    if (debugLogging_) {
+        std::cout << "Viewport3D::Render() - after EnsureLayoutConfiguration()" << std::endl;
+    }
 #if defined(USE_GLFW) || defined(USE_SDL)
     if (IsUsingGLBackend()) {
         TickShaderHotReload();
     }
 #endif
-    // BeginFrame(); // Removed - Clear() is already called in MainLoop
-    if (debugLogging_) std::cout << "Viewport3D::Render() - after BeginFrame()" << std::endl;
 
-    int activeViewCount = GetActiveViewCount();
-    if (debugLogging_) std::cout << "Viewport3D::Render() - active view count: " << activeViewCount << std::endl;
+    const std::size_t activeViewCount = GetActiveViewCount();
+    if (debugLogging_) {
+        std::cout << "Viewport3D::Render() - active view count: " << activeViewCount << std::endl;
+    }
     if (activeViewCount == 0) {
-        if (debugLogging_) std::cout << "Viewport3D::Render() - no active views" << std::endl;
+        if (debugLogging_) {
+            std::cout << "Viewport3D::Render() - no active views" << std::endl;
+        }
+        viewTimingOverlayLines_.clear();
+#ifndef NDEBUG
+        if (glDebugMessageCallback != nullptr) {
+            glPopDebugGroup();
+        }
+#endif
         return;
     }
 
-    ActivateView(camera, playerX, playerY, playerZ, 0);
+    const ViewportLayout& layout = GetActiveLayout();
+    viewRenderTimings_.resize(layout.views.size());
 
-#if defined(USE_GLFW) || defined(USE_SDL)
-    if (IsUsingGLBackend() && camera) {
-        if (debugLogging_) std::cout << "Viewport3D::Render() - drawing camera debug" << std::endl;
-        DrawCameraDebug(camera, playerX, playerY, playerZ, ViewRole::Main, targetLocked);
-    } else if (IsUsingSDLRenderer()) {
-        // 2D fallback: nothing additional required here
-        if (debugLogging_) std::cout << "Viewport3D::Render() - SDL 2D fallback" << std::endl;
-    } else {
-        if (debugLogging_) std::cout << "Viewport3D::Render() - no rendering (backend="
-                                      << RenderBackendToString(backend_) << ", camera="
-                                      << (camera ? "valid" : "null") << ")" << std::endl;
+    for (std::size_t i = 0; i < layout.views.size(); ++i) {
+        const ViewportView& view = layout.views[i];
+        auto viewStart = std::chrono::steady_clock::now();
+        ActivateView(camera, playerX, playerY, playerZ, i);
+        RenderViewContent(view, camera, playerX, playerY, playerZ, targetLocked, entityManager);
+        auto viewEnd = std::chrono::steady_clock::now();
+        double milliseconds = std::chrono::duration<double, std::milli>(viewEnd - viewStart).count();
+        UpdateViewTiming(i, view, milliseconds);
     }
-#else
-    (void)camera;
-    (void)playerX;
-    (void)playerY;
-    (void)playerZ;
-#endif
+
+    if (!layout.views.empty()) {
+        ActivateView(camera, playerX, playerY, playerZ, 0);
+    }
+
+    RebuildViewTimingOverlayLines();
+
 #ifndef NDEBUG
     if (glDebugMessageCallback != nullptr) {
         glPopDebugGroup();
@@ -2795,6 +3302,55 @@ void Viewport3D::DrawStaticGrid() {
 #endif
 }
 
+void Viewport3D::DrawMinimapOverlay(double playerX, double playerY, double playerZ) {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (!IsUsingGLBackend()) {
+        return;
+    }
+
+    DrawStaticGrid();
+
+    glPushMatrix();
+    glTranslatef(static_cast<GLfloat>(playerX), static_cast<GLfloat>(playerY), static_cast<GLfloat>(playerZ));
+    glScalef(0.6f, 0.6f, 0.6f);
+    const GLboolean cullEnabled = glIsEnabled(GL_CULL_FACE);
+    if (cullEnabled) {
+        glDisable(GL_CULL_FACE);
+    }
+    DrawPlayerPatchPrimitive();
+    if (cullEnabled) {
+        glEnable(GL_CULL_FACE);
+    }
+    glPopMatrix();
+
+    EnsureLineBatcher3D();
+    if (lineBatcher3D_) {
+        lineBatcher3D_->Begin();
+        lineBatcher3D_->SetLineWidth(2.0f);
+        const float radius = 3.0f;
+        lineBatcher3D_->AddLine(static_cast<float>(playerX - radius),
+                                static_cast<float>(playerY),
+                                static_cast<float>(playerZ),
+                                static_cast<float>(playerX + radius),
+                                static_cast<float>(playerY),
+                                static_cast<float>(playerZ),
+                                0.25f, 0.75f, 1.0f, 0.9f);
+        lineBatcher3D_->AddLine(static_cast<float>(playerX),
+                                static_cast<float>(playerY - radius),
+                                static_cast<float>(playerZ),
+                                static_cast<float>(playerX),
+                                static_cast<float>(playerY + radius),
+                                static_cast<float>(playerZ),
+                                0.25f, 0.75f, 1.0f, 0.9f);
+        lineBatcher3D_->Flush();
+    }
+#else
+    (void)playerX;
+    (void)playerY;
+    (void)playerZ;
+#endif
+}
+
 void Viewport3D::Resize(int w, int h) {
     width = w; height = h;
 #if defined(USE_GLFW) || defined(USE_SDL)
@@ -3032,6 +3588,81 @@ double Viewport3D::SampleSpeed(double x, double y, double z) {
     lastHudTime_ = now;
     haveHudSample_ = true;
     return speed;
+}
+
+void Viewport3D::UpdateViewTiming(size_t viewIndex, const ViewportView& view, double milliseconds) {
+    if (viewIndex >= viewRenderTimings_.size()) {
+        viewRenderTimings_.resize(viewIndex + 1);
+    }
+
+    ViewRenderTiming& entry = viewRenderTimings_[viewIndex];
+    if (entry.name != view.name) {
+        entry.name = view.name;
+        entry.sampleCount = 0;
+        entry.smoothedMilliseconds = milliseconds;
+    }
+    entry.role = view.role;
+    entry.overlay = view.overlay;
+    entry.lastMilliseconds = milliseconds;
+
+    if (entry.sampleCount == 0) {
+        entry.smoothedMilliseconds = milliseconds;
+    } else {
+        constexpr double kSmoothing = 0.8;
+        entry.smoothedMilliseconds = entry.smoothedMilliseconds * kSmoothing + milliseconds * (1.0 - kSmoothing);
+    }
+
+    if (entry.sampleCount < std::numeric_limits<int>::max()) {
+        ++entry.sampleCount;
+    }
+}
+
+void Viewport3D::RebuildViewTimingOverlayLines() {
+    viewTimingOverlayLines_.clear();
+    for (const auto& timing : viewRenderTimings_) {
+        if (timing.name.empty()) {
+            continue;
+        }
+        std::ostringstream line;
+        line.setf(std::ios::fixed, std::ios::floatfield);
+        line << timing.name << " [" << ViewRoleToString(timing.role);
+        if (timing.overlay) {
+            line << ", overlay";
+        }
+        line << "] " << std::setprecision(2) << timing.lastMilliseconds << " ms";
+        if (timing.sampleCount > 1) {
+            line << " avg " << std::setprecision(2) << timing.smoothedMilliseconds << " ms";
+        }
+        viewTimingOverlayLines_.push_back(line.str());
+    }
+}
+
+ViewRole Viewport3D::ParseViewRole(const std::string& name) {
+    std::string lowered;
+    lowered.reserve(name.size());
+    std::transform(name.begin(), name.end(), std::back_inserter(lowered), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+
+    if (lowered == "main") {
+        return ViewRole::Main;
+    }
+    if (lowered == "secondary") {
+        return ViewRole::Secondary;
+    }
+    if (lowered == "minimap") {
+        return ViewRole::Minimap;
+    }
+    return ViewRole::Main;
+}
+
+const char* Viewport3D::ViewRoleToString(ViewRole role) {
+    switch (role) {
+    case ViewRole::Main: return "Main";
+    case ViewRole::Secondary: return "Secondary";
+    case ViewRole::Minimap: return "Minimap";
+    }
+    return "Unknown";
 }
 
 void Viewport3D::DrawCameraVisual(const class Camera* camera, double playerX, double playerY, double playerZ, bool targetLocked) {
@@ -3924,6 +4555,31 @@ void Viewport3D::DrawHUD(const class Camera* camera,
             TextRenderer::RenderText(ybuf, x, y, TextColor(0.5f, 1.0f, 1.0f), FontSize::Large);
             x += TextRenderer::MeasureText(ybuf, FontSize::Large) + 12;
 
+            if (!layoutEditorStatus_.empty() || !viewTimingOverlayLines_.empty() || !layoutEditorError_.empty()) {
+                int diagX = static_cast<int>(std::lround(haveHudTexture ? telemetryAnchor.x + 24.0f * hudScale : 18.0f));
+                int diagY = y + rowSpacing;
+                const int statusHeight = TextRenderer::GetFontHeight(FontSize::Medium);
+                const int detailHeight = TextRenderer::GetFontHeight(FontSize::Small);
+
+                if (!layoutEditorStatus_.empty()) {
+                    TextRenderer::RenderText(layoutEditorStatus_, diagX, diagY, TextColor(0.6f, 0.85f, 1.0f), FontSize::Medium);
+                    diagY += (statusHeight > 0 ? statusHeight : 24) + 4;
+                }
+
+                for (const auto& line : viewTimingOverlayLines_) {
+                    TextRenderer::RenderText(line,
+                                            diagX + 12,
+                                            diagY,
+                                            TextColor(0.85f, 0.9f, 1.0f),
+                                            FontSize::Small);
+                    diagY += (detailHeight > 0 ? detailHeight : 18) + 2;
+                }
+
+                if (!layoutEditorError_.empty()) {
+                    TextRenderer::RenderText(layoutEditorError_, diagX, diagY, TextColor(1.0f, 0.55f, 0.55f), FontSize::Small);
+                }
+            }
+
             // Energy management overlay
 #if defined(USE_GLFW)
             if (energyTelemetry && energyTelemetry->valid) {
@@ -4090,6 +4746,27 @@ void Viewport3D::DrawHUD(const class Camera* camera,
         TextRenderer::RenderText(zbuf2, x, y, TextColor(1.0f, 0.9f, 0.5f), FontSize::Large);
         x += TextRenderer::MeasureText(zbuf2, FontSize::Large) + 12;
 
+        if (!layoutEditorStatus_.empty() || !viewTimingOverlayLines_.empty() || !layoutEditorError_.empty()) {
+            int diagX = 18;
+            int diagY = y + 40;
+            const int statusHeight = TextRenderer::GetFontHeight(FontSize::Medium);
+            const int detailHeight = TextRenderer::GetFontHeight(FontSize::Small);
+
+            if (!layoutEditorStatus_.empty()) {
+                TextRenderer::RenderText(layoutEditorStatus_, diagX, diagY, TextColor(0.6f, 0.85f, 1.0f), FontSize::Medium);
+                diagY += (statusHeight > 0 ? statusHeight : 24) + 4;
+            }
+
+            for (const auto& line : viewTimingOverlayLines_) {
+                TextRenderer::RenderText(line, diagX + 12, diagY, TextColor(0.85f, 0.9f, 1.0f), FontSize::Small);
+                diagY += (detailHeight > 0 ? detailHeight : 18) + 2;
+            }
+
+            if (!layoutEditorError_.empty()) {
+                TextRenderer::RenderText(layoutEditorError_, diagX, diagY, TextColor(1.0f, 0.55f, 0.55f), FontSize::Small);
+            }
+        }
+
         // Reticle
         if (uiBatcher_) {
             DrawReticle2D(uiBatcher_.get(), width, height, 1.0f);
@@ -4176,21 +4853,32 @@ void Viewport3D::DrawHUD(const class Camera* camera,
         }
 #endif
 
-        // Draw semi-transparent background box with border for telemetry readout
-        SDL_SetRenderDrawBlendMode(sdlRenderer, SDL_BLENDMODE_BLEND);
-        const Uint8 backgroundAlpha = drewSpaceshipHud ? 140 : 180;
-        SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, backgroundAlpha);
-        SDL_Rect bg{8, 8, 380, 180};
-        compat_RenderFillRect(sdlRenderer, &bg);
-        // white border
-        SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 255, backgroundAlpha);
-        compat_RenderDrawRect(sdlRenderer, &bg);
-
         int x = 18, y = 18;
         const int scaleLabel = 4;
         const int scaleValue = 4;
         SDL_Color labelColor{128, 128, 128, 255};
         SDL_Color valueColor{255, 230, 120, 255};
+
+        int extraLines = 0;
+        if (!layoutEditorStatus_.empty()) {
+            ++extraLines;
+        }
+        extraLines += static_cast<int>(viewTimingOverlayLines_.size());
+        if (!layoutEditorError_.empty()) {
+            ++extraLines;
+        }
+        const int diagLineHeight = 5 * scaleValue + 6;
+        const int extraHeight = extraLines > 0 ? extraLines * diagLineHeight : 0;
+
+        // Draw semi-transparent background box with border for telemetry readout
+        SDL_SetRenderDrawBlendMode(sdlRenderer, SDL_BLENDMODE_BLEND);
+        const Uint8 backgroundAlpha = drewSpaceshipHud ? 140 : 180;
+        SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, backgroundAlpha);
+        SDL_Rect bg{8, 8, 380, 180 + extraHeight};
+        compat_RenderFillRect(sdlRenderer, &bg);
+        // white border
+        SDL_SetRenderDrawColor(sdlRenderer, 255, 255, 255, backgroundAlpha);
+        compat_RenderDrawRect(sdlRenderer, &bg);
 
         // Z: label and value
         x += SDLMiniFont_RenderText(sdlRenderer, x, y, labelColor, scaleLabel, "Z:") + 12;
@@ -4218,6 +4906,27 @@ void Viewport3D::DrawHUD(const class Camera* camera,
         x += SDLMiniFont_RenderText(sdlRenderer, x, y, labelColor, scaleLabel, "Z") + 12;
         char zbuf2[32]; snprintf(zbuf2, sizeof(zbuf2), "%.2f", playerZ);
         x += SDLMiniFont_RenderText(sdlRenderer, x, y, valueColor, scaleValue, zbuf2);
+
+        if (!layoutEditorStatus_.empty() || !viewTimingOverlayLines_.empty() || !layoutEditorError_.empty()) {
+            const int diagLineHeight = 5 * scaleValue + 6;
+            int diagX = 18;
+            int diagY = y + diagLineHeight;
+
+            if (!layoutEditorStatus_.empty()) {
+                SDLMiniFont_RenderText(sdlRenderer, diagX, diagY, valueColor, scaleValue, layoutEditorStatus_.c_str());
+                diagY += diagLineHeight;
+            }
+
+            for (const auto& line : viewTimingOverlayLines_) {
+                SDLMiniFont_RenderText(sdlRenderer, diagX + 12, diagY, valueColor, scaleValue, line.c_str());
+                diagY += diagLineHeight;
+            }
+
+            if (!layoutEditorError_.empty()) {
+                SDL_Color errorColor{255, 120, 120, 255};
+                SDLMiniFont_RenderText(sdlRenderer, diagX, diagY, errorColor, scaleValue, layoutEditorError_.c_str());
+            }
+        }
     }
 #endif
     if (IsUsingSDLGL()) {

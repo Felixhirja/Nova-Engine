@@ -1,0 +1,64 @@
+{
+  "layouts": [
+    {
+      "name": "Single View",
+      "views": [
+        {
+          "name": "Main",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 1.0,
+          "height": 1.0,
+          "role": "Main",
+          "overlay": false
+        }
+      ]
+    },
+    {
+      "name": "Split Vertical",
+      "views": [
+        {
+          "name": "Left",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 0.5,
+          "height": 1.0,
+          "role": "Main",
+          "overlay": false
+        },
+        {
+          "name": "Right",
+          "x": 0.5,
+          "y": 0.0,
+          "width": 0.5,
+          "height": 1.0,
+          "role": "Secondary",
+          "overlay": false
+        }
+      ]
+    },
+    {
+      "name": "Main + Minimap",
+      "views": [
+        {
+          "name": "Main",
+          "x": 0.0,
+          "y": 0.0,
+          "width": 1.0,
+          "height": 1.0,
+          "role": "Main",
+          "overlay": false
+        },
+        {
+          "name": "Minimap",
+          "x": 0.72,
+          "y": 0.04,
+          "width": 0.26,
+          "height": 0.28,
+          "role": "Minimap",
+          "overlay": true
+        }
+      ]
+    }
+  ]
+}
