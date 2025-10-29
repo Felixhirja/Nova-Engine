@@ -3,6 +3,8 @@
 #include <vector>
 #include <unordered_map>
 #include <memory>
+#include <cstddef>
+#include <type_traits>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include "Material.h"
@@ -20,10 +22,13 @@ struct MeshHandle {
 };
 
 struct InstanceData {
-    glm::mat4 modelMatrix;
-    glm::vec3 colorTint = glm::vec3(1.0f);
-    float customScalar = 0.0f;
+    glm::mat4 modelMatrix;           // column-major world transform (meters)
+    glm::vec4 colorTint = glm::vec4(1.0f); // RGBA tint, normalized [0,1]
+    float customScalar = 0.0f;       // unit-less per-instance parameter
 };
+
+static_assert(std::is_standard_layout_v<InstanceData>,
+              "InstanceData must be standard layout for GPU uploads");
 
 class InstancedMeshRenderer {
 public:
@@ -36,6 +41,9 @@ public:
     // Submit an instance for rendering
     void Submit(const MeshHandle& mesh, const std::shared_ptr<Material>& material,
                 const glm::mat4& transform, const glm::vec3& colorTint = glm::vec3(1.0f),
+                float customScalar = 0.0f);
+    void Submit(const MeshHandle& mesh, const std::shared_ptr<Material>& material,
+                const glm::mat4& transform, const glm::vec4& colorTint,
                 float customScalar = 0.0f);
 
     // Flush all batched instances to GPU
@@ -76,7 +84,7 @@ private:
     std::unique_ptr<ShaderProgram> m_shader;
 
     // Instance buffer layout
-    static constexpr size_t INSTANCE_DATA_SIZE = sizeof(glm::mat4) + sizeof(glm::vec3) + sizeof(float);
+    static constexpr std::size_t INSTANCE_DATA_SIZE = sizeof(InstanceData);
 
     void SetupInstanceBuffer(Batch& batch);
     void UpdateInstanceBuffer(Batch& batch);
