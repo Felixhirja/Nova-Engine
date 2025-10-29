@@ -16,7 +16,7 @@ public:
         double worldY = 0.0;
         double worldZ = 0.0;
         double facingYaw = 0.0;
-        double cameraYaw = 0.0;
+        double cameraYaw = camera_defaults::kDefaultYawRadians;
         bool thrustMode = false;
         bool isTargetLocked = false;
         double targetOffsetY = 0.0;

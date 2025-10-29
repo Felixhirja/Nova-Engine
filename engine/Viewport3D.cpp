@@ -3178,7 +3178,14 @@ void Viewport3D::DrawCameraVisual(const class Camera* camera, double playerX, do
         lineBatcher3D_->Flush();
 
         // Camera frustum visualization in world space
-        const double fovRadians = camera->zoom() * (std::acos(-1.0) / 180.0);
+        double debugFovDegrees = camera->zoom();
+        if (!std::isfinite(debugFovDegrees)) {
+            debugFovDegrees = Camera::kDefaultFovDegrees;
+        }
+        const double clampedFovDegrees = std::clamp(debugFovDegrees,
+                                                    Camera::kMinFovDegrees,
+                                                    Camera::kMaxFovDegrees);
+        const double fovRadians = clampedFovDegrees * (std::acos(-1.0) / 180.0);
         const double aspect = (height != 0) ? static_cast<double>(width) / static_cast<double>(height) : 1.0;
         const double nearDist = 0.1;
         const double farDist = 5.0;

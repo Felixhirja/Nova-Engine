@@ -1,6 +1,7 @@
 #pragma once
 #include "Component.h"
 #include "EntityHandle.h"
+#include "../CameraDefaults.h"
 #include <cmath>
 #include <deque>
 #include <functional>
@@ -99,7 +100,7 @@ struct PlayerController : public Component {
     bool slide = false;
     bool boost = false;
     bool thrustMode = false;
-    double cameraYaw = 0.0;
+    double cameraYaw = camera_defaults::kDefaultYawRadians;
     double facingYaw = 0.0;  // Player's facing direction for camera following
 };
 
