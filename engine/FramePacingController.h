@@ -2,6 +2,8 @@
 
 #include <chrono>
 
+#include "FrameScheduler.h"
+
 struct FramePacingSettings {
     bool vsyncEnabled = false;
     double targetFPS = 144.0;
@@ -23,7 +25,16 @@ public:
 
     std::chrono::duration<double> DesiredFrameDuration() const;
 
+    void UpdateFromTimings(const FrameTimingAverages& timing);
+
+    const FrameStageDurations& AverageStageDurations() const { return averageStageDurations_; }
+    double AverageFrameDuration() const { return averageFrameDuration_; }
+    std::size_t AverageSampleCount() const { return averageSampleCount_; }
+
 private:
     FramePacingSettings settings_;
+    FrameStageDurations averageStageDurations_{};
+    double averageFrameDuration_ = 0.0;
+    std::size_t averageSampleCount_ = 0;
 };
 

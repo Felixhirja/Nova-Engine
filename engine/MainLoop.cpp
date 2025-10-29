@@ -68,6 +68,9 @@ struct FrameRuntimeContext {
     bool sdlPrevF8Down = false;
     bool sdlPrevF9Down = false;
     bool sdlPrevF11Down = false;
+    FrameStageDurations lastStageDurations{};
+    FrameTimingAverages rollingTimings{};
+    double frameDurationSeconds = 0.0;
 };
 
 } // namespace
@@ -343,11 +346,9 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
     const double updateHz = 60.0;
     const double fixedDt = 1.0 / updateHz;
-    const double maxFPS = 144.0;
-
     FrameSchedulerConfig schedulerConfig;
     schedulerConfig.fixedUpdateHz = updateHz;
-    schedulerConfig.maxRenderHz = maxFPS;
+    schedulerConfig.maxRenderHz = framePacingController.TargetFPS();
 
     FrameScheduler scheduler(schedulerConfig);
 
@@ -362,6 +363,11 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             runtime.maxFrames = 300;
             // std::cout << "Headless mode: will run for " << runtime.maxFrames << " frames (default) then exit" << std::endl;
         }
+        framePacingController.SetVSyncEnabled(false);
+        framePacingController.SetTargetFPS(0.0);
+        scheduler.SetMaxRenderHz(0.0);
+    } else {
+        scheduler.SetMaxRenderHz(framePacingController.TargetFPS());
     }
 
     FrameSchedulerCallbacks callbacks;
@@ -750,6 +756,9 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     };
 
     callbacks.onRender = [&](double /*interpolation*/) {
+        if (runtime.headlessMode) {
+            return;
+        }
         if (!viewport) {
             return;
         }
@@ -813,7 +822,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             hudAssemblyPtr = &hudShipAssembly;
         }
 
-    viewport->DrawHUD(camera.get(), runtime.currentFPS, hudPlayerX, hudPlayerY, hudPlayerZ, hudTargetLocked, hudAssemblyPtr);
+        viewport->DrawHUD(camera.get(), runtime.currentFPS, hudPlayerX, hudPlayerY, hudPlayerZ, hudTargetLocked, hudAssemblyPtr);
         if (visualFeedbackSystem) {
             viewport->RenderParticles(camera.get(), visualFeedbackSystem.get());
         }
@@ -833,6 +842,20 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     callbacks.onFrameComplete = [&](const FrameSchedulerFrameInfo& info) {
         runtime.frameCount++;
         runtime.framesThisSecond++;
+
+        runtime.lastStageDurations = info.stageDurations;
+        runtime.rollingTimings = info.rolling;
+        runtime.frameDurationSeconds = info.frameDurationSeconds;
+
+        if (runtime.headlessMode) {
+            scheduler.SetMaxRenderHz(0.0);
+        } else {
+            framePacingController.UpdateFromTimings(info.rolling);
+            scheduler.SetMaxRenderHz(framePacingController.TargetFPS());
+            if (viewport) {
+                viewport->SetFramePacingHint(framePacingController.IsVSyncEnabled(), framePacingController.TargetFPS());
+            }
+        }
 
         if (runtime.headlessMode && runtime.maxFrames > 0 && runtime.frameCount >= runtime.maxFrames && !runtime.headlessNoticePrinted) {
             // std::cout << "Headless mode: reached " << runtime.frameCount << " frames, exiting..." << std::endl;
