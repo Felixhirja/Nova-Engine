@@ -1,12 +1,14 @@
 #pragma once
 
 #include <array>
+#include "CameraDefaults.h"
 
 class Camera {
 public:
     static constexpr double kMinFovDegrees = 30.0;
     static constexpr double kMaxFovDegrees = 90.0;
     static constexpr double kDefaultFovDegrees = 60.0;
+    static constexpr double kDefaultYawRadians = camera_defaults::kDefaultYawRadians;
 
     struct Basis {
         double forwardX;

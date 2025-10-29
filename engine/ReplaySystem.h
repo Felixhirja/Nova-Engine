@@ -20,7 +20,7 @@ struct PlayerInputSnapshot {
     bool boost = false;
     bool left = false;
     bool right = false;
-    double cameraYaw = 0.0;
+    double cameraYaw = camera_defaults::kDefaultYawRadians;
 };
 
 struct EntityPhysicsSnapshot {

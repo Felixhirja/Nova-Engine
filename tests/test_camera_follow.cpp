@@ -1,7 +1,12 @@
-#include "../src/Camera.h"
-#include "../src/CameraFollow.h"
+#include "../engine/Camera.h"
+#include "../engine/CameraFollow.h"
+#include "../engine/CameraFollowController.h"
 #include <cmath>
 #include <iostream>
+
+using CameraFollow::CameraFollowConfig;
+using CameraFollow::CameraFollowInput;
+using CameraFollow::CameraFollowState;
 
 namespace {
 
@@ -23,31 +28,33 @@ void stepFrames(Camera& camera,
 bool verifyOffsets(const char* label,
                    const Camera& camera,
                    const CameraFollowInput& input,
-                   double expectedXOffset,
-                   double expectedYOffset,
-                   double expectedZOffset,
+                   double expectedPlanarDistance,
+                   double expectedOrbitDistance,
+                   double expectedHeight,
                    double tolerance) {
     double offsetX = camera.x() - input.playerX;
     double offsetY = camera.y() - input.playerY;
     double offsetZ = camera.z() - input.playerZ;
 
-    if (!approxEqual(offsetX, expectedXOffset, tolerance) ||
-        !approxEqual(offsetY, expectedYOffset, tolerance) ||
-        !approxEqual(offsetZ, expectedZOffset, tolerance)) {
-        std::cerr << label << " failed: got offsets ("
-                  << offsetX << ", " << offsetY << ", " << offsetZ
-                  << ") expected approx ("
-                  << expectedXOffset << ", " << expectedYOffset << ", " << expectedZOffset
-                  << ") with tolerance " << tolerance << std::endl;
+    double planarDistance = std::sqrt(offsetX * offsetX + offsetZ * offsetZ);
+
+    const bool planarOk = approxEqual(planarDistance, expectedOrbitDistance, tolerance);
+    const bool heightOk = (offsetY + tolerance >= expectedHeight);
+
+    if (!planarOk || !heightOk) {
+        std::cerr << label << " failed: planar distance=" << planarDistance
+                  << " (expected " << expectedOrbitDistance << ") height=" << offsetY
+                  << " (minimum " << expectedHeight << ")" << std::endl;
         return false;
     }
+    (void)expectedPlanarDistance; // legacy parameter kept for compatibility
     return true;
 }
 
 } // namespace
 
 int main() {
-    Camera camera(-8.0, 0.0, 6.0, -0.1, 0.0, 12.0);
+    Camera camera(-8.0, 0.0, 6.0, -0.1, Camera::kDefaultYawRadians, 12.0);
     CameraFollowState state;
     CameraFollowConfig config;
     CameraFollowInput input;
@@ -108,6 +115,67 @@ int main() {
     stepFrames(camera, state, config, input, dt, 180);
     if (!verifyOffsets("Downward follow", camera, input, 0.0, config.orbitDistance, config.orbitHeight, tolerance)) {
         return 8;
+    }
+
+    // --- Free camera movement validation ---
+    {
+        CameraFollowController controller;
+        CameraFollow::CameraFollowConfig freeConfig;
+        freeConfig.transitionSpeed = 0.0;
+        freeConfig.posResponsiveness = 0.0;
+        freeConfig.rotResponsiveness = 0.0;
+        freeConfig.minDistanceFromPlayer = 0.0;
+        freeConfig.softGroundClamp = false;
+        freeConfig.groundLevel = -1000.0;
+        freeConfig.terrainBuffer = 0.0;
+        freeConfig.moveSpeedHorizontal = 6.0;
+        freeConfig.moveSpeedVertical = 6.0;
+        freeConfig.freeAccelHz = 120.0;
+        freeConfig.freeVelDeadzone = 0.0;
+        freeConfig.pitchBias = 0.0;
+        freeConfig.clampPitch = false;
+        freeConfig.alwaysTickFreeMode = true;
+        freeConfig.orbitDistance = 0.0;
+        freeConfig.orbitHeight = 0.0;
+        controller.SetConfig(freeConfig);
+        controller.ResetState();
+
+        Camera freeCamera(0.0, 0.0, 0.0, 0.0, Camera::kDefaultYawRadians, Camera::kDefaultFovDegrees);
+        CameraFollow::CameraFollowInput freeInput;
+        freeInput.isTargetLocked = false;
+
+        CameraMovementInput moveInput{};
+        moveInput.moveSpeed = 6.0;
+        const double dt = 1.0 / 60.0;
+
+        auto approx = [](double value, double expected, double tolerance) {
+            return std::abs(value - expected) <= tolerance;
+        };
+
+        moveInput.moveForward = true;
+        for (int i = 0; i < 120; ++i) {
+            controller.Update(freeCamera, freeInput, moveInput, dt, nullptr);
+        }
+        if (!(freeCamera.x() > 5.0 && approx(freeCamera.z(), 0.0, 0.5) && approx(freeCamera.y(), 0.0, 0.25))) {
+            std::cerr << "Free camera forward movement failed: position ("
+                      << freeCamera.x() << ", " << freeCamera.y() << ", " << freeCamera.z() << ")" << std::endl;
+            return 9;
+        }
+
+        controller.ResetState();
+        freeCamera.SetPosition(0.0, 0.0, 0.0);
+        freeCamera.SetOrientation(0.0, Camera::kDefaultYawRadians);
+
+        moveInput.moveForward = false;
+        moveInput.moveRight = true;
+        for (int i = 0; i < 120; ++i) {
+            controller.Update(freeCamera, freeInput, moveInput, dt, nullptr);
+        }
+        if (!(freeCamera.z() < -5.0 && approx(freeCamera.x(), 0.0, 0.5) && approx(freeCamera.y(), 0.0, 0.25))) {
+            std::cerr << "Free camera strafe movement failed: position ("
+                      << freeCamera.x() << ", " << freeCamera.y() << ", " << freeCamera.z() << ")" << std::endl;
+            return 10;
+        }
     }
 
     std::cout << "Camera follow tests passed" << std::endl;

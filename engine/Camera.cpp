@@ -17,7 +17,7 @@ Camera::Camera()
     , y_(0.0)
     , z_(0.0)
     , pitch_(0.0)
-    , yaw_(0.0)
+    , yaw_(kDefaultYawRadians)
     , zoom_(kDefaultFovDegrees)
     , targetZoom_(kDefaultFovDegrees) {}
 

@@ -1,6 +1,10 @@
-#include "../src/Camera.h"
-#include "../src/CameraFollow.h"
-#include "../src/Simulation.h"
+#include "../engine/Camera.h"
+#include "../engine/CameraFollow.h"
+#include "../engine/Simulation.h"
+
+using CameraFollow::CameraFollowConfig;
+using CameraFollow::CameraFollowInput;
+using CameraFollow::CameraFollowState;
 
 #include <cmath>
 #include <iostream>
@@ -60,7 +64,7 @@ int main() {
 
     // --- Rapid target lock toggling test ---
     {
-        Camera camera(-8.0, 0.0, 6.0, -0.1, 0.0, 12.0);
+        Camera camera(-8.0, 0.0, 6.0, -0.1, Camera::kDefaultYawRadians, 12.0);
         CameraFollowConfig config;
         CameraFollowState state;
         CameraFollowInput input;
@@ -93,7 +97,7 @@ int main() {
 
     // --- Extreme zoom level handling test ---
     {
-        Camera camera(0.0, 0.0, 1.0, 0.0, 0.0, 1.0);
+        Camera camera(0.0, 0.0, 1.0, 0.0, Camera::kDefaultYawRadians, 1.0);
 
         camera.SetTargetZoom(1e-8); // extremely small target
         camera.UpdateZoom(1.0 / 60.0);

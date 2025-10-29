@@ -14,6 +14,7 @@
 #include "TargetingSystem.h"
 #include "WeaponSystem.h"
 #include "ShieldSystem.h"
+#include "Camera.h"
 
 #include <algorithm>
 #include <cctype>
@@ -666,7 +667,7 @@ void Simulation::Init(EntityManager* externalEm) {
     controller->crouch = false;
     controller->slide = false;
     controller->boost = false;
-    controller->cameraYaw = 0.0;
+    controller->cameraYaw = Camera::kDefaultYawRadians;
     useEm->AddComponent<PlayerController>(playerEntity, controller);
 
     auto physics = std::make_shared<PlayerPhysics>();
