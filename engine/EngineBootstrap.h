@@ -1,7 +1,7 @@
 #ifndef ENGINE_BOOTSTRAP_H
 #define ENGINE_BOOTSTRAP_H
 
-#include "ShipAssembly.h"
+#include "ecs/ShipAssembly.h"
 #include "ActorContext.h"
 #include "BootstrapConfiguration.h"
 

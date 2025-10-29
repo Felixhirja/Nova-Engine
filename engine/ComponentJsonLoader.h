@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ShipAssembly.h"
+#include "ecs/ShipAssembly.h"
 
 #include <string>
 #include <vector>

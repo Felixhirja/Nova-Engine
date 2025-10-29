@@ -9,7 +9,7 @@
 #include "CameraFollowController.h"
 #include "CameraPresets.h"
 #include "EngineStateMachine.h"
-#include "ShipAssembly.h"
+#include "ecs/ShipAssembly.h"
 #include "FramePacingController.h"
 #include "EnergyHUDTelemetry.h"
 #include "EnergyManagementSystem.h"
