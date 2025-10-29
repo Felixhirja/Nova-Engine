@@ -7,6 +7,7 @@
 #endif
 #include <algorithm>
 #include <cmath>
+#include <array>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -155,4 +156,39 @@ Camera::Basis Camera::BuildBasis(bool includePitchInForward) const noexcept {
     return Basis{forwardX, forwardY, forwardZ,
                  rightX, rightY, rightZ,
                  upX, upY, upZ};
+}
+
+std::array<double, 16> Camera::GetViewMatrix() const noexcept {
+    const Basis basis = BuildBasis(true);
+
+    const double transX = -(basis.rightX * x_ + basis.rightY * y_ + basis.rightZ * z_);
+    const double transY = -(basis.upX * x_ + basis.upY * y_ + basis.upZ * z_);
+    const double transZ =  (basis.forwardX * x_ + basis.forwardY * y_ + basis.forwardZ * z_);
+
+    return {basis.rightX, basis.rightY, basis.rightZ, 0.0,
+            basis.upX,    basis.upY,    basis.upZ,    0.0,
+            -basis.forwardX, -basis.forwardY, -basis.forwardZ, 0.0,
+            transX,       transY,       transZ,       1.0};
+}
+
+std::array<double, 16> Camera::GetProjectionMatrix(double aspectRatio,
+                                                   double nearPlaneMeters,
+                                                   double farPlaneMeters) const noexcept {
+    const double safeAspect = (aspectRatio > 0.0 && std::isfinite(aspectRatio)) ? aspectRatio : 1.0;
+    const double safeNear = std::max(1e-3, std::isfinite(nearPlaneMeters) ? nearPlaneMeters : 0.1);
+    const double safeFar = std::max(safeNear + 1e-3,
+                                    std::isfinite(farPlaneMeters) ? farPlaneMeters : safeNear + 1000.0);
+
+    const double fovDegrees = ClampFov(zoom_);
+    const double fovRadians = fovDegrees * (M_PI / 180.0);
+    const double f = 1.0 / std::tan(fovRadians * 0.5);
+    const double invDepth = 1.0 / (safeNear - safeFar);
+
+    std::array<double, 16> proj{};
+    proj[0] = f / safeAspect;
+    proj[5] = f;
+    proj[10] = (safeFar + safeNear) * invDepth;
+    proj[11] = -1.0;
+    proj[14] = (2.0 * safeFar * safeNear) * invDepth;
+    return proj;
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 class Camera {
 public:
     static constexpr double kMinFovDegrees = 30.0;
@@ -35,6 +37,14 @@ public:
 
     // Apply camera transformation to OpenGL modelview matrix
     void ApplyToOpenGL() const;
+
+    // Column-major view matrix (right, up, -forward, translation).
+    std::array<double, 16> GetViewMatrix() const noexcept;
+
+    // Column-major perspective projection using vertical FOV (degrees).
+    std::array<double, 16> GetProjectionMatrix(double aspectRatio,
+                                               double nearPlaneMeters,
+                                               double farPlaneMeters) const noexcept;
 
     double x() const { return x_; }
     double y() const { return y_; }
