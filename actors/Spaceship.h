@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ecs/EntityManager.h"
 #include "ecs/ShipAssembly.h"
 
 #include <optional>
@@ -73,6 +74,24 @@ struct DefaultLoadout {
     std::vector<std::string> components;
 };
 
+struct ResolvedDefaultLoadout {
+    const DefaultLoadout* loadout = nullptr;
+    ShipAssemblyRequest assemblyRequest;
+};
+
+struct SpaceshipVariantLayout {
+    std::vector<HardpointSpec> hardpoints;
+    std::vector<ComponentSlotSpec> componentSlots;
+};
+
+struct SpaceshipSpawnBundle {
+    ShipAssemblyRequest assemblyRequest;
+    std::string classId;
+    std::string displayName;
+    int loadoutIndex = -1;
+    bool playerControlled = false;
+};
+
 struct SpaceshipClassCatalogEntry {
     std::string id;
     SpaceshipClassType type = SpaceshipClassType::Fighter;
@@ -91,5 +110,24 @@ class SpaceshipCatalog {
 public:
     static const std::vector<SpaceshipClassCatalogEntry>& All();
     static const SpaceshipClassCatalogEntry* FindById(const std::string& id);
+    static void Reload();
+    static void EnableHotReload(bool enabled);
+    static void TickHotReload();
+    static const std::vector<std::string>& ValidationErrors();
+
+    static SpaceshipClassDefinition BuildClassDefinition(const SpaceshipClassCatalogEntry& entry);
+    static std::vector<ShipAssemblyRequest> BuildDefaultLoadoutRequests(const SpaceshipClassCatalogEntry& entry);
+    static ResolvedDefaultLoadout ResolveDefaultLoadout(const SpaceshipClassCatalogEntry& entry,
+                                                       const DefaultLoadout& loadout);
+    static std::optional<ShipAssemblyRequest> BuildDefaultLoadoutRequest(const std::string& classId,
+                                                                         const std::string& loadoutName);
+    static SpaceshipVariantLayout ResolveVariantLayout(const SpaceshipClassCatalogEntry& entry,
+                                                       const VariantSpec& variant);
+    static SpaceshipSpawnBundle BuildSpawnBundle(const SpaceshipClassCatalogEntry& entry,
+                                                 const DefaultLoadout& loadout,
+                                                 int loadoutIndex,
+                                                 const std::string& hullSuffix = "");
 };
+
+Entity SpawnSpaceship(EntityManager& entityManager, const SpaceshipSpawnBundle& bundle);
 

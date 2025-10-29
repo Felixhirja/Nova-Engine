@@ -103,11 +103,14 @@ struct ComponentSlotSpec {
     std::string notes;
 };
 
+struct ShipAssemblyRequest;
+
 struct SpaceshipClassDefinition {
     SpaceshipClassType type = SpaceshipClassType::Fighter;
     std::string displayName;
     SpaceshipBaselineSpec baseline;
     std::vector<ComponentSlotSpec> componentSlots;
+    std::vector<ShipAssemblyRequest> defaultLoadouts;
 };
 
 // Diagnostic severity levels for ship assembly validation
