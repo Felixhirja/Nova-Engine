@@ -2991,34 +2991,12 @@ void Viewport3D::DrawCameraVisual(const class Camera* camera, double playerX, do
 #if defined(USE_GLFW) || defined(USE_SDL)
     if (!camera) return;
 
+    (void)playerX;
+    (void)playerY;
+    (void)playerZ;
+
     auto drawCameraDebug = [&]() {
         glDisable(GL_DEPTH_TEST); // Draw on top
-        glPushMatrix();
-        const Camera::Basis camBasis = camera->BuildBasis(true);
-
-        const auto forwardVec = [&camBasis]() {
-            return std::array<double, 3>{camBasis.forwardX, camBasis.forwardY, camBasis.forwardZ};
-        }();
-
-        double markerX, markerY, markerZ;
-        if (targetLocked) {
-            markerX = playerX + forwardVec[0] * 3.0;
-            markerY = playerY + forwardVec[1] * 3.0;
-            markerZ = playerZ + forwardVec[2] * 3.0;
-        } else {
-            markerX = playerX - forwardVec[0] * 5.0;
-            markerY = playerY - forwardVec[1] * 5.0;
-            markerZ = playerZ - forwardVec[2] * 5.0;
-        }
-
-        glTranslatef(markerX, markerY, markerZ);
-        
-        // Rotate to match camera orientation
-        glRotatef(-camera->pitch() * 180.0f / 3.141592653589793f, 1.0f, 0.0f, 0.0f);
-        glRotatef(-camera->yaw() * 180.0f / 3.141592653589793f, 0.0f, 1.0f, 0.0f);
-
-        // Draw a much better camera visual - a small camera icon
-        glLineWidth(3.0f);
 
         struct Vec3 {
             double x;
@@ -3027,203 +3005,187 @@ void Viewport3D::DrawCameraVisual(const class Camera* camera, double playerX, do
         };
 
         auto normalize = [](const Vec3& v) {
-            double len = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+            const double len = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
             if (len < 1e-6) {
                 return Vec3{0.0, 0.0, 0.0};
             }
             return Vec3{v.x / len, v.y / len, v.z / len};
         };
 
-        Vec3 forward = normalize(Vec3{forwardVec[0], forwardVec[1], forwardVec[2]});
+        const Camera::Basis camBasis = camera->BuildBasis(true);
+        Vec3 forward = normalize(Vec3{camBasis.forwardX, camBasis.forwardY, camBasis.forwardZ});
         Vec3 right = normalize(Vec3{camBasis.rightX, camBasis.rightY, camBasis.rightZ});
         Vec3 up = normalize(Vec3{camBasis.upX, camBasis.upY, camBasis.upZ});
+        Vec3 cameraPos{camera->x(), camera->y(), camera->z()};
+
+        auto localToWorld = [&](const Vec3& local) {
+            return Vec3{
+                cameraPos.x + local.x * right.x + local.y * up.x + local.z * forward.x,
+                cameraPos.y + local.x * right.y + local.y * up.y + local.z * forward.y,
+                cameraPos.z + local.x * right.z + local.y * up.z + local.z * forward.z};
+        };
+
+        EnsureLineBatcher3D();
+        if (!lineBatcher3D_) {
+            glEnable(GL_DEPTH_TEST);
+            return;
+        }
+
+        auto addLineWorld = [&](const Vec3& a, const Vec3& b, float r, float g, float bcol, float acol = 1.0f) {
+            lineBatcher3D_->AddLine(static_cast<float>(a.x), static_cast<float>(a.y), static_cast<float>(a.z),
+                                    static_cast<float>(b.x), static_cast<float>(b.y), static_cast<float>(b.z),
+                                    r, g, bcol, acol);
+        };
+
+        auto addPointWorld = [&](const Vec3& p, float r, float g, float bcol, float acol = 1.0f) {
+            lineBatcher3D_->AddPoint(static_cast<float>(p.x), static_cast<float>(p.y), static_cast<float>(p.z),
+                                     r, g, bcol, acol);
+        };
+
+        auto addLineLocal = [&](float ax, float ay, float az, float bx, float by, float bz,
+                                float r, float g, float bcol, float acol = 1.0f) {
+            const Vec3 worldA = localToWorld(Vec3{ax, ay, az});
+            const Vec3 worldB = localToWorld(Vec3{bx, by, bz});
+            addLineWorld(worldA, worldB, r, g, bcol, acol);
+        };
 
         // Camera body (rectangular prism) - draw edges with line batcher (no immediate mode)
-        EnsureLineBatcher3D();
-        if (lineBatcher3D_) {
-            const float br = 0.8f, bg = 0.8f, bb = 0.8f;
-            // 8 corners of the prism
-            const float x0 = -0.4f, x1 = 0.4f;
-            const float y0 = -0.2f, y1 = 0.2f;
-            const float zf = 0.1f, zb = -0.3f;
-            auto addEdge = [&](float ax, float ay, float az, float bx, float by, float bz) {
-                lineBatcher3D_->AddLine(ax, ay, az, bx, by, bz, br, bg, bb);
-            };
-            // Front rectangle
-            lineBatcher3D_->Begin();
-            lineBatcher3D_->SetLineWidth(2.0f);
-            addEdge(x0, y0, zf, x1, y0, zf);
-            addEdge(x1, y0, zf, x1, y1, zf);
-            addEdge(x1, y1, zf, x0, y1, zf);
-            addEdge(x0, y1, zf, x0, y0, zf);
-            // Back rectangle
-            addEdge(x0, y0, zb, x1, y0, zb);
-            addEdge(x1, y0, zb, x1, y1, zb);
-            addEdge(x1, y1, zb, x0, y1, zb);
-            addEdge(x0, y1, zb, x0, y0, zb);
-            // Connectors
-            addEdge(x0, y0, zf, x0, y0, zb);
-            addEdge(x1, y0, zf, x1, y0, zb);
-            addEdge(x1, y1, zf, x1, y1, zb);
-            addEdge(x0, y1, zf, x0, y1, zb);
-            lineBatcher3D_->Flush();
+        const float bodyX0 = -0.4f, bodyX1 = 0.4f;
+        const float bodyY0 = -0.2f, bodyY1 = 0.2f;
+        const float bodyFront = 0.1f, bodyBack = -0.3f;
+        lineBatcher3D_->Begin();
+        lineBatcher3D_->SetLineWidth(2.0f);
+        const float bodyR = 0.8f, bodyG = 0.8f, bodyB = 0.8f;
+        addLineLocal(bodyX0, bodyY0, bodyFront, bodyX1, bodyY0, bodyFront, bodyR, bodyG, bodyB);
+        addLineLocal(bodyX1, bodyY0, bodyFront, bodyX1, bodyY1, bodyFront, bodyR, bodyG, bodyB);
+        addLineLocal(bodyX1, bodyY1, bodyFront, bodyX0, bodyY1, bodyFront, bodyR, bodyG, bodyB);
+        addLineLocal(bodyX0, bodyY1, bodyFront, bodyX0, bodyY0, bodyFront, bodyR, bodyG, bodyB);
+        addLineLocal(bodyX0, bodyY0, bodyBack, bodyX1, bodyY0, bodyBack, bodyR, bodyG, bodyB);
+        addLineLocal(bodyX1, bodyY0, bodyBack, bodyX1, bodyY1, bodyBack, bodyR, bodyG, bodyB);
+        addLineLocal(bodyX1, bodyY1, bodyBack, bodyX0, bodyY1, bodyBack, bodyR, bodyG, bodyB);
+        addLineLocal(bodyX0, bodyY1, bodyBack, bodyX0, bodyY0, bodyBack, bodyR, bodyG, bodyB);
+        addLineLocal(bodyX0, bodyY0, bodyFront, bodyX0, bodyY0, bodyBack, bodyR, bodyG, bodyB);
+        addLineLocal(bodyX1, bodyY0, bodyFront, bodyX1, bodyY0, bodyBack, bodyR, bodyG, bodyB);
+        addLineLocal(bodyX1, bodyY1, bodyFront, bodyX1, bodyY1, bodyBack, bodyR, bodyG, bodyB);
+        addLineLocal(bodyX0, bodyY1, bodyFront, bodyX0, bodyY1, bodyBack, bodyR, bodyG, bodyB);
+        lineBatcher3D_->Flush();
 
-            // Lens outline squares
-            const float lr = 0.2f, lg = 0.2f, lb = 0.2f; // dark gray
-            auto addLensEdge = [&](float ax, float ay, float az, float bx, float by, float bz) {
-                lineBatcher3D_->AddLine(ax, ay, az, bx, by, bz, lr, lg, lb);
-            };
-            const float L1 = 0.15f; // outer
-            const float L2 = 0.10f; // inner (glass)
-            lineBatcher3D_->Begin();
-            lineBatcher3D_->SetLineWidth(2.0f);
-            // Outer square at front (zf + epsilon)
-            addLensEdge(-L1, -L1, zf + 0.001f,  L1, -L1, zf + 0.001f);
-            addLensEdge( L1, -L1, zf + 0.001f,  L1,  L1, zf + 0.001f);
-            addLensEdge( L1,  L1, zf + 0.001f, -L1,  L1, zf + 0.001f);
-            addLensEdge(-L1,  L1, zf + 0.001f, -L1, -L1, zf + 0.001f);
-            // Inner square (glass tint as lighter)
-            const float gr = 0.9f, gg = 0.9f, gb = 1.0f;
-            auto addGlassEdge = [&](float ax, float ay, float az, float bx, float by, float bz) {
-                lineBatcher3D_->AddLine(ax, ay, az, bx, by, bz, gr, gg, gb);
-            };
-            addGlassEdge(-L2, -L2, zf + 0.002f,  L2, -L2, zf + 0.002f);
-            addGlassEdge( L2, -L2, zf + 0.002f,  L2,  L2, zf + 0.002f);
-            addGlassEdge( L2,  L2, zf + 0.002f, -L2,  L2, zf + 0.002f);
-            addGlassEdge(-L2,  L2, zf + 0.002f, -L2, -L2, zf + 0.002f);
-            lineBatcher3D_->Flush();
-        }
+        const float lensOuter = 0.15f;
+        const float lensInner = 0.10f;
+        lineBatcher3D_->Begin();
+        lineBatcher3D_->SetLineWidth(2.0f);
+        addLineLocal(-lensOuter, -lensOuter, bodyFront + 0.001f,  lensOuter, -lensOuter, bodyFront + 0.001f, 0.2f, 0.2f, 0.2f);
+        addLineLocal( lensOuter, -lensOuter, bodyFront + 0.001f,  lensOuter,  lensOuter, bodyFront + 0.001f, 0.2f, 0.2f, 0.2f);
+        addLineLocal( lensOuter,  lensOuter, bodyFront + 0.001f, -lensOuter,  lensOuter, bodyFront + 0.001f, 0.2f, 0.2f, 0.2f);
+        addLineLocal(-lensOuter,  lensOuter, bodyFront + 0.001f, -lensOuter, -lensOuter, bodyFront + 0.001f, 0.2f, 0.2f, 0.2f);
+        addLineLocal(-lensInner, -lensInner, bodyFront + 0.002f,  lensInner, -lensInner, bodyFront + 0.002f, 0.9f, 0.9f, 1.0f);
+        addLineLocal( lensInner, -lensInner, bodyFront + 0.002f,  lensInner,  lensInner, bodyFront + 0.002f, 0.9f, 0.9f, 1.0f);
+        addLineLocal( lensInner,  lensInner, bodyFront + 0.002f, -lensInner,  lensInner, bodyFront + 0.002f, 0.9f, 0.9f, 1.0f);
+        addLineLocal(-lensInner,  lensInner, bodyFront + 0.002f, -lensInner, -lensInner, bodyFront + 0.002f, 0.9f, 0.9f, 1.0f);
+        lineBatcher3D_->Flush();
 
-    // Coordinate system at camera position (world axes) - batched
-        if (lineBatcher3D_) {
-            lineBatcher3D_->Begin();
-            lineBatcher3D_->SetLineWidth(2.0f);
-            lineBatcher3D_->AddLine(0.0f, 0.0f, 0.0f, 1.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
-            lineBatcher3D_->AddLine(0.0f, 0.0f, 0.0f, 0.0f, 1.5f, 0.0f, 0.0f, 1.0f, 0.0f);
-            lineBatcher3D_->AddLine(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.5f, 0.0f, 0.0f, 1.0f);
-            lineBatcher3D_->Flush();
-        }
+        // Coordinate system at camera position (world axes)
+        lineBatcher3D_->Begin();
+        lineBatcher3D_->SetLineWidth(2.0f);
+        addLineWorld(cameraPos, Vec3{cameraPos.x + 1.5, cameraPos.y, cameraPos.z}, 1.0f, 0.0f, 0.0f);
+        addLineWorld(cameraPos, Vec3{cameraPos.x, cameraPos.y + 1.5, cameraPos.z}, 0.0f, 1.0f, 0.0f);
+        addLineWorld(cameraPos, Vec3{cameraPos.x, cameraPos.y, cameraPos.z + 1.5}, 0.0f, 0.0f, 1.0f);
+        lineBatcher3D_->Flush();
 
-        // Camera basis vectors - batched
+        // Camera basis vectors (forward/right/up)
         const float vecLen = 2.5f;
-        if (lineBatcher3D_) {
-            lineBatcher3D_->Begin();
-            lineBatcher3D_->SetLineWidth(2.0f);
-            // Forward - yellow
-            lineBatcher3D_->AddLine(0.0f, 0.0f, 0.0f,
-                                    static_cast<float>(forward.x * vecLen),
-                                    static_cast<float>(forward.y * vecLen),
-                                    static_cast<float>(forward.z * vecLen),
-                                    1.0f, 1.0f, 0.0f);
-            // Right - cyan
-            lineBatcher3D_->AddLine(0.0f, 0.0f, 0.0f,
-                                    static_cast<float>(right.x * vecLen),
-                                    static_cast<float>(right.y * vecLen),
-                                    static_cast<float>(right.z * vecLen),
-                                    0.0f, 1.0f, 1.0f);
-            // Up - magenta
-            lineBatcher3D_->AddLine(0.0f, 0.0f, 0.0f,
-                                    static_cast<float>(up.x * vecLen),
-                                    static_cast<float>(up.y * vecLen),
-                                    static_cast<float>(up.z * vecLen),
-                                    1.0f, 0.0f, 1.0f);
-            lineBatcher3D_->Flush();
-        }
+        lineBatcher3D_->Begin();
+        lineBatcher3D_->SetLineWidth(2.0f);
+        addLineWorld(cameraPos, Vec3{cameraPos.x + forward.x * vecLen,
+                                     cameraPos.y + forward.y * vecLen,
+                                     cameraPos.z + forward.z * vecLen}, 1.0f, 1.0f, 0.0f);
+        addLineWorld(cameraPos, Vec3{cameraPos.x + right.x * vecLen,
+                                     cameraPos.y + right.y * vecLen,
+                                     cameraPos.z + right.z * vecLen}, 0.0f, 1.0f, 1.0f);
+        addLineWorld(cameraPos, Vec3{cameraPos.x + up.x * vecLen,
+                                     cameraPos.y + up.y * vecLen,
+                                     cameraPos.z + up.z * vecLen}, 1.0f, 0.0f, 1.0f);
+        lineBatcher3D_->Flush();
 
-        // Look-at target marker (project forward) - batched
-        Vec3 lookAt = Vec3{forward.x * 5.0, forward.y * 5.0, forward.z * 5.0};
-        if (lineBatcher3D_) {
-            lineBatcher3D_->Begin();
-            lineBatcher3D_->SetLineWidth(2.0f);
-            const float lr = 0.6f, lg = 1.0f, lb = 0.2f;
-            lineBatcher3D_->AddLine(static_cast<float>(lookAt.x - 0.2), static_cast<float>(lookAt.y), static_cast<float>(lookAt.z),
-                                    static_cast<float>(lookAt.x + 0.2), static_cast<float>(lookAt.y), static_cast<float>(lookAt.z),
-                                    lr, lg, lb);
-            lineBatcher3D_->AddLine(static_cast<float>(lookAt.x), static_cast<float>(lookAt.y - 0.2), static_cast<float>(lookAt.z),
-                                    static_cast<float>(lookAt.x), static_cast<float>(lookAt.y + 0.2), static_cast<float>(lookAt.z),
-                                    lr, lg, lb);
-            lineBatcher3D_->AddLine(static_cast<float>(lookAt.x), static_cast<float>(lookAt.y), static_cast<float>(lookAt.z - 0.2f),
-                                    static_cast<float>(lookAt.x), static_cast<float>(lookAt.y), static_cast<float>(lookAt.z + 0.2f),
-                                    lr, lg, lb);
-            lineBatcher3D_->Flush();
-        }
+        // Look-at target marker
+        const double lookAtDistance = targetLocked ? 6.0 : 4.0;
+        const Vec3 lookAtWorld{cameraPos.x + forward.x * lookAtDistance,
+                               cameraPos.y + forward.y * lookAtDistance,
+                               cameraPos.z + forward.z * lookAtDistance};
+        lineBatcher3D_->Begin();
+        lineBatcher3D_->SetLineWidth(2.0f);
+        const float targetR = targetLocked ? 0.2f : 0.9f;
+        const float targetG = targetLocked ? 1.0f : 0.7f;
+        const float targetB = targetLocked ? 0.2f : 0.2f;
+        lineBatcher3D_->SetPointSize(6.0f);
+        addLineWorld(Vec3{lookAtWorld.x - 0.25, lookAtWorld.y, lookAtWorld.z},
+                     Vec3{lookAtWorld.x + 0.25, lookAtWorld.y, lookAtWorld.z},
+                     targetR, targetG, targetB);
+        addLineWorld(Vec3{lookAtWorld.x, lookAtWorld.y - 0.25, lookAtWorld.z},
+                     Vec3{lookAtWorld.x, lookAtWorld.y + 0.25, lookAtWorld.z},
+                     targetR, targetG, targetB);
+        addLineWorld(Vec3{lookAtWorld.x, lookAtWorld.y, lookAtWorld.z - 0.25},
+                     Vec3{lookAtWorld.x, lookAtWorld.y, lookAtWorld.z + 0.25},
+                     targetR, targetG, targetB);
+        addPointWorld(lookAtWorld, targetR, targetG, targetB);
+        lineBatcher3D_->Flush();
 
-        // Camera frustum visualization
-        double fovRadians = (45.0 * std::acos(-1.0)) / 180.0;
-        double aspect = (height != 0) ? static_cast<double>(width) / static_cast<double>(height) : 1.0;
-        double nearDist = 0.5;
-        double farDist = 5.0;
-        double halfTan = std::tan(fovRadians / 2.0);
+        // Camera frustum visualization in world space
+        const double fovRadians = camera->zoom() * (std::acos(-1.0) / 180.0);
+        const double aspect = (height != 0) ? static_cast<double>(width) / static_cast<double>(height) : 1.0;
+        const double nearDist = 0.1;
+        const double farDist = 5.0;
+        const double halfTan = std::tan(fovRadians * 0.5);
 
-        double nearHeight = halfTan * nearDist;
-        double nearWidth = nearHeight * aspect;
-        double farHeight = halfTan * farDist;
-        double farWidth = farHeight * aspect;
+        const Vec3 nearCenter{cameraPos.x + forward.x * nearDist,
+                              cameraPos.y + forward.y * nearDist,
+                              cameraPos.z + forward.z * nearDist};
+        const Vec3 farCenter{cameraPos.x + forward.x * farDist,
+                             cameraPos.y + forward.y * farDist,
+                             cameraPos.z + forward.z * farDist};
 
-        auto scale = [](const Vec3& v, double s) {
-            return Vec3{v.x * s, v.y * s, v.z * s};
-        };
+        const Vec3 nearUp{up.x * halfTan * nearDist, up.y * halfTan * nearDist, up.z * halfTan * nearDist};
+        const Vec3 nearRight{right.x * halfTan * nearDist * aspect,
+                             right.y * halfTan * nearDist * aspect,
+                             right.z * halfTan * nearDist * aspect};
+        const Vec3 farUp{up.x * halfTan * farDist, up.y * halfTan * farDist, up.z * halfTan * farDist};
+        const Vec3 farRight{right.x * halfTan * farDist * aspect,
+                            right.y * halfTan * farDist * aspect,
+                            right.z * halfTan * farDist * aspect};
 
-        Vec3 nearCenter = scale(forward, nearDist);
-        Vec3 farCenter = scale(forward, farDist);
-        Vec3 nearUp = scale(up, nearHeight);
-        Vec3 nearRight = scale(right, nearWidth);
-        Vec3 farUp = scale(up, farHeight);
-        Vec3 farRight = scale(right, farWidth);
-
-        auto add = [](const Vec3& a, const Vec3& b) {
+        auto addVec = [](const Vec3& a, const Vec3& b) {
             return Vec3{a.x + b.x, a.y + b.y, a.z + b.z};
         };
-        auto sub = [](const Vec3& a, const Vec3& b) {
+        auto subVec = [](const Vec3& a, const Vec3& b) {
             return Vec3{a.x - b.x, a.y - b.y, a.z - b.z};
         };
 
-        Vec3 nearTL = add(sub(nearCenter, nearRight), nearUp);
-        Vec3 nearTR = add(add(nearCenter, nearRight), nearUp);
-        Vec3 nearBL = sub(sub(nearCenter, nearRight), nearUp);
-        Vec3 nearBR = sub(add(nearCenter, nearRight), nearUp);
-        Vec3 farTL = add(sub(farCenter, farRight), farUp);
-        Vec3 farTR = add(add(farCenter, farRight), farUp);
-        Vec3 farBL = sub(sub(farCenter, farRight), farUp);
-        Vec3 farBR = sub(add(farCenter, farRight), farUp);
+        const Vec3 nearTL = addVec(subVec(nearCenter, nearRight), nearUp);
+        const Vec3 nearTR = addVec(addVec(nearCenter, nearRight), nearUp);
+        const Vec3 nearBL = subVec(subVec(nearCenter, nearRight), nearUp);
+        const Vec3 nearBR = subVec(addVec(nearCenter, nearRight), nearUp);
+        const Vec3 farTL = addVec(subVec(farCenter, farRight), farUp);
+        const Vec3 farTR = addVec(addVec(farCenter, farRight), farUp);
+        const Vec3 farBL = subVec(subVec(farCenter, farRight), farUp);
+        const Vec3 farBR = subVec(addVec(farCenter, farRight), farUp);
 
-        // Camera frustum visualization - batched
-        if (lineBatcher3D_) {
-            lineBatcher3D_->Begin();
-            lineBatcher3D_->SetLineWidth(1.5f);
-            const float fr = 1.0f, fg = 0.5f, fb = 0.0f;
-            // Near rectangle (loop)
-            lineBatcher3D_->AddLine(static_cast<float>(nearTL.x), static_cast<float>(nearTL.y), static_cast<float>(nearTL.z),
-                                    static_cast<float>(nearTR.x), static_cast<float>(nearTR.y), static_cast<float>(nearTR.z), fr, fg, fb);
-            lineBatcher3D_->AddLine(static_cast<float>(nearTR.x), static_cast<float>(nearTR.y), static_cast<float>(nearTR.z),
-                                    static_cast<float>(nearBR.x), static_cast<float>(nearBR.y), static_cast<float>(nearBR.z), fr, fg, fb);
-            lineBatcher3D_->AddLine(static_cast<float>(nearBR.x), static_cast<float>(nearBR.y), static_cast<float>(nearBR.z),
-                                    static_cast<float>(nearBL.x), static_cast<float>(nearBL.y), static_cast<float>(nearBL.z), fr, fg, fb);
-            lineBatcher3D_->AddLine(static_cast<float>(nearBL.x), static_cast<float>(nearBL.y), static_cast<float>(nearBL.z),
-                                    static_cast<float>(nearTL.x), static_cast<float>(nearTL.y), static_cast<float>(nearTL.z), fr, fg, fb);
-            // Far rectangle (loop)
-            lineBatcher3D_->AddLine(static_cast<float>(farTL.x), static_cast<float>(farTL.y), static_cast<float>(farTL.z),
-                                    static_cast<float>(farTR.x), static_cast<float>(farTR.y), static_cast<float>(farTR.z), fr, fg, fb);
-            lineBatcher3D_->AddLine(static_cast<float>(farTR.x), static_cast<float>(farTR.y), static_cast<float>(farTR.z),
-                                    static_cast<float>(farBR.x), static_cast<float>(farBR.y), static_cast<float>(farBR.z), fr, fg, fb);
-            lineBatcher3D_->AddLine(static_cast<float>(farBR.x), static_cast<float>(farBR.y), static_cast<float>(farBR.z),
-                                    static_cast<float>(farBL.x), static_cast<float>(farBL.y), static_cast<float>(farBL.z), fr, fg, fb);
-            lineBatcher3D_->AddLine(static_cast<float>(farBL.x), static_cast<float>(farBL.y), static_cast<float>(farBL.z),
-                                    static_cast<float>(farTL.x), static_cast<float>(farTL.y), static_cast<float>(farTL.z), fr, fg, fb);
-            // Connect near to far corners
-            lineBatcher3D_->AddLine(static_cast<float>(nearTL.x), static_cast<float>(nearTL.y), static_cast<float>(nearTL.z),
-                                    static_cast<float>(farTL.x), static_cast<float>(farTL.y), static_cast<float>(farTL.z), fr, fg, fb);
-            lineBatcher3D_->AddLine(static_cast<float>(nearTR.x), static_cast<float>(nearTR.y), static_cast<float>(nearTR.z),
-                                    static_cast<float>(farTR.x), static_cast<float>(farTR.y), static_cast<float>(farTR.z), fr, fg, fb);
-            lineBatcher3D_->AddLine(static_cast<float>(nearBL.x), static_cast<float>(nearBL.y), static_cast<float>(nearBL.z),
-                                    static_cast<float>(farBL.x), static_cast<float>(farBL.y), static_cast<float>(farBL.z), fr, fg, fb);
-            lineBatcher3D_->AddLine(static_cast<float>(nearBR.x), static_cast<float>(nearBR.y), static_cast<float>(nearBR.z),
-                                    static_cast<float>(farBR.x), static_cast<float>(farBR.y), static_cast<float>(farBR.z), fr, fg, fb);
-            lineBatcher3D_->Flush();
-        }
+        lineBatcher3D_->Begin();
+        lineBatcher3D_->SetLineWidth(1.5f);
+        const float fr = 1.0f, fg = 0.5f, fb = 0.0f;
+        addLineWorld(nearTL, nearTR, fr, fg, fb);
+        addLineWorld(nearTR, nearBR, fr, fg, fb);
+        addLineWorld(nearBR, nearBL, fr, fg, fb);
+        addLineWorld(nearBL, nearTL, fr, fg, fb);
+        addLineWorld(farTL, farTR, fr, fg, fb);
+        addLineWorld(farTR, farBR, fr, fg, fb);
+        addLineWorld(farBR, farBL, fr, fg, fb);
+        addLineWorld(farBL, farTL, fr, fg, fb);
+        addLineWorld(nearTL, farTL, fr, fg, fb);
+        addLineWorld(nearTR, farTR, fr, fg, fb);
+        addLineWorld(nearBL, farBL, fr, fg, fb);
+        addLineWorld(nearBR, farBR, fr, fg, fb);
+        lineBatcher3D_->Flush();
 
-        glPopMatrix();
-        glLineWidth(1.0f);
         glEnable(GL_DEPTH_TEST);
     };
 
