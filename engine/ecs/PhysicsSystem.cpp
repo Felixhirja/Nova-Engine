@@ -147,7 +147,7 @@ void PhysicsSystem::ApplyGravity(double dt) {
 
 void PhysicsSystem::ApplyConstantForces(double dt) {
     entityManager_->ForEach<RigidBody, ConstantForce, Velocity>(
-        [dt](Entity e, RigidBody& rb, ConstantForce& cf, Velocity& vel) {
+        [this, dt](Entity e, RigidBody& rb, ConstantForce& cf, Velocity& vel) {
             if (rb.isKinematic) return;
 
             double fx = cf.forceX;
@@ -174,8 +174,9 @@ void PhysicsSystem::ApplyConstantForces(double dt) {
 }
 
 void PhysicsSystem::ApplyForces(double dt) {
+    auto* em = entityManager_;
     entityManager_->ForEach<RigidBody, Force, Velocity>(
-        [this, dt](Entity e, RigidBody& rb, Force& force, Velocity& vel) {
+        [em, dt](Entity e, RigidBody& rb, Force& force, Velocity& vel) {
             if (rb.isKinematic) return;
 
             switch (force.mode) {
@@ -187,7 +188,7 @@ void PhysicsSystem::ApplyForces(double dt) {
                     vel.vx += ax * dt;
                     vel.vy += ay * dt;
                     vel.vz += az * dt;
-                    if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(e)) {
+                    if (auto* accum = em->GetComponent<ForceAccumulator>(e)) {
                         accum->accumulatedForceX += force.fx;
                         accum->accumulatedForceY += force.fy;
                         accum->accumulatedForceZ += force.fz;
@@ -199,7 +200,7 @@ void PhysicsSystem::ApplyForces(double dt) {
                     vel.vx += force.fx * rb.inverseMass;
                     vel.vy += force.fy * rb.inverseMass;
                     vel.vz += force.fz * rb.inverseMass;
-                    if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(e)) {
+                    if (auto* accum = em->GetComponent<ForceAccumulator>(e)) {
                         accum->accumulatedImpulseX += force.fx * rb.inverseMass;
                         accum->accumulatedImpulseY += force.fy * rb.inverseMass;
                         accum->accumulatedImpulseZ += force.fz * rb.inverseMass;
@@ -212,7 +213,7 @@ void PhysicsSystem::ApplyForces(double dt) {
                     vel.vx += force.fx * dt;
                     vel.vy += force.fy * dt;
                     vel.vz += force.fz * dt;
-                    if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(e)) {
+                    if (auto* accum = em->GetComponent<ForceAccumulator>(e)) {
                         double mass = (rb.inverseMass > 0.0) ? (1.0 / rb.inverseMass) : rb.mass;
                         accum->accumulatedForceX += force.fx * mass;
                         accum->accumulatedForceY += force.fy * mass;
@@ -225,7 +226,7 @@ void PhysicsSystem::ApplyForces(double dt) {
                     vel.vx += force.fx;
                     vel.vy += force.fy;
                     vel.vz += force.fz;
-                    if (auto* accum = entityManager_->GetComponent<ForceAccumulator>(e)) {
+                    if (auto* accum = em->GetComponent<ForceAccumulator>(e)) {
                         double mass = (rb.inverseMass > 0.0) ? (1.0 / rb.inverseMass) : rb.mass;
                         accum->accumulatedImpulseX += force.fx * mass;
                         accum->accumulatedImpulseY += force.fy * mass;

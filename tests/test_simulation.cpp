@@ -1,4 +1,4 @@
-#include "../src/Simulation.h"
+#include "Simulation.h"
 #include <iostream>
 #include <cmath>
 

@@ -1,5 +1,4 @@
-#include "../engine/CameraFollowController.h"
-#include "../engine/Camera.h"
+#include "../engine/CameraSystem.h"
 
 #include <cassert>
 #include <iostream>

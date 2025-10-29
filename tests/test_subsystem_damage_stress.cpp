@@ -13,7 +13,7 @@
 
 int main() {
     EntityManager entityManager;
-    ShieldSystem shieldSystem;
+    ShieldManagementSystem shieldSystem;
     EnergyManagementSystem energySystem;
 
     FeedbackEventManager::Get().Clear();

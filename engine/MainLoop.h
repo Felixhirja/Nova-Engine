@@ -6,8 +6,7 @@
 #include <array>
 #include <vector>
 
-#include "CameraFollowController.h"
-#include "CameraPresets.h"
+#include "CameraSystem.h"
 #include "EngineStateMachine.h"
 #include "ecs/ShipAssembly.h"
 #include "FramePacingController.h"
@@ -105,6 +104,19 @@ private:
 
     GameState currentState_ = GameState::MAIN_MENU;
     MainMenu mainMenu_;
+
+    struct EnergyWarningCache {
+        bool powerDeficit = false;
+        double netPowerAbs = 0.0;
+        bool shieldCritical = false;
+        double shieldPercent = 0.0;
+        bool rechargeDelay = false;
+        double rechargeTimer = 0.0;
+        bool overloadRisk = false;
+        std::vector<std::string> warnings;
+    };
+
+    EnergyWarningCache energyWarningCache_;
 
     void ApplyCameraPreset(size_t index);
     void ConfigureEnergyTelemetry();

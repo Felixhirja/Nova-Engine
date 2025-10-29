@@ -113,29 +113,39 @@ int Input::PollKey() {
             std::ofstream log("sdl_diag.log", std::ios::app);
             log << "SDL Event: " << e.type << std::endl;
         }
-        if (e.type == SDL_QUIT) return 'q';
-        if (e.type == SDL_KEYDOWN) {
-            SDL_Keycode kc = e.key.keysym.sym;
-            if (kc == SDLK_ESCAPE) return 27;
-            if (kc == SDLK_TAB) return 9; // Tab key
-            if (kc == SDLK_a) return 'a';
-            if (kc == SDLK_d) return 'd';
-            if (kc == SDLK_w) return 'w';
-            if (kc == SDLK_s) return 's';
-            if (kc == SDLK_e) return 'e';
-            if (kc == SDLK_c) return 'c';
-            if (kc == SDLK_SPACE) return ' ';
-            if (kc == SDLK_q) return 'q';
-            if (kc == SDLK_z) return 'z';
-            if (kc == SDLK_x) return 'x';
-            if (kc == SDLK_t) return 't';
-            if (kc == SDLK_i) return 'i';
-            if (kc == SDLK_LEFTBRACKET) return '[';
-            if (kc == SDLK_RIGHTBRACKET) return ']';
-            if (kc == SDLK_0) return '0';
-            if (kc == SDLK_1) return '1';
-            if (kc == SDLK_2) return '2';
-            if (kc == SDLK_3) return '3';
+
+        switch (e.type) {
+            case SDL_QUIT:
+                return 'q';
+            case SDL_MOUSEWHEEL:
+                mouseWheelDelta += e.wheel.y;
+                break;
+            case SDL_KEYDOWN: {
+                SDL_Keycode kc = e.key.keysym.sym;
+                if (kc == SDLK_ESCAPE) return 27;
+                if (kc == SDLK_TAB) return 9; // Tab key
+                if (kc == SDLK_a) return 'a';
+                if (kc == SDLK_d) return 'd';
+                if (kc == SDLK_w) return 'w';
+                if (kc == SDLK_s) return 's';
+                if (kc == SDLK_e) return 'e';
+                if (kc == SDLK_c) return 'c';
+                if (kc == SDLK_SPACE) return ' ';
+                if (kc == SDLK_q) return 'q';
+                if (kc == SDLK_z) return 'z';
+                if (kc == SDLK_x) return 'x';
+                if (kc == SDLK_t) return 't';
+                if (kc == SDLK_i) return 'i';
+                if (kc == SDLK_LEFTBRACKET) return '[';
+                if (kc == SDLK_RIGHTBRACKET) return ']';
+                if (kc == SDLK_0) return '0';
+                if (kc == SDLK_1) return '1';
+                if (kc == SDLK_2) return '2';
+                if (kc == SDLK_3) return '3';
+                break;
+            }
+            default:
+                break;
         }
     }
 #endif
@@ -205,23 +215,8 @@ void Input::UpdateKeyState() {
     }
 #endif
 #ifdef USE_SDL
-    // Poll events to keep SDL happy and handle mouse wheel
-    SDL_Event e;
-    while (SDL_PollEvent(&e)) {
-        if (e.type == SDL_QUIT) {
-            static int sdlLogEnabled = [](){
-                const char* v = std::getenv("NOVA_SDL_LOG");
-                return (v && std::strcmp(v, "0") != 0) ? 1 : 0;
-            }();
-            if (sdlLogEnabled) {
-                std::ofstream log("sdl_diag.log", std::ios::app);
-                log << "SDL_QUIT event received (window closed)" << std::endl;
-            }
-        }
-        if (e.type == SDL_MOUSEWHEEL) {
-            mouseWheelDelta += e.wheel.y; // Accumulate wheel delta
-        }
-    }
+    // Pump events so SDL_GetKeyboardState stays current without consuming the queue
+    SDL_PumpEvents();
 #endif
 }
 

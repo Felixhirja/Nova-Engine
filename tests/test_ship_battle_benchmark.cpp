@@ -1,10 +1,10 @@
-#include "../src/ecs/EntityManager.h"
-#include "../src/ecs/PhysicsSystem.h"
-#include "../src/ecs/Components.h"
-#include "../src/WeaponSystem.h"
-#include "../src/ShieldSystem.h"
-#include "../src/EnergyManagementSystem.h"
-#include "../src/FeedbackEvent.h"
+#include "../engine/ecs/EntityManager.h"
+#include "../engine/ecs/PhysicsSystem.h"
+#include "../engine/ecs/Components.h"
+#include "../engine/WeaponSystem.h"
+#include "../engine/ShieldSystem.h"
+#include "../engine/EnergyManagementSystem.h"
+#include "../engine/FeedbackEvent.h"
 
 #include <chrono>
 #include <cmath>
@@ -27,7 +27,7 @@ int main() {
     physics.SetCollisionEnabled(false);
 
     WeaponSystem weaponSystem;
-    ShieldSystem shieldSystem;
+    ShieldManagementSystem shieldSystem;
     EnergyManagementSystem energySystem;
 
     FeedbackEventManager::Get().Clear();

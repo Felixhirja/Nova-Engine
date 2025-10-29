@@ -64,6 +64,10 @@ public:
     void StopReplayPlayback();
     bool IsReplayPlaying() const { return replayPlayer_.IsPlaying(); }
 
+    // Performance optimization methods
+    void SetEnableAdvancedSystems(bool enable) { enableAdvancedSystems = enable; }
+    bool GetEnableAdvancedSystems() const { return enableAdvancedSystems; }
+
 private:
     // Basic simulation state implemented with ECS
     EntityManager em;
@@ -98,6 +102,9 @@ private:
     std::string movementBoundsConfigPath;
     std::string movementBoundsProfile;
     bool useMovementBoundsFile;
+
+    // Performance optimization: enable/disable advanced systems
+    bool enableAdvancedSystems{false};
 
     PhysicsSystem* physicsSystem = nullptr;
     std::vector<Entity> environmentColliderEntities;

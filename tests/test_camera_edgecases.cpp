@@ -1,5 +1,4 @@
-#include "../engine/Camera.h"
-#include "../engine/CameraFollow.h"
+#include "../engine/CameraSystem.h"
 #include "../engine/Simulation.h"
 
 using CameraFollow::CameraFollowConfig;

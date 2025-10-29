@@ -51,7 +51,7 @@ BehaviorStatus TargetingNode::Tick(Entity entity, EntityManager& entityManager, 
         return BehaviorStatus::Failure;
     }
 
-    if (!aiState->targetEntity.IsValid() || !entityManager.IsAlive(aiState->targetEntity)) {
+    if (!aiState->targetEntity.IsValid() || !entityManager.IsAlive(static_cast<Entity>(aiState->targetEntity.Index()))) {
         auto candidates = entityManager.GetAllWith<AIBehavior>();
         if (candidates.size() <= 1) {
             aiState->targetEntity = ecs::EntityHandle::Null();

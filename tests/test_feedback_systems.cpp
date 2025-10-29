@@ -1,7 +1,7 @@
-#include "../src/FeedbackEvent.h"
-#include "../src/VisualFeedbackSystem.h"
-#include "../src/AudioFeedbackSystem.h"
-#include "../src/HUDAlertSystem.h"
+#include "FeedbackEvent.h"
+#include "VisualFeedbackSystem.h"
+#include "AudioFeedbackSystem.h"
+#include "HUDAlertSystem.h"
 #include <iostream>
 #include <memory>
 

@@ -3,6 +3,7 @@
 #include "EntityHandle.h"
 #include "TransitionPlan.h"
 #include <cassert>
+#include <iostream>
 #include <typeindex>
 #include <vector>
 
@@ -269,7 +270,7 @@ private:
         // Add to new archetype first (this creates space for components)
         uint32_t newIndex = static_cast<uint32_t>(to->AddEntity(handle));
 
-        TransitionPlan plan(to, from);
+        TransitionPlan plan(to, from, newIndex);
         plan.QueueEntity(oldIndex);
         plan.Execute();
         assert(to->ValidateIntegrity());
@@ -310,8 +311,10 @@ private:
             MoveEntityToArchetype(handle, oldArchetype, newArchetype);
         }
 
-        T& component = newArchetype->EmplaceComponent<T>(meta.indexInArchetype,
-                                                         std::forward<Args>(args)...);
+        T* componentPtr = newArchetype->GetComponent<T>(meta.indexInArchetype);
+        assert(componentPtr != nullptr && "Component not found in new archetype");
+        T& component = *componentPtr;
+        component = T(std::forward<Args>(args)...);
         assert(newArchetype->ValidateIntegrity());
         return component;
     }
@@ -417,7 +420,7 @@ private:
     void BeginIteration() { ++iterationDepth_; }
 
     void EndIteration() {
-        assert(iterationDepth_ > 0);
+        if (iterationDepth_ == 0) return;
         --iterationDepth_;
         if (iterationDepth_ == 0) {
             FlushDeferredCommands();
@@ -439,6 +442,11 @@ private:
         }
 
         ~IterationScope() { manager_.EndIteration(); }
+
+        IterationScope(const IterationScope&) = delete;
+        IterationScope& operator=(const IterationScope&) = delete;
+        IterationScope(IterationScope&&) = delete;
+        IterationScope& operator=(IterationScope&&) = delete;
 
     private:
         EntityManagerV2& manager_;

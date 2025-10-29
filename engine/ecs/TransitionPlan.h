@@ -10,7 +10,7 @@ namespace ecs {
 
 class TransitionPlan {
 public:
-    TransitionPlan(Archetype* destination, const Archetype* source);
+    TransitionPlan(Archetype* destination, const Archetype* source, size_t dstIndex);
 
     void QueueEntity(size_t sourceIndex);
     void Execute();
@@ -28,6 +28,7 @@ private:
 
     Archetype* destination_ = nullptr;
     const Archetype* source_ = nullptr;
+    size_t dstIndex_ = 0;
     std::vector<std::type_index> orderedTypes_;
     std::unordered_map<std::type_index, OperationSet> operations_;
 };

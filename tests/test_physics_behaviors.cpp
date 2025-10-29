@@ -1,6 +1,6 @@
-#include "../src/ecs/EntityManager.h"
-#include "../src/ecs/PhysicsSystem.h"
-#include "../src/ecs/Components.h"
+#include "../engine/ecs/EntityManager.h"
+#include "../engine/ecs/PhysicsSystem.h"
+#include "../engine/ecs/Components.h"
 
 #include <cmath>
 #include <iostream>

@@ -1,6 +1,6 @@
 #include "../actors/Player.h"
-#include "../actors/ActorContext.h"
-#include "../src/ecs/EntityManagerV2.h"
+#include "../engine/ActorContext.h"
+#include "../engine/ecs/EntityManagerV2.h"
 #include <iostream>
 
 namespace {

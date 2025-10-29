@@ -1,6 +1,6 @@
-#include "../src/ShieldSystem.h"
-#include "../src/EnergyManagementSystem.h"
-#include "../src/ecs/EntityManager.h"
+#include "ecs/ShieldSystem.h"
+#include "EnergyManagementSystem.h"
+#include "ecs/EntityManager.h"
 #include <iostream>
 #include <cmath>
 
@@ -13,7 +13,7 @@ int main() {
     EntityManager entityManager;
     
     // Test shield initialization
-    ShieldSystem shieldSys;
+    ShieldManagementSystem shieldSys;
     int entityId = 1;
     
     shieldSys.InitializeShield(entityId, 150.0, 5.0, 3.0, 0.8, "shield_array_light");

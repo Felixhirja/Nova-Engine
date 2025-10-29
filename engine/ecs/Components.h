@@ -1,7 +1,7 @@
 #pragma once
 #include "Component.h"
 #include "EntityHandle.h"
-#include "../CameraDefaults.h"
+#include "../CameraSystem.h"
 #include <cmath>
 #include <deque>
 #include <functional>

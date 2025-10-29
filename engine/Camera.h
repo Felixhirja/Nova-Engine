@@ -1,3 +1,10 @@
+
+#pragma once
+
+// Camera implementation is provided in `CameraSystem.h` in this repository.
+// Use that header as the authoritative definition to avoid duplicate symbols.
+#include "CameraSystem.h"
+
 #pragma once
 
 #include <array>

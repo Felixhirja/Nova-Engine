@@ -1,4 +1,5 @@
 #include "Player.h"
+#include "../engine/ActorRegistry.h"
 
 #include <algorithm>
 #include <cmath>
@@ -409,7 +410,23 @@ void Player::PumpEvents(double deltaSeconds) {
     }
 }
 
+bool Player::ToggleTargetLock() {
+    auto* target = TargetLockComponent();
+    if (!target) {
+        return false;
+    }
+    target->isLocked = !target->isLocked;
+    return target->isLocked;
+}
+
+bool Player::IsTargetLocked() const {
+    auto* target = TargetLockComponent();
+    return target ? target->isLocked : false;
+}
+
 double Player::ExperienceForNextLevel(int level) {
     return std::max(1000.0, 1000.0 * static_cast<double>(level));
 }
+
+REGISTER_ACTOR(Player, "Player");
 

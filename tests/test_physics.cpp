@@ -1,12 +1,12 @@
 /**
  * Tests for physics components and PhysicsSystem
  */
-#include "../src/ecs/EntityManager.h"
-#include "../src/ecs/PhysicsSystem.h"
-#include "../src/ecs/SpaceshipPhysicsSystem.h"
-#include "../src/ecs/Components.h"
-#include "../src/physics/BulletPhysicsEngine.h"
-#include "../src/physics/PhysXPhysicsEngine.h"
+#include "ecs/EntityManager.h"
+#include "ecs/PhysicsSystem.h"
+#include "ecs/SpaceshipPhysicsSystem.h"
+#include "ecs/Components.h"
+#include "physics/BulletPhysicsEngine.h"
+#include "physics/PhysXPhysicsEngine.h"
 #include <algorithm>
 #include <cassert>
 #include <cmath>

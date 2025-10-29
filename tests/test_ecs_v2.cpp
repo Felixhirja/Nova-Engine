@@ -1,6 +1,6 @@
-#include "../src/ecs/EntityManagerV2.h"
-#include "../src/ecs/SystemSchedulerV2.h"
-#include "../src/ecs/Components.h"
+#include "ecs/EntityManagerV2.h"
+#include "ecs/SystemSchedulerV2.h"
+#include "ecs/Components.h"
 #include <cassert>
 #include <cmath>
 #include <atomic>
@@ -128,7 +128,7 @@ private:
     ExecutionRecorder& recorder_;
 };
 
-struct DamageEvent {
+struct TestDamageEvent {
     EntityHandle entity;
     int amount;
 };
@@ -143,7 +143,7 @@ public:
     void Update(EntityManagerV2&, double) override {
         RecordUpdateStart();
         for (const auto& entity : targets_) {
-            PublishEvent(DamageEvent{entity, 10});
+            PublishEvent(TestDamageEvent{entity, 10});
         }
         RecordUpdateEnd(targets_.size());
     }
@@ -156,7 +156,7 @@ private:
 
 class DamageReceiverSystem : public SystemV2 {
 public:
-    explicit DamageReceiverSystem(std::vector<DamageEvent>& outEvents)
+    explicit DamageReceiverSystem(std::vector<TestDamageEvent>& outEvents)
         : events_(outEvents) {}
 
     UpdatePhase GetUpdatePhase() const override { return UpdatePhase::Simulation; }
@@ -170,7 +170,7 @@ public:
     const char* GetName() const override { return "DamageReceiverSystem"; }
 
     void OnEventBusConfigured(SystemEventBus&) override {
-        SubscribeEvent<DamageEvent>([this](const DamageEvent& event) {
+        SubscribeEvent<TestDamageEvent>([this](const TestDamageEvent& event) {
             std::lock_guard<std::mutex> lock(mutex_);
             events_.push_back(event);
             eventsProcessed_++;
@@ -178,7 +178,7 @@ public:
     }
 
 private:
-    std::vector<DamageEvent>& events_;
+    std::vector<TestDamageEvent>& events_;
     std::mutex mutex_;
     std::atomic<size_t> eventsProcessed_{0};
 };
@@ -393,7 +393,7 @@ void TestSystemMessaging() {
         targets.push_back(em.CreateEntity());
     }
 
-    std::vector<DamageEvent> received;
+    std::vector<TestDamageEvent> received;
     scheduler.RegisterSystem<DamageEmitterSystem>(targets);
     scheduler.RegisterSystem<DamageReceiverSystem>(received);
 

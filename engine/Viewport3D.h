@@ -101,7 +101,6 @@ public:
     ViewRole GetViewRole(size_t viewIndex) const;
     bool IsOverlayView(size_t viewIndex) const;
     void SetLayoutConfigPath(const std::filesystem::path& path);
-    void DrawMinimapOverlay(double playerX, double playerY, double playerZ);
     void Resize(int width, int height);
     // Draw a player at world x coordinate (for simple ASCII demo)
     void DrawPlayer(double x, double y = 0.0, double z = 0.0);
@@ -197,8 +196,12 @@ public:
     // Debug toggles for axes rendering (no-op in Release)
     void ToggleWorldAxes();
     void ToggleMiniAxesGizmo();
+    void ToggleStaticGrid();
+    void ToggleCameraDebug();
     bool IsWorldAxesShown() const;
     bool IsMiniAxesGizmoShown() const;
+    bool IsStaticGridShown() const;
+    bool IsCameraDebugShown() const;
 #endif
 
 private:
@@ -298,6 +301,7 @@ private:
     PrimitiveMesh* EnsureMeshPrimitive(const Mesh& mesh,
                                        std::unique_ptr<PrimitiveMesh>& cache,
                                        bool& dirtyFlag);
+    void DrawMinimapOverlay(double playerX, double playerY, double playerZ);
     void DrawMeshAt(double x,
                     double y,
                     double z,
@@ -305,8 +309,7 @@ private:
                     EntityMeshBinding* overrideBinding,
                     float scale,
                     char asciiChar);
-        void DrawStaticGrid();
-    void DrawMinimapOverlay(double playerX, double playerY, double playerZ);
+    void DrawStaticGrid();
 
     // Ensure line batcher exists and initialized
     void EnsureLineBatcher3D();

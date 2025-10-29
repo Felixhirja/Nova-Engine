@@ -1,7 +1,7 @@
 /**
  * Simple test for PostProcessPipeline initialization and API
  */
-#include "../src/PostProcessPipeline.h"
+#include "../engine/PostProcessPipeline.h"
 #include <iostream>
 #include <cassert>
 

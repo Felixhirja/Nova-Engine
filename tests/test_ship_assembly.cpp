@@ -1,4 +1,4 @@
-#include "../engine/ShipAssembly.h"
+#include "ecs/ShipAssembly.h"
 
 #include <iostream>
 #include <cmath>

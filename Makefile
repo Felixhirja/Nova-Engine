@@ -1,6 +1,6 @@
 CXX = g++
 CC = gcc
-CXXFLAGS = -std=c++17 -Wall -Wextra
+CXXFLAGS = -std=c++17 -Wall -Wextra -D_USE_MATH_DEFINES
 CFLAGS = -Wall -Wextra
 LDFLAGS =
 
@@ -156,8 +156,8 @@ tests/test_camera_follow: tests/test_camera_follow.cpp $(filter-out engine/main.
 tests/test_camera_edgecases: tests/test_camera_edgecases.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_camera_edgecases.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
-tests/test_camera_presets: tests/test_camera_presets.cpp engine/Camera.cpp engine/CameraPresets.cpp
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_camera_presets.cpp engine/Camera.cpp engine/CameraPresets.cpp $(LDLIBS)
+tests/test_camera_presets: tests/test_camera_presets.cpp engine/Camera.cpp engine/CameraPresets.cpp tests/gl_stub.cpp
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_camera_presets.cpp engine/Camera.cpp engine/CameraPresets.cpp tests/gl_stub.cpp $(LDLIBS)
 
 tests/test_ship_assembly: tests/test_ship_assembly.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ship_assembly.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
@@ -180,8 +180,8 @@ tests/test_ecs_transition_fuzz: tests/test_ecs_transition_fuzz.cpp $(filter-out 
 tests/test_physics: tests/test_physics.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_physics.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
-tests/test_solar_system: tests/test_solar_system.cpp engine/SolarSystem.cpp engine/CelestialBody.cpp engine/Transform.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp engine/Mesh.cpp tests/gl_stub.cpp $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -Ilib/glad/include -I./engine -o $@ tests/test_solar_system.cpp engine/SolarSystem.cpp engine/CelestialBody.cpp engine/Transform.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp engine/Mesh.cpp tests/gl_stub.cpp $(GLAD_OBJ) $(LDLIBS)
+tests/test_solar_system: tests/test_solar_system.cpp engine/SolarSystem.cpp engine/CelestialBody.cpp engine/Transform.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp engine/ecs/TransitionPlan.cpp engine/Mesh.cpp tests/gl_stub.cpp
+	$(CXX) $(CXXFLAGS) -Ilib/glad/include -I./engine -o $@ tests/test_solar_system.cpp engine/SolarSystem.cpp engine/CelestialBody.cpp engine/Transform.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp engine/ecs/TransitionPlan.cpp engine/Mesh.cpp tests/gl_stub.cpp $(LDLIBS)
 
 
 tests/test_animation_system: tests/test_animation_system.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
@@ -222,11 +222,11 @@ tests/test_mesh_submission_standalone:
 tests/test_viewport_headless: tests/test_viewport_headless.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_viewport_headless.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
-tests/test_system_manager: tests/test_system_manager.cpp engine/ecs/System.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_system_manager.cpp engine/ecs/System.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp $(LDLIBS)
+tests/test_system_manager: tests/test_system_manager.cpp engine/ecs/System.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp engine/ecs/TransitionPlan.cpp
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_system_manager.cpp engine/ecs/System.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp engine/ecs/TransitionPlan.cpp $(LDLIBS)
 
-tests/test_system_integration: tests/test_system_integration.cpp engine/ecs/System.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_system_integration.cpp engine/ecs/System.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp $(LDLIBS)
+tests/test_system_integration: tests/test_system_integration.cpp engine/ecs/System.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp engine/ecs/TransitionPlan.cpp
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_system_integration.cpp engine/ecs/System.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp engine/ecs/TransitionPlan.cpp $(LDLIBS)
 
 tests/test_player_actor: tests/test_player_actor.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_player_actor.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)

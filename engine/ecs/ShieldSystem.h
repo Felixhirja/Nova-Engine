@@ -17,9 +17,9 @@ struct ShieldState {
 };
 
 // Shield system for damage absorption and recharge
-class ShieldSystem : public System {
+class ShieldManagementSystem : public System {
 public:
-    ShieldSystem();
+    ShieldManagementSystem();
 
     void Update(EntityManager& entityManager, double dt) override;
 

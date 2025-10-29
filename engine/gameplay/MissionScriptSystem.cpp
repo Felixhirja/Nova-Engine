@@ -44,7 +44,7 @@ void MissionScriptSystem::Update(EntityManager& entityManager, double dt) {
     std::unordered_map<std::string, ScriptedTrigger*> triggerMap;
     for (auto& [entity, trigger] : triggerComponents) {
         if (!trigger) continue;
-        triggerMap.emplace(trigger->id, trigger.get());
+        triggerMap.emplace(trigger->id, trigger);
     }
 
     auto missionStates = entityManager.GetAllWith<MissionState>();
@@ -65,7 +65,7 @@ void MissionScriptSystem::Update(EntityManager& entityManager, double dt) {
             }
             if (mission->objectiveOrder.empty() ||
                 mission->objectiveOrder.front() == objective->id) {
-                activeObjective = objective.get();
+                activeObjective = objective;
                 break;
             }
         }

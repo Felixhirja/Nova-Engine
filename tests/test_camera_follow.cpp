@@ -1,6 +1,4 @@
-#include "../engine/Camera.h"
-#include "../engine/CameraFollow.h"
-#include "../engine/CameraFollowController.h"
+#include "../engine/CameraSystem.h"
 #include <cmath>
 #include <iostream>
 

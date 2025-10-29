@@ -1,7 +1,7 @@
-#include "../src/ecs/LocomotionSystem.h"
-#include "../src/ecs/PlayerControlSystem.h"
-#include "../src/ecs/EntityManager.h"
-#include "../src/ecs/Components.h"
+#include "../engine/ecs/LocomotionSystem.h"
+#include "../engine/ecs/PlayerControlSystem.h"
+#include "../engine/ecs/EntityManager.h"
+#include "../engine/ecs/Components.h"
 
 #include <cmath>
 #include <iostream>

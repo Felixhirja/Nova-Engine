@@ -71,6 +71,7 @@ inline void ActorRenderer::Render(ecs::EntityManagerV2& entityManager, const Cam
     // Iterate through all entities with DrawComponent
     entityManager.ForEach<DrawComponent, Position>(
         [this, camera](ecs::EntityHandle entity, DrawComponent& draw, Position& position) {
+            (void)entity;
             if (!draw.visible) return;
 
             // Update animation if needed
@@ -114,33 +115,46 @@ inline void ActorRenderer::Render(ecs::EntityManagerV2& entityManager, const Cam
 }
 
 inline void ActorRenderer::RenderSprite2D(const DrawComponent& draw, const Position& position) {
+    (void)draw;
+    (void)position;
     // TODO: Implement 2D sprite rendering
     // This would use the spriteShader_ and render a quad with the texture
     // Position would be projected to screen space
 }
 
 inline void ActorRenderer::RenderBillboard(const DrawComponent& draw, const Position& position, const Camera* camera) {
+    (void)draw;
+    (void)position;
+    (void)camera;
     // TODO: Implement billboard rendering
     // Billboards always face the camera
     // Useful for projectiles, particles, etc.
 }
 
 inline void ActorRenderer::RenderMesh3D(const DrawComponent& draw, const Position& position) {
+    (void)draw;
+    (void)position;
     // TODO: Implement 3D mesh rendering
     // This would render the actual 3D model of spaceships, stations, etc.
 }
 
 inline void ActorRenderer::RenderParticles(const DrawComponent& draw, const Position& position) {
+    (void)draw;
+    (void)position;
     // TODO: Implement particle system rendering
     // For engine trails, explosions, etc.
 }
 
 inline void ActorRenderer::RenderWireframe(const DrawComponent& draw, const Position& position) {
+    (void)draw;
+    (void)position;
     // TODO: Implement wireframe debug rendering
     // Useful for debugging collision shapes, bounding boxes, etc.
 }
 
 inline void ActorRenderer::RenderDebugInfo(const DrawComponent& draw, const Position& position) {
+    (void)draw;
+    (void)position;
     // TODO: Render bounding boxes, collision shapes, etc.
     // This would use immediate mode or debug lines
 }

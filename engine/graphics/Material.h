@@ -1,3 +1,6 @@
+#define _USE_MATH_DEFINES
+#include <cmath>
+
 #pragma once
 
 #include <string>
@@ -5,6 +8,7 @@
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
 #include "ShaderProgram.h"
 
 namespace Nova {

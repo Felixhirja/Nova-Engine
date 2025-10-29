@@ -103,6 +103,9 @@ public:
     void OnDamageTaken(DamageCallback callback);
     void PumpEvents(double deltaSeconds);
 
+    bool ToggleTargetLock();
+    bool IsTargetLocked() const;
+
 private:
     bool EnsureEntityAlive() const;
     void ResetBinding();

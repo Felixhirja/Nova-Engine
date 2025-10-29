@@ -45,11 +45,11 @@
 #include <SDL.h>
 #include "sdl_compat.h"
 #endif
-#include "Camera.h"
+#include "CameraSystem.h"
 #endif
 #ifdef USE_GLFW
 #include <GLFW/glfw3.h>
-#include "Camera.h"
+#include "CameraSystem.h"
 #endif
 #include "VisualFeedbackSystem.h"
 #if defined(USE_GLFW) || defined(USE_SDL)
@@ -631,6 +631,8 @@ void APIENTRY OpenGLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum 
 namespace {
     bool g_ShowWorldAxes = true;              // Toggle world-origin axes in 3D
     bool g_ShowMiniAxesGizmo = false;         // Toggle 2D mini axes gizmo in HUD (default off)
+    bool g_ShowStaticGrid = false;            // Toggle static grid drawing (expensive - 30x30 lines)
+    bool g_ShowCameraDebug = false;           // Toggle camera debug visuals (expensive - body, frustum, etc.)
     float g_WorldAxisLength = 10.0f;          // Length of world axes in scene units
     float g_WorldAxisLineWidth = 3.0f;        // Line width for world axes
     float g_MiniGizmoSize = 56.0f;            // Pixel length of mini gizmo X/Y arms
@@ -640,8 +642,12 @@ namespace {
 
 bool Viewport3D::IsWorldAxesShown() const { return g_ShowWorldAxes; }
 bool Viewport3D::IsMiniAxesGizmoShown() const { return g_ShowMiniAxesGizmo; }
+bool Viewport3D::IsStaticGridShown() const { return g_ShowStaticGrid; }
+bool Viewport3D::IsCameraDebugShown() const { return g_ShowCameraDebug; }
 void Viewport3D::ToggleWorldAxes() { g_ShowWorldAxes = !g_ShowWorldAxes; }
 void Viewport3D::ToggleMiniAxesGizmo() { g_ShowMiniAxesGizmo = !g_ShowMiniAxesGizmo; }
+void Viewport3D::ToggleStaticGrid() { g_ShowStaticGrid = !g_ShowStaticGrid; }
+void Viewport3D::ToggleCameraDebug() { g_ShowCameraDebug = !g_ShowCameraDebug; }
 #endif
 
 #if defined(USE_GLFW)
@@ -3260,6 +3266,12 @@ void Viewport3D::DrawStaticGrid() {
         return;
     }
 
+#ifndef NDEBUG
+    if (!g_ShowStaticGrid) {
+        return;
+    }
+#endif
+
     EnsureLineBatcher3D();
     if (!lineBatcher3D_) {
         return;
@@ -3919,12 +3931,18 @@ void Viewport3D::DrawCameraDebug(const class Camera* camera, double playerX, dou
         DrawCoordinateSystem();
         glPopMatrix();
 
-        double camDistToPlayer = std::sqrt((camera->x() - playerX) * (camera->x() - playerX) +
-                                           (camera->y() - playerY) * (camera->y() - playerY) +
-                                           (camera->z() - playerZ) * (camera->z() - playerZ));
-        if (camDistToPlayer > 3.0) {
-            DrawCameraVisual(camera, playerX, playerY, playerZ, targetLocked);
+#ifndef NDEBUG
+        if (g_ShowCameraDebug) {
+#endif
+            double camDistToPlayer = std::sqrt((camera->x() - playerX) * (camera->x() - playerX) +
+                                               (camera->y() - playerY) * (camera->y() - playerY) +
+                                               (camera->z() - playerZ) * (camera->z() - playerZ));
+            if (camDistToPlayer > 3.0) {
+                DrawCameraVisual(camera, playerX, playerY, playerZ, targetLocked);
+            }
+#ifndef NDEBUG
         }
+#endif
     }
 #else
     (void)camera;
@@ -4638,7 +4656,7 @@ void Viewport3D::DrawHUD(const class Camera* camera,
                 // Optional: small HUD hint for debug hotkeys
 #ifndef NDEBUG
                 if (showHudHints_) {
-                    const char* hint = "F8: World Axes   F9: Mini Gizmo";
+                    const char* hint = "F8: World Axes   F9: Mini Gizmo   F10: Static Grid   F11: Camera Debug";
                     const float hx = 14.0f;
                     const float hy = 140.0f;
                     const int hintW = TextRenderer::MeasureText(hint, FontSize::Medium);
@@ -4816,7 +4834,7 @@ void Viewport3D::DrawHUD(const class Camera* camera,
             // Optional: small HUD hint for debug hotkeys
 #ifndef NDEBUG
             if (showHudHints_) {
-                const char* hint = "F8: World Axes   F9: Mini Gizmo";
+                const char* hint = "F8: World Axes   F9: Mini Gizmo   F10: Static Grid   F11: Camera Debug";
                 const float hx = 14.0f;
                 const float hy = 200.0f;
                 const int hintW = TextRenderer::MeasureText(hint, FontSize::Medium);

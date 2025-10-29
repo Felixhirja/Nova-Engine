@@ -18,8 +18,8 @@ void main() {
     vec4 worldPos = modelMatrix * vec4(aPos, 1.0);
     FragPos = worldPos.xyz;
     
-    // Transform normal to world space (handle non-uniform scaling)
-    Normal = mat3(modelMatrix) * aNormal;
+    // Transform normal to world space without relying on GLSL 1.20 matrix casts
+    Normal = normalize((modelMatrix * vec4(aNormal, 0.0)).xyz);
     
     // Final position in clip space
     gl_Position = projectionMatrix * viewMatrix * worldPos;

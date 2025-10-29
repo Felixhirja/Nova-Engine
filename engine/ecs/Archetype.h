@@ -30,6 +30,11 @@ public:
     // Copy component from another array (for archetype transitions)
     virtual void CopyFrom(const ComponentArray* src, size_t srcIndex) = 0;
     virtual void CopyBlockFrom(const ComponentArray* src, size_t srcIndex, size_t count) = 0;
+    virtual void CopyToIndex(const ComponentArray* src, size_t srcIndex, size_t dstIndex) = 0;
+    virtual void CopyBlockToIndex(const ComponentArray* src, size_t srcIndex, size_t count, size_t dstIndex) = 0;
+    
+    // Resize array to specific size with default-constructed elements
+    virtual void Resize(size_t newSize) = 0;
 
     virtual bool IsTriviallyCopyable() const = 0;
     virtual size_t ElementSize() const = 0;
@@ -112,6 +117,29 @@ public:
         assert(typedSrc != nullptr && "Source array type mismatch");
         assert(srcIndex + count <= typedSrc->Size() && "Source range out of bounds");
         AppendRange(&typedSrc->components_[srcIndex], count);
+    }
+
+    void CopyToIndex(const ComponentArray* src, size_t srcIndex, size_t dstIndex) override {
+        const TypedComponentArray<T>* typedSrc = static_cast<const TypedComponentArray<T>*>(src);
+        assert(typedSrc != nullptr && "Source array type mismatch");
+        assert(srcIndex < typedSrc->Size() && "Source index out of bounds");
+        assert(dstIndex < components_.size() && "Destination index out of bounds");
+        components_[dstIndex] = typedSrc->GetTyped(srcIndex);
+    }
+
+    void CopyBlockToIndex(const ComponentArray* src, size_t srcIndex, size_t count, size_t dstIndex) override {
+        const TypedComponentArray<T>* typedSrc = static_cast<const TypedComponentArray<T>*>(src);
+        assert(typedSrc != nullptr && "Source array type mismatch");
+        assert(srcIndex + count <= typedSrc->Size() && "Source range out of bounds");
+        assert(dstIndex + count <= components_.size() && "Destination range out of bounds");
+        
+        for (size_t i = 0; i < count; ++i) {
+            components_[dstIndex + i] = typedSrc->components_[srcIndex + i];
+        }
+    }
+
+    void Resize(size_t newSize) override {
+        components_.resize(newSize);
     }
 
     // Direct access to underlying vector for fast iteration
@@ -218,7 +246,12 @@ public:
     size_t AddEntity(EntityHandle entity) {
         size_t index = entities_.size();
         entities_.push_back(entity);
-
+        
+        // Ensure all component arrays are sized to match entity count
+        for (auto& [typeIndex, array] : componentArrays_) {
+            array->Resize(entities_.size());
+        }
+        
         return index;
     }
     
@@ -381,6 +414,30 @@ public:
                 dstIt->second->CopyFrom(srcIt->second.get(), srcIndex + i);
             }
         }
+    }
+
+    void CopyComponentToIndex(const Archetype* srcArchetype, size_t srcIndex,
+                              std::type_index typeIndex, size_t dstIndex) {
+        auto srcIt = srcArchetype->componentArrays_.find(typeIndex);
+        auto dstIt = componentArrays_.find(typeIndex);
+        if (srcIt == srcArchetype->componentArrays_.end() ||
+            dstIt == componentArrays_.end()) {
+            return;
+        }
+
+        dstIt->second->CopyToIndex(srcIt->second.get(), srcIndex, dstIndex);
+    }
+
+    void CopyComponentBlockToIndex(const Archetype* srcArchetype, size_t srcIndex,
+                                   size_t count, std::type_index typeIndex, size_t dstIndex) {
+        auto srcIt = srcArchetype->componentArrays_.find(typeIndex);
+        auto dstIt = componentArrays_.find(typeIndex);
+        if (srcIt == srcArchetype->componentArrays_.end() ||
+            dstIt == componentArrays_.end()) {
+            return;
+        }
+
+        dstIt->second->CopyBlockToIndex(srcIt->second.get(), srcIndex, count, dstIndex);
     }
 
     const ComponentArray* GetComponentArrayRaw(std::type_index typeIndex) const {

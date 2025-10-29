@@ -6,8 +6,8 @@
 
 namespace ecs {
 
-TransitionPlan::TransitionPlan(Archetype* destination, const Archetype* source)
-    : destination_(destination), source_(source) {
+TransitionPlan::TransitionPlan(Archetype* destination, const Archetype* source, size_t dstIndex)
+    : destination_(destination), source_(source), dstIndex_(dstIndex) {
     assert(destination_ != nullptr && source_ != nullptr);
 
     const auto& fromSignature = source_->GetSignature();
@@ -52,9 +52,11 @@ void TransitionPlan::Execute() {
 
         for (const CopyRange& range : opSet.ranges) {
             if (opSet.trivial) {
-                destination_->CopyComponentBlockFrom(source_, range.srcStart, range.count, typeIndex, true);
+                destination_->CopyComponentBlockToIndex(source_, range.srcStart, range.count, typeIndex, dstIndex_);
             } else {
-                destination_->CopyComponentBlockFrom(source_, range.srcStart, range.count, typeIndex, false);
+                for (size_t i = 0; i < range.count; ++i) {
+                    destination_->CopyComponentToIndex(source_, range.srcStart + i, typeIndex, dstIndex_ + i);
+                }
             }
         }
     }

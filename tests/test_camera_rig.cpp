@@ -1,4 +1,4 @@
-#include "../engine/Camera.h"
+#include "../engine/CameraSystem.h"
 
 #include <cassert>
 #include <cmath>

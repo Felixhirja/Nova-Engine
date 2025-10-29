@@ -1,4 +1,4 @@
-#include "../engine/ShipAssembly.h"
+#include "../engine/ecs/ShipAssembly.h"
 
 #include <algorithm>
 #include <iostream>

@@ -5,9 +5,7 @@
 #include "ResourceManager.h"
 #include "Spaceship.h"
 #include "EnergyManagementSystem.h"
-#include "Camera.h"
-#include "CameraConfigLoader.h"
-#include "CameraPresets.h"
+#include "CameraSystem.h"
 #include "GamepadManager.h"
 #include "EngineBootstrap.h"
 #include "FrameScheduler.h"
@@ -29,6 +27,7 @@
 #include <iomanip>
 #include <utility>
 #include <cstdlib>
+#include <cstdio>
 
 // Simple replacement for Player::CameraViewState
 using CameraViewState = Player::CameraViewState;
@@ -67,11 +66,20 @@ struct FrameRuntimeContext {
     // SDL-only: track previous function-key states for edge-trigger toggles
     bool sdlPrevF8Down = false;
     bool sdlPrevF9Down = false;
+    bool sdlPrevF10Down = false;
     bool sdlPrevF11Down = false;
     FrameStageDurations lastStageDurations{};
     FrameTimingAverages rollingTimings{};
     double frameDurationSeconds = 0.0;
 };
+
+constexpr double kWarningPowerDeltaThreshold = 0.05;
+constexpr double kWarningPercentThreshold = 0.01;
+constexpr double kWarningTimerThreshold = 0.05;
+
+bool HasSignificantDelta(double previous, double current, double threshold) {
+    return std::abs(previous - current) > threshold;
+}
 
 } // namespace
 
@@ -97,7 +105,7 @@ MainLoop::~MainLoop() {
 
 void MainLoop::Init() {
     // std::cout << "DEBUG: MainLoop::Init() STARTED" << std::endl;
-    std::cerr << "DEBUG: MainLoop::Init() STARTED (cerr)" << std::endl;
+    // std::cerr << "DEBUG: MainLoop::Init() STARTED (cerr)" << std::endl;
     // Log to file
     std::ofstream log("sdl_diag.log", std::ios::app);
     log << "MainLoop::Init started" << std::endl;
@@ -266,6 +274,8 @@ void MainLoop::Init() {
     }
     ecsInspector->SetEntityManager(entityManager.get());
     simulation = std::make_unique<Simulation>();
+    // Performance optimization: disable advanced systems for better FPS
+    simulation->SetEnableAdvancedSystems(false);
     // std::cout << "About to call simulation->Init()" << std::endl;
     simulation->Init(entityManager.get());
     // std::cout << "Simulation::Init() completed" << std::endl;
@@ -307,7 +317,7 @@ void MainLoop::Init() {
         if (playerHandle.IsValid()) {
             ActorContext playerContext = bootstrapActorContext_.WithEntity(playerHandle);
             playerContext.debugName = "player_actor";
-            auto actor = ActorRegistry::Instance().Create("player", playerContext);
+            auto actor = ActorRegistry::Instance().Create("Player", playerContext);
             if (!actor) {
                 std::cerr << "[MainLoop] Player actor factory returned null" << std::endl;
             } else if (auto* typed = dynamic_cast<Player*>(actor.get())) {
@@ -404,6 +414,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             if (sdlKeys) {
                 bool f8Down = sdlKeys[SDL_SCANCODE_F8] != 0;
                 bool f9Down = sdlKeys[SDL_SCANCODE_F9] != 0;
+                bool f10Down = sdlKeys[SDL_SCANCODE_F10] != 0;
                 bool f11Down = sdlKeys[SDL_SCANCODE_F11] != 0;
 #ifndef NDEBUG
                 if (f8Down && !runtime.sdlPrevF8Down) {
@@ -412,12 +423,16 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                 if (f9Down && !runtime.sdlPrevF9Down) {
                     viewport->ToggleMiniAxesGizmo();
                 }
+                if (f10Down && !runtime.sdlPrevF10Down) {
+                    viewport->ToggleStaticGrid();
+                }
 #endif
                 if (f11Down && !runtime.sdlPrevF11Down) {
                     viewport->ToggleFullscreen();
                 }
                 runtime.sdlPrevF8Down = f8Down;
                 runtime.sdlPrevF9Down = f9Down;
+                runtime.sdlPrevF10Down = f10Down;
                 runtime.sdlPrevF11Down = f11Down;
             }
         }
@@ -501,9 +516,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
         if (key == 9) {
             bool locked = false;
-            if (playerActor_ && playerActor_->IsBound()) {
-                locked = playerActor_->ToggleTargetLock();
-            } else if (entityManager && simulation) {
+            if (entityManager && simulation) {
                 auto* targetLock = entityManager->GetComponent<TargetLock>(simulation->GetPlayerEntity());
                 if (targetLock) {
                     targetLock->isLocked = !targetLock->isLocked;
@@ -567,7 +580,15 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         bool cameraDown = false;
 #endif
 
-        runtime.targetLocked = (playerActor_ && playerActor_->IsBound()) ? playerActor_->IsTargetLocked() : false;
+        if (entityManager && simulation) {
+            if (auto* targetLock = entityManager->GetComponent<TargetLock>(simulation->GetPlayerEntity())) {
+                runtime.targetLocked = targetLock->isLocked;
+            } else {
+                runtime.targetLocked = false;
+            }
+        } else {
+            runtime.targetLocked = false;
+        }
         if (!runtime.targetLocked && entityManager && simulation) {
             auto* targetLock = entityManager->GetComponent<TargetLock>(simulation->GetPlayerEntity());
             if (targetLock) {
@@ -895,6 +916,7 @@ void MainLoop::ConfigureEnergyTelemetry() {
     hudThrusterRequirementMW = 0.0;
     hudOtherDrawMW = 0.0;
     hudEnergyEntityId = 0;
+    energyWarningCache_ = EnergyWarningCache{};
 
     if (!simulation) {
         energyTelemetry.valid = false;
@@ -1119,44 +1141,76 @@ void MainLoop::UpdateEnergyTelemetry(double deltaSeconds) {
     energyTelemetry.warningOverloadRisk = state->overloadProtection &&
         (totalSubsystemDemand > state->totalPowerMW * state->overloadThreshold);
 
-    energyTelemetry.warnings.clear();
+    const double netPowerAbs = std::abs(energyTelemetry.netPowerMW);
+    bool refreshWarnings = false;
 
-    auto appendWarning = [&](const std::string& label) {
-        if (!label.empty()) {
-            energyTelemetry.warnings.push_back(label);
-        }
-    };
-
-    if (energyTelemetry.warningPowerDeficit) {
-        std::ostringstream oss;
-        oss << "\u26A0 Power Deficit";
-        if (energyTelemetry.netPowerMW < 0.0) {
-            oss << " (" << std::fixed << std::setprecision(1)
-                << std::abs(energyTelemetry.netPowerMW) << " MW)";
-        }
-        appendWarning(oss.str());
+    if (energyTelemetry.warningPowerDeficit != energyWarningCache_.powerDeficit ||
+        (energyTelemetry.warningPowerDeficit &&
+         HasSignificantDelta(energyWarningCache_.netPowerAbs, netPowerAbs, kWarningPowerDeltaThreshold))) {
+        refreshWarnings = true;
     }
 
-    if (energyTelemetry.warningShieldCritical) {
-        std::ostringstream oss;
-        oss << "\u26A0 Shield Critical";
-        oss << " (" << std::fixed << std::setprecision(0)
-            << std::clamp(energyTelemetry.shieldPercent * 100.0, 0.0, 100.0) << "%)";
-        appendWarning(oss.str());
+    if (energyTelemetry.warningShieldCritical != energyWarningCache_.shieldCritical ||
+        (energyTelemetry.warningShieldCritical &&
+         HasSignificantDelta(energyWarningCache_.shieldPercent, energyTelemetry.shieldPercent, kWarningPercentThreshold))) {
+        refreshWarnings = true;
     }
 
-    if (energyTelemetry.warningRechargeDelay) {
-        std::ostringstream oss;
-        oss << "\u26A0 Shield Recharge";
-        if (hudShieldRechargeTimer > 0.0) {
-            oss << " (" << std::fixed << std::setprecision(1)
-                << hudShieldRechargeTimer << "s)";
+    if (energyTelemetry.warningRechargeDelay != energyWarningCache_.rechargeDelay ||
+        (energyTelemetry.warningRechargeDelay &&
+         HasSignificantDelta(energyWarningCache_.rechargeTimer, hudShieldRechargeTimer, kWarningTimerThreshold))) {
+        refreshWarnings = true;
+    }
+
+    if (energyTelemetry.warningOverloadRisk != energyWarningCache_.overloadRisk) {
+        refreshWarnings = true;
+    }
+
+    if (refreshWarnings) {
+        auto& cache = energyWarningCache_;
+        cache.powerDeficit = energyTelemetry.warningPowerDeficit;
+        cache.netPowerAbs = netPowerAbs;
+        cache.shieldCritical = energyTelemetry.warningShieldCritical;
+        cache.shieldPercent = energyTelemetry.shieldPercent;
+        cache.rechargeDelay = energyTelemetry.warningRechargeDelay;
+        cache.rechargeTimer = hudShieldRechargeTimer;
+        cache.overloadRisk = energyTelemetry.warningOverloadRisk;
+
+        auto& warningsVec = cache.warnings;
+        warningsVec.clear();
+        warningsVec.reserve(4);
+
+        char buffer[64];
+
+        if (energyTelemetry.warningPowerDeficit) {
+            if (energyTelemetry.netPowerMW < 0.0) {
+                std::snprintf(buffer, sizeof(buffer), "\u26A0 Power Deficit (%.1f MW)", netPowerAbs);
+            } else {
+                std::snprintf(buffer, sizeof(buffer), "\u26A0 Power Deficit");
+            }
+            warningsVec.emplace_back(buffer);
         }
-        appendWarning(oss.str());
-    }
 
-    if (energyTelemetry.warningOverloadRisk) {
-        appendWarning("\u26A0 Overload Risk");
+        if (energyTelemetry.warningShieldCritical) {
+            const double shieldPercent = std::clamp(energyTelemetry.shieldPercent * 100.0, 0.0, 100.0);
+            std::snprintf(buffer, sizeof(buffer), "\u26A0 Shield Critical (%.0f%%)", shieldPercent);
+            warningsVec.emplace_back(buffer);
+        }
+
+        if (energyTelemetry.warningRechargeDelay) {
+            if (hudShieldRechargeTimer > 0.0) {
+                std::snprintf(buffer, sizeof(buffer), "\u26A0 Shield Recharge (%.1fs)", hudShieldRechargeTimer);
+            } else {
+                std::snprintf(buffer, sizeof(buffer), "\u26A0 Shield Recharge");
+            }
+            warningsVec.emplace_back(buffer);
+        }
+
+        if (energyTelemetry.warningOverloadRisk) {
+            warningsVec.emplace_back("\u26A0 Overload Risk");
+        }
+
+        energyTelemetry.warnings = warningsVec;
     }
 }
 
@@ -1203,6 +1257,12 @@ void MainLoop::HandleKeyEvent(int key, int /*scancode*/, int action, int mods) {
             break;
         case GLFW_KEY_F9:
             viewport->ToggleMiniAxesGizmo();
+            break;
+        case GLFW_KEY_F10:
+            viewport->ToggleStaticGrid();
+            break;
+        case GLFW_KEY_F11:
+            viewport->ToggleCameraDebug();
             break;
         default:
             break;

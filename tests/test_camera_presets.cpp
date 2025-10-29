@@ -1,5 +1,4 @@
-#include "../engine/Camera.h"
-#include "../engine/CameraPresets.h"
+#include "../engine/CameraSystem.h"
 
 #include <iostream>
 #include <cmath>

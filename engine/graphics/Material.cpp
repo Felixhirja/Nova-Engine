@@ -70,10 +70,10 @@ void Material::Bind(ShaderProgram* shader) const {
     if (!shader) return;
 
     // Bind material parameters
-    shader->SetUniform("material.baseColor", m_parameters.baseColor.r, m_parameters.baseColor.g, m_parameters.baseColor.b);
+    shader->SetUniform("material.baseColor", m_parameters.baseColor.x, m_parameters.baseColor.y, m_parameters.baseColor.z);
     shader->SetUniform("material.roughness", m_parameters.roughness);
     shader->SetUniform("material.metalness", m_parameters.metalness);
-    shader->SetUniform("material.emissive", m_parameters.emissive.r, m_parameters.emissive.g, m_parameters.emissive.b);
+    shader->SetUniform("material.emissive", m_parameters.emissive.x, m_parameters.emissive.y, m_parameters.emissive.z);
     shader->SetUniform("material.alpha", m_parameters.alpha);
 
     // Bind textures
