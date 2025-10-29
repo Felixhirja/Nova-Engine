@@ -85,6 +85,7 @@ Nova-Engine's procedural pipeline is documented in detail within [docs/solar_sys
 - **Surface Exploration:** Landing zones, outposts, and exploration sites
 - **Resource Deposits:** Mining opportunities for various materials
 - **Environmental Hazards:** Radiation zones, magnetic storms, asteroid fields
+- **Settlements & Homesteads:** Player-built or faction-owned surface hubs that provide restocking, mission givers, and EVA trainyards for ground gear progression.
 
 ### Lore & Backstory
 - **Universe History:** The Orion Expanse was settled after humanity's 24th-century Exodus, when failed terraforming campaigns drove megacorps and dissident nations to fund deep-space arkships. Their arrival fractured into three super-factions—The Ascendant Combine (corporate technocracy), The Concord of Free Systems (democratic frontier coalition), and The Veiled Assembly (clandestine psionic order).
@@ -194,6 +195,13 @@ Nova-Engine's procedural pipeline is documented in detail within [docs/solar_sys
 - **Salvage:** Destroyed ships can be salvaged for parts
 - **Insurance:** Ship loss mechanics with recovery systems
 
+### Boarding & Ground Operations
+
+- **EVA Boarding:** Zero-G infiltration sequences leverage magnetic boots, grappling jets, and hacking mini-games to breach derelicts or hostile capital ships.
+- **Interior Combat:** Close-quarters firefights hinge on cover systems, breaching charges, and subsystem sabotage that feeds back into ship-to-ship engagements.
+- **Multicrew Roles:** Dedicated marines, engineers, and medics earn role-specific perks, enabling coordinated boarding defense or assault strategies.
+- **Loot & Extraction:** Boarding success yields component caches, intel logs, and captive NPCs that branch into rescue or ransom mission chains.
+
 ### Economy & Trading
 
 #### Market System
@@ -252,6 +260,13 @@ Nova-Engine's procedural pipeline is documented in detail within [docs/solar_sys
 - **Cargo Delivery:** Transport goods across systems
 - **Bounty Hunting:** Track and eliminate criminals
 - **Search & Rescue:** Locate and recover lost ships/crew
+
+### Dynamic Events & Live Operations
+
+- **Seasonal Arcs:** Quarterly narrative campaigns reshape hotspots, rotate rare loot tables, and spotlight faction conflicts through limited-time objectives.
+- **System-Wide Alerts:** Procedural crises—solar flares, invasion fleets, rogue AI outbreaks—trigger opt-in world quests that require multi-role cooperation.
+- **Community Goals:** Aggregated deliveries, construction milestones, or research donations unlock global modifiers and cosmetic rewards for all participants.
+- **Dynamic Difficulty:** Event tiers scale enemy tactics, environmental hazards, and payout multipliers based on concurrent player participation.
 
 ## Player Progression & Social Systems
 
@@ -328,7 +343,7 @@ Nova-Engine's procedural pipeline is documented in detail within [docs/solar_sys
 
 ### Engine Requirements
 - **Graphics API:** OpenGL 4.6+ with GLFW backend
--
+- **Physics:** Bullet Physics integration with deterministic networking-safe constraints
 - **Networking:** Custom UDP-based networking system
 - **Audio:** OpenAL or SDL_mixer integration
 - **File Formats:** Custom binary formats for performance
@@ -367,6 +382,7 @@ Nova-Engine's procedural pipeline is documented in detail within [docs/solar_sys
 - **Ship Status:** Health, shields, power distribution
 - **Navigation:** Star maps, waypoints, targeting systems
 - **Inventory Management:** Intuitive cargo and equipment interfaces
+- **Accessibility Options:** Colorblind-safe palettes, scalable fonts, input remapping, and telemetry-driven tutorial prompts.
 
 ## Audio Design
 
@@ -406,6 +422,11 @@ Nova-Engine's procedural pipeline is documented in detail within [docs/solar_sys
 - **Server Architecture:** Dedicated servers maintaining world state
 - **Player Persistence:** Ships, cargo, and reputation carry over
 - **Economic Impact:** Player actions affect global markets
+
+### Live Service Support
+- **Patch Cadence:** Monthly feature updates alternating with quality-of-life sprints ensure stability without stagnation.
+- **In-Game Events Calendar:** Integrated scheduler surfaces upcoming raids, tournaments, and exploration pushes with timezone-aware reminders.
+- **Creator Tools:** Supported Lua scripting hooks and cinematic capture modes empower community-run events and machinima contests.
 
 ## Development Phases
 
