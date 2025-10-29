@@ -2,6 +2,12 @@
 
 Nova Engine is entering a stretch of major platform work. The following radar highlights the highest-impact risks we are monitoring and the concrete mitigations that are either in-flight or queued next.
 
+## Quick Reference
+- **Legacy OpenGL Dependency** — prioritize promoting the 4.6 core profile while keeping a tightly scoped 2.1 fallback and better telemetry on backend selection.
+- **Windows-Only Tooling** — deliver Bash equivalents for critical scripts, validate both MSYS2 and GNU flows in CI, and clarify documentation boundaries.
+- **Input Backend Fragility** — normalize events through a unified abstraction, detect device capabilities once, and fail gracefully when gamepads are missing.
+- **ECS Transition Regression Risk** — sequence structural changes safely, fuzz transition cases, and co-run legacy/new ECS paths to catch desyncs early.
+
 ## Legacy OpenGL Dependency
 - **Risk**: Core renderer still relies on legacy OpenGL 2.1 pathways that modern drivers increasingly throttle or deprecate.
 - **Mitigations**:
