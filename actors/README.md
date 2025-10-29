@@ -1,13 +1,16 @@
-🚀 Create Spaceship actor in actors/ folder
-✅ **COMPLETED**: Header-only Spaceship actor with ECS integration
+# Actors Module
 
-🤖 Implement NPC actors (traders, pirates, patrol ships)
-✅ **COMPLETED**: Base NPC class with Trader, Pirate, and Patrol subclasses with AI behaviors
+This directory contains gameplay-level actors such as the player spaceship, NPCs, and world entities like stations and projectiles. Infrastructure code that underpins rendering or ECS integration lives in `engine/`.
 
-🏭 Add Station actor for space stations/docking
-💥 Create Projectile actors with physics
-⚔️ Implement faction system integration
-🏗️ Add actor spawn system using JSON manifests
+## Recent Highlights
+- ✅ Header-only `Spaceship` actor with ECS integration
+- ✅ Base NPC actor with Trader, Pirate, and Patrol subclasses that expose AI hooks
+- ✅ Station actor for docking and hub interactions
+- ✅ Projectile actors wired into physics and collision stubs
 
+## TODOs
+Active planning for actor work now lives in [`todos.md`](todos.md). Key focus areas include faction integration, JSON-driven spawners, advanced AI behaviors, serialization, and collision polish.
+
+## Rendering Tips
 - Batch render calls by render layer to minimize state changes.
-- Use level-of-detail (LOD) techniques for distant actors.  
+- Use level-of-detail (LOD) techniques for distant actors.
