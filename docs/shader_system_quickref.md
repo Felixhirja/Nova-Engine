@@ -1,5 +1,8 @@
 # Shader System Quick Reference
 
+> Looking for the bigger picture? The [Engine Framework Overview](engine_overview.md)
+> documents how rendering, audio, input, and other frameworks interact.
+
 ## Overview
 The shader system provides a modern programmable rendering pipeline for Nova-Engine, enabling advanced visual effects while maintaining compatibility with older hardware.
 

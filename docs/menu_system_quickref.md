@@ -1,5 +1,8 @@
 # Menu System Quick Reference
 
+> Need a map of how menu, HUD, and other frameworks plug into the runtime?
+> Start with the [Engine Framework Overview](engine_overview.md).
+
 ## ✅ Current Status
 **Build**: ✅ Compiles successfully  
 **Infrastructure**: ✅ Complete  
