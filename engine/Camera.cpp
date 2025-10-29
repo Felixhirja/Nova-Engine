@@ -102,10 +102,11 @@ Camera::Basis Camera::BuildBasis(bool includePitchInForward) const noexcept {
     const double cp = std::cos(pitch_);
     const double sp = std::sin(pitch_);
 
-    // Forward vector in world space (engine convention: +Y up, forward ~ -Z)
-    double forwardX = -sy * cp;
+    // Forward vector in world space (engine convention: +X right, +Y up, +Z forward)
+    const double horizScale = includePitchInForward ? cp : 1.0;
+    double forwardX = sy * horizScale;
     double forwardY = includePitchInForward ? sp : 0.0;
-    double forwardZ = -cy * cp;
+    double forwardZ = cy * horizScale;
 
     // Normalise forward; guard against degeneracy near poles.
     auto normalise = [](double& x, double& y, double& z) {
@@ -125,14 +126,14 @@ Camera::Basis Camera::BuildBasis(bool includePitchInForward) const noexcept {
     normalise(forwardX, forwardY, forwardZ);
 
     // Reference up axis (world up is +Y)
-    double upX = 0.0;
-    double upY = 1.0;
-    double upZ = 0.0;
+    const double worldUpX = 0.0;
+    const double worldUpY = 1.0;
+    const double worldUpZ = 0.0;
 
-    // Derive right from forward and up. If we are near parallel to up, fall back.
-    double rightX = forwardZ * upY - forwardY * upZ;
-    double rightY = forwardX * upZ - forwardZ * upX;
-    double rightZ = forwardY * upX - forwardX * upY;
+    // Derive right from forward and world up. If we are near parallel to up, fall back.
+    double rightX = worldUpY * forwardZ - worldUpZ * forwardY;
+    double rightY = worldUpZ * forwardX - worldUpX * forwardZ;
+    double rightZ = worldUpX * forwardY - worldUpY * forwardX;
 
     double rightLenSq = rightX * rightX + rightY * rightY + rightZ * rightZ;
     if (rightLenSq < 1e-12) {
@@ -148,9 +149,9 @@ Camera::Basis Camera::BuildBasis(bool includePitchInForward) const noexcept {
     rightZ *= invRightLen;
 
     // Recompute a precise up via right × forward to keep the basis orthonormal.
-    upX = rightY * forwardZ - rightZ * forwardY;
-    upY = rightZ * forwardX - rightX * forwardZ;
-    upZ = rightX * forwardY - rightY * forwardX;
+    double upX = forwardY * rightZ - forwardZ * rightY;
+    double upY = forwardZ * rightX - forwardX * rightZ;
+    double upZ = forwardX * rightY - forwardY * rightX;
     normalise(upX, upY, upZ);
 
     return Basis{forwardX, forwardY, forwardZ,
