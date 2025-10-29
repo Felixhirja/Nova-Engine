@@ -227,8 +227,8 @@ tests/test_player_actor: tests/test_player_actor.cpp $(filter-out engine/main.o,
 test_actor_rendering_full: test_actor_rendering_full.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ test_actor_rendering_full.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
-tests/test_spaceship_actor: test_spaceship_actor.cpp engine/SpaceshipJsonLoader.o
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ test_spaceship_actor.cpp engine/SpaceshipJsonLoader.o $(LDLIBS)
+tests/test_spaceship_actor: test_spaceship_actor.cpp actors/Spaceship.o engine/SimpleJson.o
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ test_spaceship_actor.cpp actors/Spaceship.o engine/SimpleJson.o $(LDLIBS)
 
 ifeq ($(OS),Windows_NT)
 clean:

@@ -1,475 +1,1063 @@
 #include "Spaceship.h"
 
+#include "SimpleJson.h"
+
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
 #include <optional>
-#include <utility>
+#include <set>
+#include <sstream>
+#include <unordered_map>
 
 namespace {
 
-ComponentSlotSpec Slot(ComponentSlotCategory category, SlotSize size, int count, std::string notes) {
-    ComponentSlotSpec spec;
-    spec.category = category;
-    spec.size = size;
-    spec.count = count;
-    spec.notes = std::move(notes);
-    return spec;
+using FileTimePoint = std::filesystem::file_time_type;
+
+struct RangeConstraint {
+    double minValue;
+    double maxValue;
+};
+
+struct HardpointConstraint {
+    SlotSize expectedSize;
+    int expectedCount;
+};
+
+struct SlotConstraint {
+    SlotSize expectedSize;
+    int expectedCount;
+};
+
+struct TaxonomyConstraint {
+    RangeConstraint massTons;
+    RangeConstraint crew;
+    RangeConstraint powerBudget;
+    std::unordered_map<HardpointCategory, HardpointConstraint> hardpoints;
+    std::unordered_map<ComponentSlotCategory, SlotConstraint> slots;
+};
+
+struct CatalogState {
+    std::vector<SpaceshipClassCatalogEntry> entries;
+    std::vector<std::string> validationErrors;
+    bool loaded = false;
+    bool hotReloadEnabled = false;
+    std::unordered_map<std::string, FileTimePoint> fileTimes;
+};
+
+CatalogState& State() {
+    static CatalogState state;
+    return state;
 }
 
-HardpointSpec Hardpoint(HardpointCategory category, SlotSize size, int count, std::string notes) {
-    HardpointSpec spec;
-    spec.category = category;
-    spec.size = size;
-    spec.count = count;
-    spec.notes = std::move(notes);
-    return spec;
+const std::filesystem::path kCatalogDirectory{"assets/ships"};
+
+std::string ToLower(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return value;
 }
 
-HardpointDelta HardpointChange(HardpointCategory category, int countDelta, std::optional<SlotSize> sizeDelta = std::nullopt) {
-    HardpointDelta delta;
-    delta.category = category;
-    delta.countDelta = countDelta;
-    delta.sizeDelta = sizeDelta;
-    return delta;
+std::optional<SpaceshipClassType> ParseClassType(const std::string& value) {
+    std::string lower = ToLower(value);
+    if (lower == "fighter") return SpaceshipClassType::Fighter;
+    if (lower == "freighter") return SpaceshipClassType::Freighter;
+    if (lower == "explorer") return SpaceshipClassType::Explorer;
+    if (lower == "industrial") return SpaceshipClassType::Industrial;
+    if (lower == "corvette") return SpaceshipClassType::Corvette;
+    if (lower == "cruiser") return SpaceshipClassType::Cruiser;
+    if (lower == "capital") return SpaceshipClassType::Capital;
+    return std::nullopt;
 }
 
-SlotDelta SlotChange(ComponentSlotCategory category, int countDelta, std::optional<SlotSize> size = std::nullopt) {
-    SlotDelta delta;
-    delta.category = category;
-    delta.countDelta = countDelta;
-    delta.size = size;
-    return delta;
+std::optional<HardpointCategory> ParseHardpointCategory(const std::string& value) {
+    std::string lower = ToLower(value);
+    if (lower == "primaryweapon") return HardpointCategory::PrimaryWeapon;
+    if (lower == "utility") return HardpointCategory::Utility;
+    if (lower == "module") return HardpointCategory::Module;
+    return std::nullopt;
 }
 
-SpaceshipClassCatalogEntry BuildFighter() {
-    SpaceshipClassCatalogEntry entry;
-    entry.id = "fighter";
-    entry.type = SpaceshipClassType::Fighter;
-    entry.displayName = "Fighter";
-    entry.conceptSummary = {
-        "Agile interception craft built for rapid-response dogfighting.",
-        {
-            "High thrust-to-weight ratio enabling extreme acceleration",
-            "Compact profile optimized for carrier deployment",
-            "Limited endurance balanced by modular avionics upgrades"
-        }
-    };
-    entry.baseline = {25.0, 35.0, 1, 2, 8.0, 12.0};
-    entry.hardpoints = {
-        Hardpoint(HardpointCategory::PrimaryWeapon, SlotSize::Small, 2, "Fixed or gimbaled energy/ballistic cannons"),
-        Hardpoint(HardpointCategory::Utility, SlotSize::XS, 1, "Countermeasure pod or sensor jammer"),
-        Hardpoint(HardpointCategory::Module, SlotSize::Small, 1, "Avionics suite, stealth package, or auxiliary fuel tank")
-    };
-    entry.componentSlots = {
-        Slot(ComponentSlotCategory::PowerPlant, SlotSize::Small, 1, "Compact fusion core"),
-        Slot(ComponentSlotCategory::MainThruster, SlotSize::Small, 1, "Main engine block with afterburner"),
-        Slot(ComponentSlotCategory::ManeuverThruster, SlotSize::XS, 4, "Vectored control thrusters"),
-        Slot(ComponentSlotCategory::Shield, SlotSize::Small, 1, "Lightweight directional shield generator"),
-        Slot(ComponentSlotCategory::Weapon, SlotSize::Small, 2, "Weapon cooling/targeting subsystems"),
-        Slot(ComponentSlotCategory::Sensor, SlotSize::Small, 1, "Combat-grade targeting computer"),
-        Slot(ComponentSlotCategory::Support, SlotSize::XS, 1, "Emergency life-support capsule")
-    };
-    entry.progression = {
-        {1, "Starter Interceptor", "Entry-level hull unlocked during tutorial arc."},
-        {2, "Specialist Interceptor", "Enhanced maneuvering thrusters and avionics."},
-        {3, "Elite Strike Fighter", "Modular wing pylons with stealth/strike packages."}
-    };
-    entry.variants = {
-        {
-            "Terran Navy",
-            "Raptor",
-            "Balanced stats with missile rack integration.",
-            {HardpointChange(HardpointCategory::Utility, 1, SlotSize::Small)},
-            {},
-            {PassiveBuff{"missile_lock_time", -0.15}}
-        },
-        {
-            "Outer Rim Syndicate",
-            "Viper",
-            "Sacrifices armor for boosted engines and smuggling compartment.",
-            {},
-            {SlotChange(ComponentSlotCategory::Cargo, 1, SlotSize::XS)},
-            {
-                PassiveBuff{"thrust_multiplier", 0.1},
-                PassiveBuff{"shield_capacity", -0.2}
-            }
-        },
-        {
-            "Zenith Collective",
-            "Aurora",
-            "Energy re-routing module for sustained beam weapons.",
-            {},
-            {},
-            {
-                PassiveBuff{"beam_weapon_efficiency", 0.25},
-                PassiveBuff{"energy_weapon_heat", -0.1}
-            }
-        }
-    };
-    entry.progressionMetadata = {1, 0, 1000};
-    entry.defaultLoadouts = {
-        {
-            "Starter Fighter",
-            "Basic fighter configuration for new pilots",
-            {"fusion_core_mk1", "main_thruster_viper", "rcs_cluster_micro", "shield_array_light",
-             "weapon_twin_cannon", "sensor_targeting_mk1", "support_life_pod"}
-        }
-    };
-    return entry;
+std::optional<ComponentSlotCategory> ParseSlotCategory(const std::string& value) {
+    std::string lower = ToLower(value);
+    if (lower == "powerplant") return ComponentSlotCategory::PowerPlant;
+    if (lower == "mainthruster") return ComponentSlotCategory::MainThruster;
+    if (lower == "maneuverthruster") return ComponentSlotCategory::ManeuverThruster;
+    if (lower == "shield") return ComponentSlotCategory::Shield;
+    if (lower == "weapon") return ComponentSlotCategory::Weapon;
+    if (lower == "sensor") return ComponentSlotCategory::Sensor;
+    if (lower == "support") return ComponentSlotCategory::Support;
+    if (lower == "cargo") return ComponentSlotCategory::Cargo;
+    if (lower == "crewquarters") return ComponentSlotCategory::CrewQuarters;
+    if (lower == "industrial") return ComponentSlotCategory::Industrial;
+    if (lower == "hangar") return ComponentSlotCategory::Hangar;
+    if (lower == "computer") return ComponentSlotCategory::Computer;
+    return std::nullopt;
 }
 
-SpaceshipClassCatalogEntry BuildFreighter() {
-    SpaceshipClassCatalogEntry entry;
-    entry.id = "freighter";
-    entry.type = SpaceshipClassType::Freighter;
-    entry.displayName = "Freighter";
-    entry.conceptSummary = {
-        "Versatile cargo hauler that anchors trade routes and logistics chains.",
-        {
-            "Modular container bays and detachable cargo pods",
-            "Reinforced frames for micro-jump stability",
-            "Defensive focus on countermeasures and drone escorts"
-        }
-    };
-    entry.baseline = {90.0, 120.0, 2, 4, 18.0, 26.0};
-    entry.hardpoints = {
-        Hardpoint(HardpointCategory::PrimaryWeapon, SlotSize::Medium, 1, "Defensive turret covering dorsal arc"),
-        Hardpoint(HardpointCategory::Utility, SlotSize::Small, 2, "Countermeasures, tractor beam, or repair drone"),
-        Hardpoint(HardpointCategory::Module, SlotSize::Medium, 3, "Cargo bay extensions, shield capacitor, drone bay")
-    };
-    entry.componentSlots = {
-        Slot(ComponentSlotCategory::PowerPlant, SlotSize::Medium, 1, "High-endurance reactor core"),
-        Slot(ComponentSlotCategory::MainThruster, SlotSize::Medium, 2, "Dual main engines with cargo-tuned exhaust"),
-        Slot(ComponentSlotCategory::ManeuverThruster, SlotSize::Small, 6, "Station-keeping thruster clusters"),
-        Slot(ComponentSlotCategory::Shield, SlotSize::Medium, 1, "Omni-directional cargo shield generator"),
-        Slot(ComponentSlotCategory::Cargo, SlotSize::Large, 3, "Container racks or specialized payload modules"),
-        Slot(ComponentSlotCategory::CrewQuarters, SlotSize::Small, 1, "Extended crew habitation module"),
-        Slot(ComponentSlotCategory::Sensor, SlotSize::Medium, 1, "Logistics-grade navigation array"),
-        Slot(ComponentSlotCategory::Support, SlotSize::Medium, 1, "Docking collar or drone control bay")
-    };
-    entry.progression = {
-        {1, "Light Hauler", "Compact freighters for intra-system trade."},
-        {2, "Convoy Freighter", "Detachable cargo pods with improved security."},
-        {3, "Heavy Transport", "Jump-capable cargo frames with automated loaders."}
-    };
-    entry.variants = {
-        {
-            "Terran Commerce Guild",
-            "Atlas",
-            "Security seals and customs compliance modules.",
-            {},
-            {SlotChange(ComponentSlotCategory::Support, 1, SlotSize::Small)},
-            {
-                PassiveBuff{"cargo_security", 1.0},
-                PassiveBuff{"trade_efficiency", 0.15}
-            }
-        },
-        {
-            "Frontier Miners Union",
-            "Prospector",
-            "Swappable mining rigs and ore refining bay.",
-            {HardpointChange(HardpointCategory::Module, 1, SlotSize::Large)},
-            {SlotChange(ComponentSlotCategory::Industrial, 2, SlotSize::Medium)},
-            {
-                PassiveBuff{"mining_yield", 0.25},
-                PassiveBuff{"ore_processing", 1.0}
-            }
-        },
-        {
-            "Free Traders League",
-            "Nomad",
-            "Expanded crew quarters and smuggling compartments.",
-            {},
-            {
-                SlotChange(ComponentSlotCategory::CrewQuarters, 1, SlotSize::Medium),
-                SlotChange(ComponentSlotCategory::Cargo, 1, SlotSize::Medium)
-            },
-            {
-                PassiveBuff{"crew_morale", 0.2},
-                PassiveBuff{"smuggling_capacity", 1.0}
-            }
-        }
-    };
-    entry.progressionMetadata = {3, 10, 2500};
-    entry.defaultLoadouts = {
-        {
-            "Standard Cargo Hauler",
-            "Reliable configuration for general freight operations",
-            {"fusion_core_mk2", "main_thruster_freighter", "rcs_cluster_micro", "shield_array_medium",
-             "cargo_rack_standard", "sensor_targeting_mk1", "support_life_pod"}
-        }
-    };
-    return entry;
+std::optional<SlotSize> ParseSlotSize(const std::string& value) {
+    std::string lower = ToLower(value);
+    if (lower == "xs") return SlotSize::XS;
+    if (lower == "small") return SlotSize::Small;
+    if (lower == "medium") return SlotSize::Medium;
+    if (lower == "large") return SlotSize::Large;
+    if (lower == "xl") return SlotSize::XL;
+    if (lower == "xxl") return SlotSize::XXL;
+    return std::nullopt;
 }
 
-SpaceshipClassCatalogEntry BuildExplorer() {
-    SpaceshipClassCatalogEntry entry;
-    entry.id = "explorer";
-    entry.type = SpaceshipClassType::Explorer;
-    entry.displayName = "Explorer";
-    entry.conceptSummary = {
-        "Long-range survey vessel outfitted for science expeditions and reconnaissance.",
-        {
-            "Extended sensor suites and survey drones",
-            "Hybrid drives enabling atmospheric descent",
-            "Laboratory-grade module capacity"
-        }
-    };
-    entry.baseline = {80.0, 95.0, 3, 5, 16.0, 22.0};
-    entry.hardpoints = {
-        Hardpoint(HardpointCategory::PrimaryWeapon, SlotSize::Medium, 1, "Defensive turret or rail repeater"),
-        Hardpoint(HardpointCategory::Utility, SlotSize::Small, 3, "Sensor array, drone control, repair beam"),
-        Hardpoint(HardpointCategory::Module, SlotSize::Medium, 3, "Labs, data core, stealth probe bay")
-    };
-    entry.componentSlots = {
-        Slot(ComponentSlotCategory::PowerPlant, SlotSize::Medium, 1, "Efficient long-range reactor"),
-        Slot(ComponentSlotCategory::MainThruster, SlotSize::Medium, 1, "Hybrid atmospheric/space engine"),
-        Slot(ComponentSlotCategory::ManeuverThruster, SlotSize::Small, 6, "Precision RCS clusters"),
-        Slot(ComponentSlotCategory::Shield, SlotSize::Medium, 1, "Adaptive shield lattice"),
-        Slot(ComponentSlotCategory::Sensor, SlotSize::Large, 2, "Long-range sensor and science array"),
-        Slot(ComponentSlotCategory::Support, SlotSize::Medium, 2, "Survey drone racks, repair gantry"),
-        Slot(ComponentSlotCategory::CrewQuarters, SlotSize::Small, 1, "Science team habitation pod"),
-        Slot(ComponentSlotCategory::Cargo, SlotSize::Medium, 1, "Sample containment hold")
-    };
-    entry.progression = {
-        {1, "Survey Corvette", "Planetary mapping contracts and exploration."},
-        {2, "Deep-space Scout", "Long-range jump matrix with cloaked probes."},
-        {3, "Expedition Cruiser", "Onboard fabrication and anomaly shielding."}
-    };
-    entry.variants = {
-        {
-            "Academy of Sciences",
-            "Odyssey",
-            "Enhanced lab capacity and science buffs.",
-            {HardpointChange(HardpointCategory::Module, 1, SlotSize::Large)},
-            {SlotChange(ComponentSlotCategory::Sensor, 1, SlotSize::XL)},
-            {
-                PassiveBuff{"science_scan_rate", 0.3},
-                PassiveBuff{"research_output", 0.25}
-            }
-        },
-        {
-            "Free Horizon Cartographers",
-            "Pathfinder",
-            "Jump range bonuses and terrain scanners.",
-            {},
-            {},
-            {
-                PassiveBuff{"jump_range", 0.2},
-                PassiveBuff{"terrain_scan_quality", 0.4}
-            }
-        },
-        {
-            "Shadow Consortium",
-            "Phantom",
-            "Sensor-masking systems and covert data vaults.",
-            {},
-            {SlotChange(ComponentSlotCategory::Cargo, 1, SlotSize::Small)},
-            {
-                PassiveBuff{"stealth_rating", 0.35},
-                PassiveBuff{"sensor_masking", 1.0}
-            }
-        }
-    };
-    entry.progressionMetadata = {5, 20, 3000};
-    entry.defaultLoadouts = {
-        {
-            "Science Surveyor",
-            "Equipped for planetary exploration and data collection",
-            {"fusion_core_mk2", "main_thruster_freighter", "rcs_cluster_micro", "shield_array_medium",
-             "sensor_targeting_mk1", "cargo_rack_standard", "support_life_pod"}
-        }
-    };
-    return entry;
+std::string ToString(HardpointCategory category) {
+    switch (category) {
+        case HardpointCategory::PrimaryWeapon: return "PrimaryWeapon";
+        case HardpointCategory::Utility: return "Utility";
+        case HardpointCategory::Module: return "Module";
+    }
+    return "Unknown";
 }
 
-SpaceshipClassCatalogEntry BuildIndustrial() {
-    SpaceshipClassCatalogEntry entry;
-    entry.id = "industrial";
-    entry.type = SpaceshipClassType::Industrial;
-    entry.displayName = "Industrial";
-    entry.conceptSummary = {
-        "Heavy utility platform supporting mining, salvage, and construction operations.",
-        {
-            "High-capacity power distribution for industrial tools",
-            "Expanded utility slots for drones and fabrication rigs",
-            "Armored hull optimized for hazardous environments"
-        }
-    };
-    entry.baseline = {140.0, 180.0, 4, 6, 24.0, 34.0};
-    entry.hardpoints = {
-        Hardpoint(HardpointCategory::PrimaryWeapon, SlotSize::Medium, 2, "Defensive cannons covering broad arcs"),
-        Hardpoint(HardpointCategory::Utility, SlotSize::Medium, 2, "Tractor beams, repair projectors"),
-        Hardpoint(HardpointCategory::Module, SlotSize::Large, 4, "Mining rigs, fabrication arrays, salvage bay, shield inducers")
-    };
-    entry.componentSlots = {
-        Slot(ComponentSlotCategory::PowerPlant, SlotSize::Large, 1, "Industrial-grade reactor core"),
-        Slot(ComponentSlotCategory::MainThruster, SlotSize::Large, 2, "Heavy-duty propulsion blocks"),
-        Slot(ComponentSlotCategory::ManeuverThruster, SlotSize::Medium, 8, "Directional thruster girdles"),
-        Slot(ComponentSlotCategory::Shield, SlotSize::Large, 1, "Reinforced containment shields"),
-        Slot(ComponentSlotCategory::Industrial, SlotSize::Large, 4, "Mining lasers, repair gantries, fabrication rigs"),
-        Slot(ComponentSlotCategory::Cargo, SlotSize::Large, 2, "Bulk ore hoppers or construction material bins"),
-        Slot(ComponentSlotCategory::Support, SlotSize::Medium, 2, "Drone hangars or crane assemblies"),
-        Slot(ComponentSlotCategory::CrewQuarters, SlotSize::Medium, 1, "Work crew habitation")
-    };
-    entry.progression = {
-        {1, "Utility Platform", "Salvage and repair missions in low-risk zones."},
-        {2, "Deep-core Miner", "Armored drill heads with ore refineries."},
-        {3, "Construction Platform", "Deploys outposts and orbital structures."}
-    };
-    entry.variants = {
-        {
-            "Union of Labor",
-            "Forge",
-            "Resilient hull with redundant systems.",
-            {},
-            {},
-            {
-                PassiveBuff{"hull_integrity", 0.2},
-                PassiveBuff{"system_redundancy", 0.3}
-            }
-        },
-        {
-            "Corporate Combine",
-            "Constructor",
-            "Advanced fabrication modules and supply bonuses.",
-            {HardpointChange(HardpointCategory::Module, 1, SlotSize::XL)},
-            {SlotChange(ComponentSlotCategory::Industrial, 1, SlotSize::XL)},
-            {
-                PassiveBuff{"fabrication_speed", 0.4},
-                PassiveBuff{"supply_chain_efficiency", 0.25}
-            }
-        },
-        {
-            "Scavenger Clans",
-            "Scrap Queen",
-            "Expanded salvage bays and crane arms.",
-            {HardpointChange(HardpointCategory::Utility, 1, SlotSize::Large)},
-            {SlotChange(ComponentSlotCategory::Cargo, 1, SlotSize::XL)},
-            {
-                PassiveBuff{"salvage_yield", 0.35},
-                PassiveBuff{"wreck_processing", 1.0}
-            }
-        }
-    };
-    entry.progressionMetadata = {7, 30, 4000};
-    entry.defaultLoadouts = {
-        {
-            "Mining Platform",
-            "Configured for asteroid mining and resource extraction",
-            {"fusion_core_mk2", "main_thruster_freighter", "rcs_cluster_micro", "shield_array_heavy",
-             "cargo_rack_standard", "sensor_targeting_mk1", "support_life_pod"}
-        }
-    };
-    return entry;
+std::string SlotSizeToString(SlotSize size) {
+    return std::string(ToString(size));
 }
 
-SpaceshipClassCatalogEntry BuildCapital() {
-    SpaceshipClassCatalogEntry entry;
-    entry.id = "capital";
-    entry.type = SpaceshipClassType::Capital;
-    entry.displayName = "Capital";
-    entry.conceptSummary = {
-        "Command-and-control flagships capable of projecting force and supporting fleets.",
-        {
-            "Multiple subsystem redundancies and distributed crew stations",
-            "Acts as mobile base with hangar capacity",
-            "Hosts advanced command and logistics suites"
-        }
+const std::unordered_map<SpaceshipClassType, TaxonomyConstraint>& Taxonomy() {
+    static const std::unordered_map<SpaceshipClassType, TaxonomyConstraint> constraints = {
+        {SpaceshipClassType::Fighter,
+         {RangeConstraint{25.0, 35.0}, RangeConstraint{1.0, 2.0}, RangeConstraint{8.0, 12.0},
+          {{HardpointCategory::PrimaryWeapon, {SlotSize::Small, 2}},
+           {HardpointCategory::Utility, {SlotSize::XS, 1}},
+           {HardpointCategory::Module, {SlotSize::Small, 1}}},
+          {{ComponentSlotCategory::PowerPlant, {SlotSize::Small, 1}},
+           {ComponentSlotCategory::MainThruster, {SlotSize::Small, 1}},
+           {ComponentSlotCategory::ManeuverThruster, {SlotSize::XS, 4}},
+           {ComponentSlotCategory::Shield, {SlotSize::Small, 1}},
+           {ComponentSlotCategory::Weapon, {SlotSize::Small, 2}},
+           {ComponentSlotCategory::Sensor, {SlotSize::Small, 1}},
+           {ComponentSlotCategory::Support, {SlotSize::XS, 1}}}}},
+        {SpaceshipClassType::Freighter,
+         {RangeConstraint{90.0, 120.0}, RangeConstraint{2.0, 4.0}, RangeConstraint{18.0, 26.0},
+          {{HardpointCategory::PrimaryWeapon, {SlotSize::Medium, 1}},
+           {HardpointCategory::Utility, {SlotSize::Small, 2}},
+           {HardpointCategory::Module, {SlotSize::Medium, 3}}},
+          {{ComponentSlotCategory::PowerPlant, {SlotSize::Medium, 1}},
+           {ComponentSlotCategory::MainThruster, {SlotSize::Medium, 2}},
+           {ComponentSlotCategory::ManeuverThruster, {SlotSize::Small, 6}},
+           {ComponentSlotCategory::Shield, {SlotSize::Medium, 1}},
+           {ComponentSlotCategory::Cargo, {SlotSize::Large, 3}},
+           {ComponentSlotCategory::CrewQuarters, {SlotSize::Small, 1}},
+           {ComponentSlotCategory::Sensor, {SlotSize::Medium, 1}},
+           {ComponentSlotCategory::Support, {SlotSize::Medium, 1}}}}},
+        {SpaceshipClassType::Explorer,
+         {RangeConstraint{80.0, 95.0}, RangeConstraint{3.0, 5.0}, RangeConstraint{16.0, 22.0},
+          {{HardpointCategory::PrimaryWeapon, {SlotSize::Medium, 1}},
+           {HardpointCategory::Utility, {SlotSize::Small, 3}},
+           {HardpointCategory::Module, {SlotSize::Medium, 3}}},
+          {{ComponentSlotCategory::PowerPlant, {SlotSize::Medium, 1}},
+           {ComponentSlotCategory::MainThruster, {SlotSize::Medium, 1}},
+           {ComponentSlotCategory::ManeuverThruster, {SlotSize::Small, 6}},
+           {ComponentSlotCategory::Shield, {SlotSize::Medium, 1}},
+           {ComponentSlotCategory::Sensor, {SlotSize::Large, 2}},
+           {ComponentSlotCategory::Support, {SlotSize::Medium, 2}},
+           {ComponentSlotCategory::CrewQuarters, {SlotSize::Small, 1}},
+           {ComponentSlotCategory::Cargo, {SlotSize::Medium, 1}}}}},
+        {SpaceshipClassType::Industrial,
+         {RangeConstraint{140.0, 180.0}, RangeConstraint{4.0, 6.0}, RangeConstraint{24.0, 34.0},
+          {{HardpointCategory::PrimaryWeapon, {SlotSize::Medium, 2}},
+           {HardpointCategory::Utility, {SlotSize::Medium, 2}},
+           {HardpointCategory::Module, {SlotSize::Large, 4}}},
+          {{ComponentSlotCategory::PowerPlant, {SlotSize::Large, 1}},
+           {ComponentSlotCategory::MainThruster, {SlotSize::Large, 2}},
+           {ComponentSlotCategory::ManeuverThruster, {SlotSize::Medium, 8}},
+           {ComponentSlotCategory::Shield, {SlotSize::Large, 1}},
+           {ComponentSlotCategory::Industrial, {SlotSize::Large, 4}},
+           {ComponentSlotCategory::Cargo, {SlotSize::Large, 2}},
+           {ComponentSlotCategory::Support, {SlotSize::Medium, 2}},
+           {ComponentSlotCategory::CrewQuarters, {SlotSize::Medium, 1}}}}},
+        {SpaceshipClassType::Capital,
+         {RangeConstraint{600.0, 950.0}, RangeConstraint{8.0, 18.0}, RangeConstraint{60.0, 120.0},
+          {{HardpointCategory::PrimaryWeapon, {SlotSize::XL, 6}},
+           {HardpointCategory::Utility, {SlotSize::Large, 4}},
+           {HardpointCategory::Module, {SlotSize::XL, 6}}},
+          {{ComponentSlotCategory::PowerPlant, {SlotSize::XL, 2}},
+           {ComponentSlotCategory::MainThruster, {SlotSize::XL, 4}},
+           {ComponentSlotCategory::ManeuverThruster, {SlotSize::Large, 12}},
+           {ComponentSlotCategory::Shield, {SlotSize::XL, 2}},
+           {ComponentSlotCategory::Hangar, {SlotSize::XL, 2}},
+           {ComponentSlotCategory::Support, {SlotSize::Large, 4}},
+           {ComponentSlotCategory::Sensor, {SlotSize::Large, 2}},
+           {ComponentSlotCategory::CrewQuarters, {SlotSize::Large, 3}},
+           {ComponentSlotCategory::Industrial, {SlotSize::Large, 1}}}}}
     };
-    entry.baseline = {600.0, 950.0, 8, 18, 60.0, 120.0};
-    entry.hardpoints = {
-        Hardpoint(HardpointCategory::PrimaryWeapon, SlotSize::XL, 6, "Turrets or beam arrays spanning ship arcs"),
-        Hardpoint(HardpointCategory::Utility, SlotSize::Large, 4, "Point-defense grids, sensor masts"),
-        Hardpoint(HardpointCategory::Module, SlotSize::XL, 6, "Hangars, shield amplifiers, command modules, medical bays")
-    };
-    entry.componentSlots = {
-        Slot(ComponentSlotCategory::PowerPlant, SlotSize::XL, 2, "Redundant flagship cores"),
-        Slot(ComponentSlotCategory::MainThruster, SlotSize::XL, 4, "Capital propulsion arrays"),
-        Slot(ComponentSlotCategory::ManeuverThruster, SlotSize::Large, 12, "Distributed RCS banks"),
-        Slot(ComponentSlotCategory::Shield, SlotSize::XL, 2, "Layered shield projectors"),
-        Slot(ComponentSlotCategory::Hangar, SlotSize::XL, 2, "Strike craft or shuttle hangars"),
-        Slot(ComponentSlotCategory::Support, SlotSize::Large, 4, "Command, medical, fabrication suites"),
-        Slot(ComponentSlotCategory::Sensor, SlotSize::Large, 2, "Long-range tactical sensor masts"),
-        Slot(ComponentSlotCategory::CrewQuarters, SlotSize::Large, 3, "Distributed crew habitats"),
-        Slot(ComponentSlotCategory::Industrial, SlotSize::Large, 1, "Fleet support fabrication plant")
-    };
-    entry.progression = {
-        {2, "Escort Carrier", "Accessible via faction reputation milestones."},
-        {3, "Battlecruiser", "Command dreadnought unlocked in endgame campaigns."},
-        {4, "Legendary Flagship", "Narrative-locked capital hull with unique bonuses."}
-    };
-    entry.variants = {
-        {
-            "Terran Navy",
-            "Resolute",
-            "Balanced defenses with fighter bay bonuses.",
-            {},
-            {},
-            {
-                PassiveBuff{"fighter_bay_capacity", 2.0},
-                PassiveBuff{"defensive_coordination", 0.2}
-            }
-        },
-        {
-            "Zenith Collective",
-            "Echelon",
-            "Superior energy projectors and psionic shielding nodes.",
-            {HardpointChange(HardpointCategory::PrimaryWeapon, 2, SlotSize::XXL)},
-            {},
-            {
-                PassiveBuff{"energy_weapon_damage", 0.25},
-                PassiveBuff{"psionic_shielding", 1.0}
-            }
-        },
-        {
-            "Outer Rim Syndicate",
-            "Leviathan",
-            "Heavy armor plating and boarding pod launchers.",
-            {HardpointChange(HardpointCategory::Utility, 2, SlotSize::XL)},
-            {SlotChange(ComponentSlotCategory::Support, 1, SlotSize::XL)},
-            {
-                PassiveBuff{"armor_thickness", 0.4},
-                PassiveBuff{"boarding_efficiency", 1.0}
-            }
-        }
-    };
-    entry.progressionMetadata = {15, 50, 10000};
-    entry.defaultLoadouts = {
-        {
-            "Fleet Command Carrier",
-            "Flagship configuration for fleet operations and command",
-            {"fusion_core_mk2", "main_thruster_freighter", "rcs_cluster_micro", "shield_array_heavy",
-             "cargo_rack_standard", "sensor_targeting_mk1", "support_life_pod"}
-        }
-    };
-    return entry;
+    return constraints;
 }
 
-const std::vector<SpaceshipClassCatalogEntry>& BuildCatalog() {
-    static const std::vector<SpaceshipClassCatalogEntry> catalog = {
-        BuildFighter(),
-        BuildFreighter(),
-        BuildExplorer(),
-        BuildIndustrial(),
-        BuildCapital()
+void AppendError(const std::filesystem::path& path, const std::string& message) {
+    State().validationErrors.push_back(path.string() + ": " + message);
+}
+
+std::vector<std::string> BuildSlotIds(const std::vector<ComponentSlotSpec>& specs) {
+    std::vector<std::string> slotIds;
+    slotIds.reserve(32);
+    std::unordered_map<ComponentSlotCategory, int> counters;
+    for (const auto& spec : specs) {
+        int start = counters[spec.category];
+        for (int i = 0; i < spec.count; ++i) {
+            slotIds.push_back(std::string(ToString(spec.category)) + "_" + std::to_string(start + i));
+        }
+        counters[spec.category] = start + spec.count;
+    }
+    return slotIds;
+}
+
+void ValidateEntryAgainstTaxonomy(const SpaceshipClassCatalogEntry& entry, const std::filesystem::path& sourcePath) {
+    auto taxonomyIt = Taxonomy().find(entry.type);
+    if (taxonomyIt == Taxonomy().end()) {
+        AppendError(sourcePath, "No taxonomy constraint registered for class type");
+        return;
+    }
+    const auto& constraint = taxonomyIt->second;
+
+    auto withinRange = [&](double value, const RangeConstraint& range) {
+        return value >= range.minValue && value <= range.maxValue;
     };
-    return catalog;
+
+    if (!withinRange(entry.baseline.minMassTons, constraint.massTons) ||
+        !withinRange(entry.baseline.maxMassTons, constraint.massTons)) {
+        std::ostringstream oss;
+        oss << "Mass range " << entry.baseline.minMassTons << "-" << entry.baseline.maxMassTons
+            << " tons violates taxonomy (" << constraint.massTons.minValue << "-"
+            << constraint.massTons.maxValue << ")";
+        AppendError(sourcePath, oss.str());
+    }
+
+    if (!withinRange(static_cast<double>(entry.baseline.minCrew), constraint.crew) ||
+        !withinRange(static_cast<double>(entry.baseline.maxCrew), constraint.crew)) {
+        std::ostringstream oss;
+        oss << "Crew range " << entry.baseline.minCrew << "-" << entry.baseline.maxCrew
+            << " violates taxonomy (" << constraint.crew.minValue << "-" << constraint.crew.maxValue << ")";
+        AppendError(sourcePath, oss.str());
+    }
+
+    if (!withinRange(entry.baseline.minPowerBudgetMW, constraint.powerBudget) ||
+        !withinRange(entry.baseline.maxPowerBudgetMW, constraint.powerBudget)) {
+        std::ostringstream oss;
+        oss << "Power budget " << entry.baseline.minPowerBudgetMW << "-" << entry.baseline.maxPowerBudgetMW
+            << "MW violates taxonomy (" << constraint.powerBudget.minValue << "-"
+            << constraint.powerBudget.maxValue << ")";
+        AppendError(sourcePath, oss.str());
+    }
+
+    std::unordered_map<HardpointCategory, HardpointSpec> hardpointLookup;
+    for (const auto& hardpoint : entry.hardpoints) {
+        hardpointLookup[hardpoint.category] = hardpoint;
+    }
+    for (const auto& [category, expected] : constraint.hardpoints) {
+        auto it = hardpointLookup.find(category);
+        if (it == hardpointLookup.end()) {
+            AppendError(sourcePath, "Missing hardpoint category " + ToString(category));
+            continue;
+        }
+        if (it->second.count != expected.expectedCount) {
+            std::ostringstream oss;
+            oss << "Hardpoint count mismatch for " << ToString(category) << ": expected "
+                << expected.expectedCount << " found " << it->second.count;
+            AppendError(sourcePath, oss.str());
+        }
+        if (it->second.size != expected.expectedSize) {
+            std::ostringstream oss;
+            oss << "Hardpoint size mismatch for " << ToString(category) << ": expected "
+                << SlotSizeToString(expected.expectedSize) << " found " << SlotSizeToString(it->second.size);
+            AppendError(sourcePath, oss.str());
+        }
+    }
+
+    std::unordered_map<ComponentSlotCategory, ComponentSlotSpec> slotLookup;
+    for (const auto& slot : entry.componentSlots) {
+        slotLookup[slot.category] = slot;
+    }
+    for (const auto& [category, expected] : constraint.slots) {
+        auto it = slotLookup.find(category);
+        if (it == slotLookup.end()) {
+            AppendError(sourcePath, std::string("Missing component slot category ") + ToString(category));
+            continue;
+        }
+        if (it->second.count != expected.expectedCount) {
+            std::ostringstream oss;
+            oss << "Slot count mismatch for " << ToString(category) << ": expected "
+                << expected.expectedCount << " found " << it->second.count;
+            AppendError(sourcePath, oss.str());
+        }
+        if (it->second.size != expected.expectedSize) {
+            std::ostringstream oss;
+            oss << "Slot size mismatch for " << ToString(category) << ": expected "
+                << SlotSizeToString(expected.expectedSize) << " found " << SlotSizeToString(it->second.size);
+            AppendError(sourcePath, oss.str());
+        }
+    }
+
+    auto slotIds = BuildSlotIds(entry.componentSlots);
+    for (const auto& loadout : entry.defaultLoadouts) {
+        if (loadout.components.size() > slotIds.size()) {
+            std::ostringstream oss;
+            oss << "Default loadout '" << loadout.name << "' assigns " << loadout.components.size()
+                << " components exceeding available slots " << slotIds.size();
+            AppendError(sourcePath, oss.str());
+        }
+    }
+
+    if (entry.progression.empty()) {
+        AppendError(sourcePath, "Progression tiers are empty");
+    } else {
+        int expectedTier = entry.progression.front().tier;
+        for (const auto& tier : entry.progression) {
+            if (tier.tier != expectedTier) {
+                std::ostringstream oss;
+                oss << "Progression tiers must be sequential. Expected tier " << expectedTier
+                    << " found " << tier.tier;
+                AppendError(sourcePath, oss.str());
+                expectedTier = tier.tier;
+            }
+            ++expectedTier;
+        }
+    }
+
+    if (entry.progressionMetadata.minLevel < 1 || entry.progressionMetadata.minLevel > 40) {
+        std::ostringstream oss;
+        oss << "Progression metadata minLevel " << entry.progressionMetadata.minLevel
+            << " outside supported range (1-40)";
+        AppendError(sourcePath, oss.str());
+    }
+    if (entry.progressionMetadata.blueprintCost < 0) {
+        AppendError(sourcePath, "Blueprint cost cannot be negative");
+    }
+
+    // Validate variant deltas do not remove more than available
+    for (const auto& variant : entry.variants) {
+        for (const auto& delta : variant.hardpointDeltas) {
+            auto it = hardpointLookup.find(delta.category);
+            int baselineCount = (it != hardpointLookup.end()) ? it->second.count : 0;
+            if (baselineCount + delta.countDelta < 0) {
+                std::ostringstream oss;
+                oss << "Variant '" << variant.codename << "' removes too many "
+                    << ToString(delta.category) << " hardpoints";
+                AppendError(sourcePath, oss.str());
+            }
+        }
+        for (const auto& delta : variant.slotDeltas) {
+            auto it = slotLookup.find(delta.category);
+            int baselineCount = (it != slotLookup.end()) ? it->second.count : 0;
+            if (baselineCount + delta.countDelta < 0) {
+                std::ostringstream oss;
+                oss << "Variant '" << variant.codename << "' removes too many "
+                    << ToString(delta.category) << " slots";
+                AppendError(sourcePath, oss.str());
+            }
+        }
+    }
+}
+
+bool ParseConceptSummary(const simplejson::JsonValue& value, SpaceshipConceptSummary& summary) {
+    if (value.type() != simplejson::JsonValue::Type::Object) {
+        return false;
+    }
+    const auto& object = value.AsObject();
+    auto pitchIt = object.find("elevatorPitch");
+    if (pitchIt == object.end() || pitchIt->second.type() != simplejson::JsonValue::Type::String) {
+        return false;
+    }
+    summary.elevatorPitch = pitchIt->second.AsString();
+    auto hooksIt = object.find("gameplayHooks");
+    if (hooksIt != object.end() && hooksIt->second.type() == simplejson::JsonValue::Type::Array) {
+        for (const auto& hookValue : hooksIt->second.AsArray()) {
+            if (hookValue.type() == simplejson::JsonValue::Type::String) {
+                summary.gameplayHooks.push_back(hookValue.AsString());
+            }
+        }
+    }
+    return true;
+}
+
+bool ParseBaseline(const simplejson::JsonValue& value, SpaceshipBaselineSpec& baseline) {
+    if (value.type() != simplejson::JsonValue::Type::Object) {
+        return false;
+    }
+    const auto& object = value.AsObject();
+    auto getNumber = [&](const char* key, double& out) -> bool {
+        auto it = object.find(key);
+        if (it == object.end() || it->second.type() != simplejson::JsonValue::Type::Number) {
+            return false;
+        }
+        out = it->second.AsNumber();
+        return true;
+    };
+    auto getInt = [&](const char* key, int& out) -> bool {
+        auto it = object.find(key);
+        if (it == object.end() || it->second.type() != simplejson::JsonValue::Type::Number) {
+            return false;
+        }
+        out = static_cast<int>(it->second.AsNumber());
+        return true;
+    };
+
+    return getNumber("minMassTons", baseline.minMassTons) &&
+           getNumber("maxMassTons", baseline.maxMassTons) &&
+           getInt("minCrew", baseline.minCrew) &&
+           getInt("maxCrew", baseline.maxCrew) &&
+           getNumber("minPowerBudgetMW", baseline.minPowerBudgetMW) &&
+           getNumber("maxPowerBudgetMW", baseline.maxPowerBudgetMW);
+}
+
+bool ParseHardpointSpec(const simplejson::JsonValue& value, HardpointSpec& spec) {
+    if (value.type() != simplejson::JsonValue::Type::Object) {
+        return false;
+    }
+    const auto& object = value.AsObject();
+    auto categoryIt = object.find("category");
+    auto sizeIt = object.find("size");
+    auto countIt = object.find("count");
+    if (categoryIt == object.end() || sizeIt == object.end() || countIt == object.end()) {
+        return false;
+    }
+    if (categoryIt->second.type() != simplejson::JsonValue::Type::String ||
+        sizeIt->second.type() != simplejson::JsonValue::Type::String ||
+        countIt->second.type() != simplejson::JsonValue::Type::Number) {
+        return false;
+    }
+    auto categoryOpt = ParseHardpointCategory(categoryIt->second.AsString());
+    auto sizeOpt = ParseSlotSize(sizeIt->second.AsString());
+    if (!categoryOpt || !sizeOpt) {
+        return false;
+    }
+    spec.category = *categoryOpt;
+    spec.size = *sizeOpt;
+    spec.count = static_cast<int>(countIt->second.AsNumber());
+
+    auto notesIt = object.find("notes");
+    if (notesIt != object.end() && notesIt->second.type() == simplejson::JsonValue::Type::String) {
+        spec.notes = notesIt->second.AsString();
+    }
+    return true;
+}
+
+bool ParseComponentSlotSpec(const simplejson::JsonValue& value, ComponentSlotSpec& spec) {
+    if (value.type() != simplejson::JsonValue::Type::Object) {
+        return false;
+    }
+    const auto& object = value.AsObject();
+    auto categoryIt = object.find("category");
+    auto sizeIt = object.find("size");
+    auto countIt = object.find("count");
+    if (categoryIt == object.end() || sizeIt == object.end() || countIt == object.end()) {
+        return false;
+    }
+    if (categoryIt->second.type() != simplejson::JsonValue::Type::String ||
+        sizeIt->second.type() != simplejson::JsonValue::Type::String ||
+        countIt->second.type() != simplejson::JsonValue::Type::Number) {
+        return false;
+    }
+    auto categoryOpt = ParseSlotCategory(categoryIt->second.AsString());
+    auto sizeOpt = ParseSlotSize(sizeIt->second.AsString());
+    if (!categoryOpt || !sizeOpt) {
+        return false;
+    }
+    spec.category = *categoryOpt;
+    spec.size = *sizeOpt;
+    spec.count = static_cast<int>(countIt->second.AsNumber());
+    auto notesIt = object.find("notes");
+    if (notesIt != object.end() && notesIt->second.type() == simplejson::JsonValue::Type::String) {
+        spec.notes = notesIt->second.AsString();
+    }
+    return true;
+}
+
+bool ParseProgressionTier(const simplejson::JsonValue& value, ProgressionTier& tier) {
+    if (value.type() != simplejson::JsonValue::Type::Object) {
+        return false;
+    }
+    const auto& object = value.AsObject();
+    auto tierIt = object.find("tier");
+    auto nameIt = object.find("name");
+    auto descIt = object.find("description");
+    if (tierIt == object.end() || nameIt == object.end() || descIt == object.end()) {
+        return false;
+    }
+    if (tierIt->second.type() != simplejson::JsonValue::Type::Number ||
+        nameIt->second.type() != simplejson::JsonValue::Type::String ||
+        descIt->second.type() != simplejson::JsonValue::Type::String) {
+        return false;
+    }
+    tier.tier = static_cast<int>(tierIt->second.AsNumber());
+    tier.name = nameIt->second.AsString();
+    tier.description = descIt->second.AsString();
+    return true;
+}
+
+bool ParsePassiveBuff(const simplejson::JsonValue& value, PassiveBuff& buff) {
+    if (value.type() != simplejson::JsonValue::Type::Object) {
+        return false;
+    }
+    const auto& object = value.AsObject();
+    auto typeIt = object.find("type");
+    auto valueIt = object.find("value");
+    if (typeIt == object.end() || valueIt == object.end()) {
+        return false;
+    }
+    if (typeIt->second.type() != simplejson::JsonValue::Type::String ||
+        valueIt->second.type() != simplejson::JsonValue::Type::Number) {
+        return false;
+    }
+    buff.type = typeIt->second.AsString();
+    buff.value = valueIt->second.AsNumber();
+    return true;
+}
+
+bool ParseHardpointDelta(const simplejson::JsonValue& value, HardpointDelta& delta) {
+    if (value.type() != simplejson::JsonValue::Type::Object) {
+        return false;
+    }
+    const auto& object = value.AsObject();
+    auto categoryIt = object.find("category");
+    auto countIt = object.find("countDelta");
+    if (categoryIt == object.end() || countIt == object.end() ||
+        categoryIt->second.type() != simplejson::JsonValue::Type::String ||
+        countIt->second.type() != simplejson::JsonValue::Type::Number) {
+        return false;
+    }
+    auto categoryOpt = ParseHardpointCategory(categoryIt->second.AsString());
+    if (!categoryOpt) {
+        return false;
+    }
+    delta.category = *categoryOpt;
+    delta.countDelta = static_cast<int>(countIt->second.AsNumber());
+    auto sizeIt = object.find("sizeDelta");
+    if (sizeIt != object.end() && sizeIt->second.type() == simplejson::JsonValue::Type::String) {
+        auto sizeOpt = ParseSlotSize(sizeIt->second.AsString());
+        if (!sizeOpt) {
+            return false;
+        }
+        delta.sizeDelta = sizeOpt;
+    }
+    return true;
+}
+
+bool ParseSlotDelta(const simplejson::JsonValue& value, SlotDelta& delta) {
+    if (value.type() != simplejson::JsonValue::Type::Object) {
+        return false;
+    }
+    const auto& object = value.AsObject();
+    auto categoryIt = object.find("category");
+    auto countIt = object.find("countDelta");
+    if (categoryIt == object.end() || countIt == object.end() ||
+        categoryIt->second.type() != simplejson::JsonValue::Type::String ||
+        countIt->second.type() != simplejson::JsonValue::Type::Number) {
+        return false;
+    }
+    auto categoryOpt = ParseSlotCategory(categoryIt->second.AsString());
+    if (!categoryOpt) {
+        return false;
+    }
+    delta.category = *categoryOpt;
+    delta.countDelta = static_cast<int>(countIt->second.AsNumber());
+    auto sizeIt = object.find("size");
+    if (sizeIt != object.end() && sizeIt->second.type() == simplejson::JsonValue::Type::String) {
+        auto sizeOpt = ParseSlotSize(sizeIt->second.AsString());
+        if (!sizeOpt) {
+            return false;
+        }
+        delta.size = sizeOpt;
+    }
+    return true;
+}
+
+bool ParseVariant(const simplejson::JsonValue& value, VariantSpec& variant) {
+    if (value.type() != simplejson::JsonValue::Type::Object) {
+        return false;
+    }
+    const auto& object = value.AsObject();
+    auto factionIt = object.find("faction");
+    auto codenameIt = object.find("codename");
+    auto descIt = object.find("description");
+    if (factionIt == object.end() || codenameIt == object.end() || descIt == object.end()) {
+        return false;
+    }
+    if (factionIt->second.type() != simplejson::JsonValue::Type::String ||
+        codenameIt->second.type() != simplejson::JsonValue::Type::String ||
+        descIt->second.type() != simplejson::JsonValue::Type::String) {
+        return false;
+    }
+    variant.faction = factionIt->second.AsString();
+    variant.codename = codenameIt->second.AsString();
+    variant.description = descIt->second.AsString();
+
+    auto hpIt = object.find("hardpointDeltas");
+    if (hpIt != object.end() && hpIt->second.type() == simplejson::JsonValue::Type::Array) {
+        for (const auto& hpValue : hpIt->second.AsArray()) {
+            HardpointDelta delta;
+            if (ParseHardpointDelta(hpValue, delta)) {
+                variant.hardpointDeltas.push_back(delta);
+            }
+        }
+    }
+    auto slotIt = object.find("slotDeltas");
+    if (slotIt != object.end() && slotIt->second.type() == simplejson::JsonValue::Type::Array) {
+        for (const auto& slotValue : slotIt->second.AsArray()) {
+            SlotDelta delta;
+            if (ParseSlotDelta(slotValue, delta)) {
+                variant.slotDeltas.push_back(delta);
+            }
+        }
+    }
+    auto buffIt = object.find("passiveBuffs");
+    if (buffIt != object.end() && buffIt->second.type() == simplejson::JsonValue::Type::Array) {
+        for (const auto& buffValue : buffIt->second.AsArray()) {
+            PassiveBuff buff;
+            if (ParsePassiveBuff(buffValue, buff)) {
+                variant.passiveBuffs.push_back(buff);
+            }
+        }
+    }
+    return true;
+}
+
+bool ParseProgressionMetadata(const simplejson::JsonValue& value, ProgressionMetadata& metadata) {
+    if (value.type() != simplejson::JsonValue::Type::Object) {
+        return false;
+    }
+    const auto& object = value.AsObject();
+    auto levelIt = object.find("minLevel");
+    auto repIt = object.find("factionReputation");
+    auto blueprintIt = object.find("blueprintCost");
+    if (levelIt == object.end() || repIt == object.end() || blueprintIt == object.end()) {
+        return false;
+    }
+    if (levelIt->second.type() != simplejson::JsonValue::Type::Number ||
+        repIt->second.type() != simplejson::JsonValue::Type::Number ||
+        blueprintIt->second.type() != simplejson::JsonValue::Type::Number) {
+        return false;
+    }
+    metadata.minLevel = static_cast<int>(levelIt->second.AsNumber());
+    metadata.factionReputation = static_cast<int>(repIt->second.AsNumber());
+    metadata.blueprintCost = static_cast<int>(blueprintIt->second.AsNumber());
+    return true;
+}
+
+bool ParseDefaultLoadout(const simplejson::JsonValue& value, DefaultLoadout& loadout) {
+    if (value.type() != simplejson::JsonValue::Type::Object) {
+        return false;
+    }
+    const auto& object = value.AsObject();
+    auto nameIt = object.find("name");
+    auto descIt = object.find("description");
+    auto compIt = object.find("components");
+    if (nameIt == object.end() || descIt == object.end() || compIt == object.end()) {
+        return false;
+    }
+    if (nameIt->second.type() != simplejson::JsonValue::Type::String ||
+        descIt->second.type() != simplejson::JsonValue::Type::String ||
+        compIt->second.type() != simplejson::JsonValue::Type::Array) {
+        return false;
+    }
+    loadout.name = nameIt->second.AsString();
+    loadout.description = descIt->second.AsString();
+    for (const auto& componentValue : compIt->second.AsArray()) {
+        if (componentValue.type() == simplejson::JsonValue::Type::String) {
+            loadout.components.push_back(componentValue.AsString());
+        }
+    }
+    return true;
+}
+
+bool ParseCatalogEntry(const std::filesystem::path& path, const simplejson::JsonValue& rootValue,
+                       SpaceshipClassCatalogEntry& entry) {
+    if (rootValue.type() != simplejson::JsonValue::Type::Object) {
+        AppendError(path, "Root JSON value must be an object");
+        return false;
+    }
+    const auto& root = rootValue.AsObject();
+
+    auto typeIt = root.find("type");
+    if (typeIt == root.end() || typeIt->second.type() != simplejson::JsonValue::Type::String) {
+        AppendError(path, "Missing or invalid 'type'");
+        return false;
+    }
+    auto classType = ParseClassType(typeIt->second.AsString());
+    if (!classType) {
+        AppendError(path, "Unknown class type '" + typeIt->second.AsString() + "'");
+        return false;
+    }
+    entry.type = *classType;
+
+    auto displayNameIt = root.find("displayName");
+    if (displayNameIt == root.end() || displayNameIt->second.type() != simplejson::JsonValue::Type::String) {
+        AppendError(path, "Missing 'displayName'");
+        return false;
+    }
+    entry.displayName = displayNameIt->second.AsString();
+
+    auto conceptIt = root.find("conceptSummary");
+    if (conceptIt == root.end() || !ParseConceptSummary(conceptIt->second, entry.conceptSummary)) {
+        AppendError(path, "Missing or invalid conceptSummary");
+        return false;
+    }
+
+    auto baselineIt = root.find("baseline");
+    if (baselineIt == root.end() || !ParseBaseline(baselineIt->second, entry.baseline)) {
+        AppendError(path, "Missing or invalid baseline");
+        return false;
+    }
+
+    auto hardpointsIt = root.find("hardpoints");
+    if (hardpointsIt == root.end() || hardpointsIt->second.type() != simplejson::JsonValue::Type::Array) {
+        AppendError(path, "Missing hardpoints array");
+        return false;
+    }
+    for (const auto& hpValue : hardpointsIt->second.AsArray()) {
+        HardpointSpec spec;
+        if (!ParseHardpointSpec(hpValue, spec)) {
+            AppendError(path, "Invalid hardpoint spec encountered");
+            return false;
+        }
+        entry.hardpoints.push_back(spec);
+    }
+
+    auto slotIt = root.find("componentSlots");
+    if (slotIt == root.end() || slotIt->second.type() != simplejson::JsonValue::Type::Array) {
+        AppendError(path, "Missing componentSlots array");
+        return false;
+    }
+    for (const auto& slotValue : slotIt->second.AsArray()) {
+        ComponentSlotSpec spec;
+        if (!ParseComponentSlotSpec(slotValue, spec)) {
+            AppendError(path, "Invalid component slot specification");
+            return false;
+        }
+        entry.componentSlots.push_back(spec);
+    }
+
+    auto progressionIt = root.find("progression");
+    if (progressionIt == root.end() || progressionIt->second.type() != simplejson::JsonValue::Type::Array) {
+        AppendError(path, "Missing progression array");
+        return false;
+    }
+    for (const auto& tierValue : progressionIt->second.AsArray()) {
+        ProgressionTier tier;
+        if (!ParseProgressionTier(tierValue, tier)) {
+            AppendError(path, "Invalid progression tier");
+            return false;
+        }
+        entry.progression.push_back(tier);
+    }
+
+    auto variantsIt = root.find("variants");
+    if (variantsIt != root.end() && variantsIt->second.type() == simplejson::JsonValue::Type::Array) {
+        for (const auto& variantValue : variantsIt->second.AsArray()) {
+            VariantSpec variant;
+            if (!ParseVariant(variantValue, variant)) {
+                AppendError(path, "Invalid variant specification");
+                return false;
+            }
+            entry.variants.push_back(variant);
+        }
+    }
+
+    auto metadataIt = root.find("progressionMetadata");
+    if (metadataIt == root.end() || !ParseProgressionMetadata(metadataIt->second, entry.progressionMetadata)) {
+        AppendError(path, "Missing progressionMetadata");
+        return false;
+    }
+
+    auto loadoutsIt = root.find("defaultLoadouts");
+    if (loadoutsIt == root.end() || loadoutsIt->second.type() != simplejson::JsonValue::Type::Array) {
+        AppendError(path, "Missing defaultLoadouts array");
+        return false;
+    }
+    for (const auto& loadoutValue : loadoutsIt->second.AsArray()) {
+        DefaultLoadout loadout;
+        if (!ParseDefaultLoadout(loadoutValue, loadout)) {
+            AppendError(path, "Invalid default loadout definition");
+            return false;
+        }
+        entry.defaultLoadouts.push_back(loadout);
+    }
+
+    auto idIt = root.find("id");
+    if (idIt != root.end() && idIt->second.type() == simplejson::JsonValue::Type::String) {
+        entry.id = idIt->second.AsString();
+    } else {
+        entry.id = path.stem().string();
+    }
+    return true;
+}
+
+void LoadCatalogFromDisk() {
+    CatalogState& state = State();
+    state.entries.clear();
+    state.validationErrors.clear();
+
+    std::unordered_map<std::string, FileTimePoint> newTimes;
+    std::set<std::string> ids;
+
+    if (!std::filesystem::exists(kCatalogDirectory)) {
+        AppendError(kCatalogDirectory, "Catalog directory missing");
+        state.loaded = true;
+        return;
+    }
+
+    for (const auto& entry : std::filesystem::directory_iterator(kCatalogDirectory)) {
+        if (!entry.is_regular_file() || entry.path().extension() != ".json") {
+            continue;
+        }
+        try {
+            newTimes[entry.path().string()] = std::filesystem::last_write_time(entry.path());
+        } catch (const std::filesystem::filesystem_error&) {
+            // Ignore failures to read modification time
+        }
+
+        std::ifstream file(entry.path());
+        if (!file.good()) {
+            AppendError(entry.path(), "Failed to open file");
+            continue;
+        }
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        auto parseResult = simplejson::Parse(buffer.str());
+        if (!parseResult.success) {
+            AppendError(entry.path(), "JSON parse error at offset " + std::to_string(parseResult.errorOffset));
+            continue;
+        }
+
+        SpaceshipClassCatalogEntry catalogEntry;
+        if (!ParseCatalogEntry(entry.path(), parseResult.value, catalogEntry)) {
+            continue;
+        }
+
+        if (!ids.insert(catalogEntry.id).second) {
+            AppendError(entry.path(), "Duplicate catalog id '" + catalogEntry.id + "'");
+            continue;
+        }
+
+        ValidateEntryAgainstTaxonomy(catalogEntry, entry.path());
+        state.entries.push_back(std::move(catalogEntry));
+    }
+
+    std::sort(state.entries.begin(), state.entries.end(), [](const auto& a, const auto& b) {
+        return a.id < b.id;
+    });
+
+    state.fileTimes = std::move(newTimes);
+    state.loaded = true;
+}
+
+void EnsureLoaded() {
+    if (!State().loaded) {
+        LoadCatalogFromDisk();
+    }
+}
+
+void MaybeReloadForHotReload() {
+    CatalogState& state = State();
+    if (!state.hotReloadEnabled || !state.loaded) {
+        return;
+    }
+
+    bool changed = false;
+    std::unordered_map<std::string, FileTimePoint> newTimes;
+    if (!std::filesystem::exists(kCatalogDirectory)) {
+        return;
+    }
+    for (const auto& entry : std::filesystem::directory_iterator(kCatalogDirectory)) {
+        if (!entry.is_regular_file() || entry.path().extension() != ".json") {
+            continue;
+        }
+        FileTimePoint currentTime{};
+        try {
+            currentTime = std::filesystem::last_write_time(entry.path());
+        } catch (const std::filesystem::filesystem_error&) {
+            continue;
+        }
+        std::string key = entry.path().string();
+        newTimes[key] = currentTime;
+        auto it = state.fileTimes.find(key);
+        if (it == state.fileTimes.end() || it->second != currentTime) {
+            changed = true;
+        }
+    }
+    if (!changed && state.fileTimes.size() != newTimes.size()) {
+        changed = true;
+    }
+    if (changed) {
+        LoadCatalogFromDisk();
+    } else {
+        state.fileTimes = std::move(newTimes);
+    }
 }
 
 } // namespace
 
 const std::vector<SpaceshipClassCatalogEntry>& SpaceshipCatalog::All() {
-    return BuildCatalog();
+    EnsureLoaded();
+    return State().entries;
 }
 
 const SpaceshipClassCatalogEntry* SpaceshipCatalog::FindById(const std::string& id) {
-    const auto& catalog = All();
-    auto it = std::find_if(catalog.begin(), catalog.end(), [&](const SpaceshipClassCatalogEntry& entry) {
+    EnsureLoaded();
+    const auto& entries = State().entries;
+    auto it = std::find_if(entries.begin(), entries.end(), [&](const SpaceshipClassCatalogEntry& entry) {
         return entry.id == id;
     });
-    if (it == catalog.end()) {
+    if (it == entries.end()) {
         return nullptr;
     }
     return &(*it);
 }
 
+void SpaceshipCatalog::Reload() {
+    LoadCatalogFromDisk();
+}
+
+void SpaceshipCatalog::EnableHotReload(bool enabled) {
+    State().hotReloadEnabled = enabled;
+}
+
+void SpaceshipCatalog::TickHotReload() {
+    MaybeReloadForHotReload();
+}
+
+const std::vector<std::string>& SpaceshipCatalog::ValidationErrors() {
+    EnsureLoaded();
+    return State().validationErrors;
+}
+
+SpaceshipClassDefinition SpaceshipCatalog::BuildClassDefinition(const SpaceshipClassCatalogEntry& entry) {
+    SpaceshipClassDefinition definition;
+    definition.type = entry.type;
+    definition.displayName = entry.displayName;
+    definition.baseline = entry.baseline;
+    definition.componentSlots = entry.componentSlots;
+    definition.defaultLoadouts = BuildDefaultLoadoutRequests(entry);
+    return definition;
+}
+
+std::vector<ShipAssemblyRequest> SpaceshipCatalog::BuildDefaultLoadoutRequests(const SpaceshipClassCatalogEntry& entry) {
+    std::vector<ShipAssemblyRequest> requests;
+    auto slotIds = BuildSlotIds(entry.componentSlots);
+    requests.reserve(entry.defaultLoadouts.size());
+    for (const auto& loadout : entry.defaultLoadouts) {
+        ShipAssemblyRequest request;
+        request.hullId = entry.id;
+        const std::size_t count = std::min(slotIds.size(), loadout.components.size());
+        for (std::size_t i = 0; i < count; ++i) {
+            request.slotAssignments[slotIds[i]] = loadout.components[i];
+        }
+        requests.push_back(std::move(request));
+    }
+    return requests;
+}
+
+ResolvedDefaultLoadout SpaceshipCatalog::ResolveDefaultLoadout(const SpaceshipClassCatalogEntry& entry,
+                                                               const DefaultLoadout& loadout) {
+    ResolvedDefaultLoadout resolved;
+    resolved.loadout = &loadout;
+    resolved.assemblyRequest.hullId = entry.id;
+    auto slotIds = BuildSlotIds(entry.componentSlots);
+    const std::size_t count = std::min(slotIds.size(), loadout.components.size());
+    for (std::size_t i = 0; i < count; ++i) {
+        resolved.assemblyRequest.slotAssignments[slotIds[i]] = loadout.components[i];
+    }
+    return resolved;
+}
+
+std::optional<ShipAssemblyRequest> SpaceshipCatalog::BuildDefaultLoadoutRequest(const std::string& classId,
+                                                                               const std::string& loadoutName) {
+    const auto* entry = FindById(classId);
+    if (!entry) {
+        return std::nullopt;
+    }
+    auto it = std::find_if(entry->defaultLoadouts.begin(), entry->defaultLoadouts.end(), [&](const DefaultLoadout& loadout) {
+        return loadout.name == loadoutName;
+    });
+    if (it == entry->defaultLoadouts.end()) {
+        return std::nullopt;
+    }
+    return ResolveDefaultLoadout(*entry, *it).assemblyRequest;
+}
+
+SpaceshipVariantLayout SpaceshipCatalog::ResolveVariantLayout(const SpaceshipClassCatalogEntry& entry,
+                                                              const VariantSpec& variant) {
+    SpaceshipVariantLayout layout;
+    layout.hardpoints = entry.hardpoints;
+    layout.componentSlots = entry.componentSlots;
+
+    auto applyHardpointDelta = [&](const HardpointDelta& delta) {
+        auto it = std::find_if(layout.hardpoints.begin(), layout.hardpoints.end(), [&](const HardpointSpec& spec) {
+            return spec.category == delta.category;
+        });
+        if (it == layout.hardpoints.end()) {
+            if (delta.countDelta > 0) {
+                HardpointSpec spec;
+                spec.category = delta.category;
+                spec.size = delta.sizeDelta.value_or(SlotSize::Small);
+                spec.count = delta.countDelta;
+                layout.hardpoints.push_back(spec);
+            }
+            return;
+        }
+        it->count = std::max(0, it->count + delta.countDelta);
+        if (delta.sizeDelta) {
+            it->size = *delta.sizeDelta;
+        }
+    };
+
+    auto applySlotDelta = [&](const SlotDelta& delta) {
+        auto it = std::find_if(layout.componentSlots.begin(), layout.componentSlots.end(), [&](const ComponentSlotSpec& spec) {
+            return spec.category == delta.category;
+        });
+        if (it == layout.componentSlots.end()) {
+            if (delta.countDelta > 0) {
+                ComponentSlotSpec spec;
+                spec.category = delta.category;
+                spec.size = delta.size.value_or(SlotSize::Small);
+                spec.count = delta.countDelta;
+                layout.componentSlots.push_back(spec);
+            }
+            return;
+        }
+        it->count = std::max(0, it->count + delta.countDelta);
+        if (delta.size) {
+            it->size = *delta.size;
+        }
+    };
+
+    for (const auto& delta : variant.hardpointDeltas) {
+        applyHardpointDelta(delta);
+    }
+    for (const auto& delta : variant.slotDeltas) {
+        applySlotDelta(delta);
+    }
+
+    layout.hardpoints.erase(std::remove_if(layout.hardpoints.begin(), layout.hardpoints.end(), [](const HardpointSpec& spec) {
+                                 return spec.count <= 0;
+                             }),
+                             layout.hardpoints.end());
+    layout.componentSlots.erase(
+        std::remove_if(layout.componentSlots.begin(), layout.componentSlots.end(), [](const ComponentSlotSpec& spec) {
+            return spec.count <= 0;
+        }),
+        layout.componentSlots.end());
+
+    return layout;
+}
+
+SpaceshipSpawnBundle SpaceshipCatalog::BuildSpawnBundle(const SpaceshipClassCatalogEntry& entry,
+                                                        const DefaultLoadout& loadout,
+                                                        int loadoutIndex,
+                                                        const std::string& hullSuffix) {
+    auto resolved = ResolveDefaultLoadout(entry, loadout);
+    SpaceshipSpawnBundle bundle;
+    bundle.assemblyRequest = std::move(resolved.assemblyRequest);
+    if (!hullSuffix.empty()) {
+        bundle.assemblyRequest.hullId = entry.id + "_" + hullSuffix;
+    }
+    bundle.classId = entry.id;
+    bundle.displayName = entry.displayName;
+    bundle.loadoutIndex = loadoutIndex;
+    return bundle;
+}
