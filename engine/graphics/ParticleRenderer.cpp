@@ -3,7 +3,9 @@
 #include "../Camera.h"
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 #include "ShaderProgram.h"
+#include "ShaderManager.h"
 
 ParticleRenderer::ParticleRenderer() {
     // Constructor - resources initialized in Init()
@@ -13,7 +15,9 @@ ParticleRenderer::~ParticleRenderer() {
     Cleanup();
 }
 
-bool ParticleRenderer::Init() {
+bool ParticleRenderer::Init(Nova::ShaderManager* shaderManager) {
+    shaderManager_ = shaderManager;
+
     // Generate VAO
     glGenVertexArrays(1, &vao_);
     if (vao_ == 0) {
@@ -61,14 +65,22 @@ bool ParticleRenderer::Init() {
                 nullptr, GL_STREAM_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     
-    // Load shader
-    shader_ = std::make_unique<ShaderProgram>();
-    if (!shader_->LoadFromFiles("shaders/particles.vert", "shaders/particles.frag")) {
-        // Error logged in ShaderProgram
+    // Load shader via manager when available
+    if (shaderManager_) {
+        shader_ = shaderManager_->LoadShader(shaderName_, "shaders/particles.vert", "shaders/particles.frag");
+    } else {
+        auto program = std::make_shared<ShaderProgram>();
+        if (program->LoadFromFiles("shaders/particles.vert", "shaders/particles.frag")) {
+            shader_ = std::move(program);
+        }
+    }
+
+    if (!shader_ || !shader_->IsValid()) {
+        std::cerr << "ParticleRenderer: failed to initialize shader pipeline" << std::endl;
         shader_.reset();
         return false;
     }
-    
+
     return true;
 }
 
@@ -178,6 +190,25 @@ void ParticleRenderer::Render(const std::vector<Particle>& particles, const Came
     // Enable point sprites for modern OpenGL
     glEnable(GL_PROGRAM_POINT_SIZE);  // Let shader control point size
     
+    // Ensure shader is ready (handles hot reloads and external resets)
+    if (!shader_ || !shader_->IsValid()) {
+        if (shaderManager_) {
+            if (!shaderManager_->HasShader(shaderName_)) {
+                shader_ = shaderManager_->LoadShader(shaderName_, "shaders/particles.vert", "shaders/particles.frag");
+            } else {
+                shader_ = shaderManager_->GetShader(shaderName_);
+                if (shader_ && !shader_->IsValid()) {
+                    shaderManager_->ReloadShader(shaderName_);
+                }
+            }
+        }
+
+        if (!shader_ || !shader_->IsValid()) {
+            lastRenderCount_ = 0;
+            return;
+        }
+    }
+
     // Use shader and set uniforms
     shader_->Use();
     shader_->SetUniformMatrix4("view", viewMatrix_);

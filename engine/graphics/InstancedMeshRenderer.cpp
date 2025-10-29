@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cstddef>
 
+#include "ShaderManager.h"
+
 namespace Nova {
 
 InstancedMeshRenderer::InstancedMeshRenderer() {
@@ -11,11 +13,21 @@ InstancedMeshRenderer::~InstancedMeshRenderer() {
     Clear();
 }
 
-bool InstancedMeshRenderer::Initialize() {
-    // Create the instanced shader
-    m_shader = std::make_unique<ShaderProgram>();
-    if (!m_shader->LoadFromFiles("shaders/core/basic.vert", "shaders/core/basic.frag")) {
-        std::cerr << "Failed to load instanced rendering shader" << std::endl;
+bool InstancedMeshRenderer::Initialize(ShaderManager* shaderManager) {
+    shaderManager_ = shaderManager;
+
+    if (shaderManager_) {
+        m_shader = shaderManager_->LoadShader(shaderName_, "shaders/core/basic.vert", "shaders/core/basic.frag");
+    } else {
+        auto program = std::make_shared<ShaderProgram>();
+        if (program->LoadFromFiles("shaders/core/basic.vert", "shaders/core/basic.frag")) {
+            m_shader = std::move(program);
+        }
+    }
+
+    if (!m_shader || !m_shader->IsValid()) {
+        std::cerr << "InstancedMeshRenderer: failed to initialize shader" << std::endl;
+        m_shader.reset();
         return false;
     }
 
@@ -37,7 +49,22 @@ void InstancedMeshRenderer::Submit(const MeshHandle& mesh, const std::shared_ptr
 }
 
 void InstancedMeshRenderer::Flush(const glm::mat4& viewProjectionMatrix) {
-    if (!m_shader) return;
+    if (!m_shader || !m_shader->IsValid()) {
+        if (shaderManager_) {
+            if (!shaderManager_->HasShader(shaderName_)) {
+                m_shader = shaderManager_->LoadShader(shaderName_, "shaders/core/basic.vert", "shaders/core/basic.frag");
+            } else {
+                m_shader = shaderManager_->GetShader(shaderName_);
+                if (m_shader && !m_shader->IsValid()) {
+                    shaderManager_->ReloadShader(shaderName_);
+                }
+            }
+        }
+
+        if (!m_shader || !m_shader->IsValid()) {
+            return;
+        }
+    }
 
     m_shader->Use();
 

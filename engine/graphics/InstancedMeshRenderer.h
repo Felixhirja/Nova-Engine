@@ -5,12 +5,15 @@
 #include <memory>
 #include <cstddef>
 #include <type_traits>
+#include <string>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include "Material.h"
 #include "ShaderProgram.h"
 
 namespace Nova {
+
+class ShaderManager;
 
 struct MeshHandle {
     GLuint vao = 0;
@@ -36,7 +39,7 @@ public:
     ~InstancedMeshRenderer();
 
     // Initialize the renderer
-    bool Initialize();
+    bool Initialize(ShaderManager* shaderManager = nullptr);
 
     // Submit an instance for rendering
     void Submit(const MeshHandle& mesh, const std::shared_ptr<Material>& material,
@@ -81,7 +84,9 @@ private:
     };
 
     std::unordered_map<BatchKey, Batch, BatchKeyHash> m_batches;
-    std::unique_ptr<ShaderProgram> m_shader;
+    std::shared_ptr<ShaderProgram> m_shader;
+    ShaderManager* shaderManager_ = nullptr;
+    std::string shaderName_ = "core.basic";
 
     // Instance buffer layout
     static constexpr std::size_t INSTANCE_DATA_SIZE = sizeof(InstanceData);

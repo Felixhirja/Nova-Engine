@@ -3,11 +3,13 @@
 #include <glad/glad.h>
 #include <vector>
 #include <memory>
+#include <string>
 
 // Forward declarations
 struct Particle;
 class Camera;
 class ShaderProgram;
+namespace Nova { class ShaderManager; }
 
 // Modern GPU-based particle renderer using VAO/VBO
 // Replaces immediate mode glBegin/glEnd with efficient batched rendering
@@ -21,7 +23,7 @@ public:
     ParticleRenderer& operator=(const ParticleRenderer&) = delete;
     
     // Initialize OpenGL resources (VAO, VBO)
-    bool Init();
+    bool Init(Nova::ShaderManager* shaderManager = nullptr);
     
     // Render particles with given camera
     // particles: Vector of particle data from VisualFeedbackSystem
@@ -48,7 +50,9 @@ private:
     size_t vboCapacity_ = 0;   // Current VBO capacity (in vertices)
     
     // Shader program for rendering particles
-    std::unique_ptr<ShaderProgram> shader_;
+    std::shared_ptr<ShaderProgram> shader_;
+    Nova::ShaderManager* shaderManager_ = nullptr;
+    std::string shaderName_ = "effects.particles";
     
     // Cached matrices
     float viewMatrix_[16];
