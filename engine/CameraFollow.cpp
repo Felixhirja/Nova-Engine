@@ -83,14 +83,21 @@ void UpdateTargetLockCamera(Camera& camera,
     double yawForShoulder = 0.0;
 
     if (input.isTargetLocked) {
-        // When locked, accumulate mouse deltas into separate orbit offset only when mouse is moving
-        // Reset offset when first entering locked mode
+        // When locking, capture the current planar angle from player to camera so we keep continuity.
         if (!state.wasTargetLocked) {
-            state.lockedOrbitOffset = 0.0;
+            const double dxCam = px - cx;
+            const double dzCam = pz - cz;
+            const double planarLenSq = dxCam * dxCam + dzCam * dzCam;
+            if (planarLenSq > (kEps * kEps)) {
+                state.lockedOrbitOffset = std::atan2(dxCam, dzCam);
+            } else {
+                state.lockedOrbitOffset = camYaw;
+            }
+            state.lockedOrbitOffset = remainder(state.lockedOrbitOffset, kTAU);
         }
-        
-        // For locked mode, treat mouseLookYawOffset as a delta rather than accumulated offset
-        // This assumes the caller resets mouseLookYawOffset each frame when locked
+
+        // For locked mode, treat mouseLookYawOffset as a delta rather than accumulated offset.
+        // This assumes the caller resets mouseLookYawOffset each frame when locked.
         double mouseDeltaYaw = yawInput;
         
         // Only accumulate if there's significant mouse movement
@@ -106,7 +113,7 @@ void UpdateTargetLockCamera(Camera& camera,
         yawForShoulder = mouseDeltaYaw;
     } else {
         // When unlocked, sync orbit yaw to current camera yaw for smooth transition
-        state.orbitYaw = camYaw;
+        state.orbitYaw = remainder(camYaw, kTAU);
         effectiveOrbitYaw = state.orbitYaw;
         yawForShoulder = 0.0;
     }

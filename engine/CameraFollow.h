@@ -148,7 +148,7 @@ struct CameraFollowState {
 
     // Persistent orbit angle for stable target-lock orbiting
     double orbitYaw = 0.0;
-    double lockedOrbitOffset = 0.0;  // Separate offset for locked mode
+    double lockedOrbitOffset = 0.0;  // Planar angle from player to camera when locked
 
     // Teleport handling state
     double lastDesiredPosX = 0.0;
