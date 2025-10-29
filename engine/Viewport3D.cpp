@@ -800,6 +800,14 @@ Viewport3D::~Viewport3D() {
         std::ofstream f("v3d_ctor.log", std::ios::app);
         if (f) f << "Viewport3D dtor" << std::endl;
     } catch (...) {}
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (shaderManager_) {
+        if (IsUsingGLBackend()) {
+            shaderManager_->Clear();
+        }
+        shaderManager_.reset();
+    }
+#endif
 }
 
 void Viewport3D::EnsurePrimitiveBuffers() {
@@ -1498,9 +1506,17 @@ void Viewport3D::SetBackend(RenderBackend backend) {
         playerMeshPrimitiveDirty_ = true;
         hudTexturePrimitiveDirty_ = true;
 #endif
+        if (shaderManager_) {
+            shaderManager_->Clear();
+            shaderManager_.reset();
+        }
     }
     if (debugLogging_) {
         std::cout << "Viewport3D: render backend set to " << RenderBackendToString(backend_) << std::endl;
+    }
+
+    if (!wasGL && IsUsingGLBackend()) {
+        InitializeShaderManager();
     }
 }
 
@@ -1937,6 +1953,7 @@ void Viewport3D::Init() {
         glfwTerminate();
         return;
     }
+    InitializeShaderManager();
     {
         std::ofstream f("glfw_diag.log", std::ios::app);
         if (f) f << "GLAD init succeeded; creating UIBatcher" << std::endl;
@@ -1977,7 +1994,7 @@ void Viewport3D::Init() {
 
     try {
         instancedRenderer_ = std::make_unique<Nova::InstancedMeshRenderer>();
-        if (!instancedRenderer_->Initialize()) {
+        if (!instancedRenderer_->Initialize(shaderManager_.get())) {
             if (debugLogging_) std::cerr << "Viewport3D: InstancedMeshRenderer::Initialize failed (GLFW path)" << std::endl;
             instancedRenderer_.reset();
         }
@@ -2142,6 +2159,7 @@ void Viewport3D::Init() {
                             sdlGLContext = nullptr;
                             if (sdlWindow) { SDL_DestroyWindow(sdlWindow); sdlWindow = nullptr; }
                         } else {
+                            InitializeShaderManager();
                         // Enable OpenGL debug output for GPU validation (debug builds only)
 #ifndef NDEBUG
                         if (glDebugMessageCallback != nullptr) {
@@ -2289,6 +2307,11 @@ void Viewport3D::Render(const class Camera* camera, double playerX, double playe
     if (debugLogging_) std::cout << "Viewport3D::Render() called with camera=" << (camera ? "valid" : "null") << std::endl;
     EnsureLayoutConfiguration();
     if (debugLogging_) std::cout << "Viewport3D::Render() - after EnsureLayoutConfiguration()" << std::endl;
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (IsUsingGLBackend()) {
+        TickShaderHotReload();
+    }
+#endif
     // BeginFrame(); // Removed - Clear() is already called in MainLoop
     if (debugLogging_) std::cout << "Viewport3D::Render() - after BeginFrame()" << std::endl;
 
@@ -2961,6 +2984,30 @@ void Viewport3D::EnsureLineBatcher3D() {
             }
             lineBatcher3D_.reset();
         }
+    }
+#endif
+}
+
+void Viewport3D::InitializeShaderManager() {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (!shaderManager_) {
+        shaderManager_ = std::make_unique<Nova::ShaderManager>();
+        if (debugLogging_) {
+            std::cout << "Viewport3D: ShaderManager initialized" << std::endl;
+        }
+    }
+#endif
+}
+
+void Viewport3D::TickShaderHotReload() {
+#if defined(USE_GLFW) || defined(USE_SDL)
+    if (!enableShaderHotReload_ || !shaderManager_ || !IsUsingGLBackend()) {
+        return;
+    }
+
+    const int reloaded = shaderManager_->ReloadModifiedShaders();
+    if (reloaded > 0 && debugLogging_) {
+        std::cout << "Viewport3D: hot-reloaded " << reloaded << " shader(s)" << std::endl;
     }
 #endif
 }
@@ -4275,7 +4322,7 @@ void Viewport3D::RenderParticles(const class Camera* camera, const class VisualF
 
     if (!particleRenderer_) {
         particleRenderer_.reset(new ParticleRenderer());
-        if (!particleRenderer_->Init()) {
+        if (!particleRenderer_->Init(shaderManager_.get())) {
             std::cerr << "Viewport3D: Failed to initialize ParticleRenderer" << std::endl;
             particleRenderer_.reset();
             return;

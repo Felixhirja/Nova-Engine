@@ -10,6 +10,7 @@
 #include "graphics/MaterialLibrary.h"
 #include "graphics/InstancedMeshRenderer.h"
 #include "graphics/ActorRenderer.h"
+#include "graphics/ShaderManager.h"
 #include "Mesh.h"
 #if (defined(USE_GLFW) || defined(USE_SDL))
 #include "graphics/PrimitiveMesh.h"
@@ -243,6 +244,8 @@ private:
     // Material system
     std::unique_ptr<Nova::MaterialLibrary> materialLibrary_;
     std::unique_ptr<Nova::InstancedMeshRenderer> instancedRenderer_;
+    std::unique_ptr<Nova::ShaderManager> shaderManager_;
+    bool enableShaderHotReload_ = true;
     // Retained primitive meshes (migration target for immediate-mode draws)
     std::unique_ptr<PrimitiveMesh> cubePrimitive_;
     std::unique_ptr<PrimitiveMesh> playerPatchPrimitive_;
@@ -297,6 +300,9 @@ private:
 
     // Ensure line batcher exists and initialized
     void EnsureLineBatcher3D();
+
+    void InitializeShaderManager();
+    void TickShaderHotReload();
 
     // HUD sampling state for velocity estimation
     double lastHudX_ = 0.0;

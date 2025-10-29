@@ -92,8 +92,8 @@ class UIBatcher {
 - **Total**: 5-8 hours core, 9-14 hours with optional
 
 ### Phase 5: Shader Manager
-- Not started
-- Required for shader integration
+- ✅ Centralized shader cache + hot reload hooks integrated into Viewport3D
+- Required for shader integration (remaining shader migrations leverage the manager)
 - Estimated: 20-40 hours
 
 ### Phase 6: Advanced Features
