@@ -156,8 +156,8 @@ tests/test_camera_follow: tests/test_camera_follow.cpp $(filter-out engine/main.
 tests/test_camera_edgecases: tests/test_camera_edgecases.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_camera_edgecases.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
-tests/test_camera_presets: tests/test_camera_presets.cpp engine/Camera.cpp engine/CameraPresets.cpp tests/gl_stub.cpp
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_camera_presets.cpp engine/Camera.cpp engine/CameraPresets.cpp tests/gl_stub.cpp $(LDLIBS)
+tests/test_camera_presets: tests/test_camera_presets.cpp tests/gl_stub.cpp
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_camera_presets.cpp tests/gl_stub.cpp $(LDLIBS)
 
 tests/test_ship_assembly: tests/test_ship_assembly.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ship_assembly.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)

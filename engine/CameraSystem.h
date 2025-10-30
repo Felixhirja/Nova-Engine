@@ -402,8 +402,6 @@ struct CameraMovementInput {
 
 class CameraFollowController {
 public:
-    CameraFollowController();
-
     void SetConfig(const CameraFollow::CameraFollowConfig& config);
     const CameraFollow::CameraFollowConfig& GetConfig() const { return config_; }
 
@@ -466,17 +464,16 @@ bool LoadCameraFollowConfig(const std::string& path,
 // Implementations
 
 // CameraFollowController implementations
-CameraFollowController::CameraFollowController() = default;
 
-void CameraFollowController::SetConfig(const CameraFollow::CameraFollowConfig& config) {
+inline void CameraFollowController::SetConfig(const CameraFollow::CameraFollowConfig& config) {
     config_ = config;
 }
 
-void CameraFollowController::ResetState() {
+inline void CameraFollowController::ResetState() {
     state_ = CameraFollow::CameraFollowState{};
 }
 
-void CameraFollowController::Update(Camera& camera,
+inline void CameraFollowController::Update(Camera& camera,
                                     const CameraFollow::CameraFollowInput& followInput,
                                     const CameraMovementInput& movementInput,
                                     double deltaTime,
@@ -492,6 +489,11 @@ void CameraFollowController::Update(Camera& camera,
         suppressNextUpdate_ = true; // absorb one frame of inputs if needed
     }
 
+    // Instant transition when exiting target-lock for immediate mouse look
+    if (!followInput.isTargetLocked && state_.wasTargetLocked) {
+        state_.targetLockTransition = 0.0;
+    }
+
     UpdateTargetLockCamera(camera, state_, config_, followInput, deltaTime, physicsEngine);
 
     if (!followInput.isTargetLocked && state_.targetLockTransition <= 0.0) {
@@ -502,7 +504,7 @@ void CameraFollowController::Update(Camera& camera,
     state_.wasTargetLocked = followInput.isTargetLocked;
 }
 
-void CameraFollowController::ApplyFreeCameraMovement(Camera& camera,
+inline void CameraFollowController::ApplyFreeCameraMovement(Camera& camera,
                                                      const CameraFollow::CameraFollowInput& /*followInput*/,
                                                      const CameraMovementInput& movementInput,
                                                      const CameraFollow::CameraFollowConfig& config,
@@ -591,7 +593,7 @@ void CameraFollowController::ApplyFreeCameraMovement(Camera& camera,
                        camera.z() + state_.freeVelZ * dt);
 }
 
-void CameraFollowController::ApplyFreeLookRotation(Camera& camera,
+inline void CameraFollowController::ApplyFreeLookRotation(Camera& camera,
                                                     const CameraMovementInput& movementInput,
                                                     const CameraFollow::CameraFollowConfig& config,
                                                     double /*deltaTime*/) {
@@ -640,11 +642,11 @@ const std::array<CameraPreset, 3> kDefaultPresets = {{
 }};
 }
 
-const std::array<CameraPreset, 3>& GetDefaultCameraPresets() {
+inline const std::array<CameraPreset, 3>& GetDefaultCameraPresets() {
     return kDefaultPresets;
 }
 
-void ApplyPresetToCamera(Camera& camera, const CameraPreset& preset) {
+inline void ApplyPresetToCamera(Camera& camera, const CameraPreset& preset) {
     camera.SetPosition(preset.x, preset.y, preset.z);
     camera.SetOrientation(preset.pitch, preset.yaw);
     camera.SetZoom(preset.zoom);
@@ -902,7 +904,7 @@ bool LoadProfiles(const std::string& path,
 
 namespace CameraConfigLoader {
 
-bool LoadCameraFollowConfigProfile(const std::string& path,
+inline bool LoadCameraFollowConfigProfile(const std::string& path,
                                    const std::string& profileName,
                                    CameraFollow::CameraFollowConfig& outConfig) {
     std::unordered_map<std::string, CameraFollow::CameraFollowConfig> profiles;
@@ -930,7 +932,7 @@ bool LoadCameraFollowConfigProfile(const std::string& path,
     return false;
 }
 
-bool LoadCameraFollowConfig(const std::string& path,
+inline bool LoadCameraFollowConfig(const std::string& path,
                             CameraFollow::CameraFollowConfig& outConfig) {
     return LoadCameraFollowConfigProfile(path, "default", outConfig);
 }
@@ -938,7 +940,7 @@ bool LoadCameraFollowConfig(const std::string& path,
 } // namespace CameraConfigLoader
 
 // UpdateTargetLockCamera implementation
-void UpdateTargetLockCamera(Camera& camera,
+inline void UpdateTargetLockCamera(Camera& camera,
                             CameraFollow::CameraFollowState& state,
                             const CameraFollow::CameraFollowConfig& config,
                             const CameraFollow::CameraFollowInput& input,

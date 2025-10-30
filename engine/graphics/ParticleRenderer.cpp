@@ -1,6 +1,6 @@
 #include "ParticleRenderer.h"
 #include "../VisualFeedbackSystem.h"  // For Particle struct
-#include "../Camera.h"
+#include "../CameraSystem.h"
 #include <cmath>
 #include <algorithm>
 #include <iostream>

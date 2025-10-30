@@ -1518,3 +1518,73 @@ Made context current, loading GLAD
 GLAD init succeeded; creating UIBatcher
 Backend set to GLFW_GL; disabling vsync
 Viewport3D::Init finished (GLFW path)
+Viewport3D::Init start
+Attempting glfwInit
+glfwInit succeeded
+Creating window OpenGL 3.3 compat 800x600
+Window created
+Window shown
+Made context current, loading GLAD
+GLAD init succeeded; creating UIBatcher
+Backend set to GLFW_GL; disabling vsync
+Viewport3D::Init finished (GLFW path)
+Viewport3D::Init start
+Attempting glfwInit
+glfwInit succeeded
+Creating window OpenGL 3.3 compat 800x600
+Window created
+Window shown
+Made context current, loading GLAD
+GLAD init succeeded; creating UIBatcher
+Backend set to GLFW_GL; disabling vsync
+Viewport3D::Init finished (GLFW path)
+Viewport3D::Init start
+Attempting glfwInit
+glfwInit succeeded
+Creating window OpenGL 3.3 compat 800x600
+Window created
+Window shown
+Made context current, loading GLAD
+GLAD init succeeded; creating UIBatcher
+Backend set to GLFW_GL; disabling vsync
+Viewport3D::Init finished (GLFW path)
+Viewport3D::Init start
+Attempting glfwInit
+glfwInit succeeded
+Creating window OpenGL 3.3 compat 800x600
+Window created
+Window shown
+Made context current, loading GLAD
+GLAD init succeeded; creating UIBatcher
+Backend set to GLFW_GL; disabling vsync
+Viewport3D::Init finished (GLFW path)
+Viewport3D::Init start
+Attempting glfwInit
+glfwInit succeeded
+Creating window OpenGL 3.3 compat 800x600
+Window created
+Window shown
+Made context current, loading GLAD
+GLAD init succeeded; creating UIBatcher
+Backend set to GLFW_GL; disabling vsync
+Viewport3D::Init finished (GLFW path)
+Viewport3D::Init start
+Attempting glfwInit
+glfwInit succeeded
+Creating window OpenGL 3.3 compat 800x600
+Window created
+Window shown
+Made context current, loading GLAD
+GLAD init succeeded; creating UIBatcher
+Backend set to GLFW_GL; disabling vsync
+Viewport3D::Init finished (GLFW path)
+Viewport3D::Init start
+Attempting glfwInit
+glfwInit succeeded
+Creating window OpenGL 3.3 compat 800x600
+Window created
+Window shown
+Made context current, loading GLAD
+GLAD init succeeded; creating UIBatcher
+Backend set to GLFW_GL; disabling vsync
+Viewport3D::Init finished (GLFW path)

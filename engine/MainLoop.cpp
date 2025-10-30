@@ -514,7 +514,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             // std::cout << "Player vertical mode: " << (thrustModeEnabled ? "thrust" : "jump") << std::endl;
         }
 
-        if (key == 9) {
+        if (key == GLFW_KEY_TAB) {
             bool locked = false;
             if (entityManager && simulation) {
                 auto* targetLock = entityManager->GetComponent<TargetLock>(simulation->GetPlayerEntity());
