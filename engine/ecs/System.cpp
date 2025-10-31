@@ -1,5 +1,7 @@
 #include "System.h"
 #include "EntityManager.h"
+#include "Components.h"
+#include "../physics/PhysicsEngine.h"
 
 #include <filesystem>
 #include <fstream>
@@ -67,6 +69,8 @@ std::string FormatSystemDependencyList(const std::vector<ecs::SystemDependency>&
 }
 
 } // namespace
+
+System::System(SystemType type) : systemType_(type) {}
 
 void SystemManager::Clear() {
     scheduler_.Clear();
@@ -300,4 +304,649 @@ bool SystemManager::HasComponentConflict(const std::vector<ecs::ComponentDepende
     }
 
     return false;
+}
+
+// UnifiedSystem implementation
+UnifiedSystem::UnifiedSystem(SystemType type) : System(type) {}
+
+void UnifiedSystem::Update(EntityManager& entityManager, double dt) {
+    switch (systemType_) {
+        case SystemType::Weapon:
+            UpdateWeaponSystem(entityManager, dt);
+            break;
+        case SystemType::Physics:
+            UpdatePhysicsSystem(entityManager, dt);
+            break;
+        case SystemType::Movement:
+            UpdateMovementSystem(entityManager, dt);
+            break;
+        case SystemType::PlayerControl:
+            UpdatePlayerControlSystem(entityManager, dt);
+            break;
+        case SystemType::BehaviorTree:
+            UpdateBehaviorTreeSystem(entityManager, dt);
+            break;
+        case SystemType::Locomotion:
+            UpdateLocomotionSystem(entityManager, dt);
+            break;
+        case SystemType::ShipAssembly:
+            UpdateShipAssemblySystem(entityManager, dt);
+            break;
+        case SystemType::SpaceshipPhysics:
+            UpdateSpaceshipPhysicsSystem(entityManager, dt);
+            break;
+        case SystemType::Animation:
+            UpdateAnimationSystem(entityManager, dt);
+            break;
+        case SystemType::Targeting:
+            UpdateTargetingSystem(entityManager, dt);
+            break;
+        case SystemType::Shield:
+            UpdateShieldSystem(entityManager, dt);
+            break;
+        case SystemType::Navigation:
+            UpdateNavigationSystem(entityManager, dt);
+            break;
+        case SystemType::GameplayEvent:
+            UpdateGameplayEventSystem(entityManager, dt);
+            break;
+        case SystemType::MissionScript:
+            UpdateMissionScriptSystem(entityManager, dt);
+            break;
+        // Add cases for other system types
+        default:
+            // Default behavior or placeholder
+            break;
+    }
+}
+
+ecs::UpdatePhase UnifiedSystem::GetUpdatePhase() const {
+    switch (systemType_) {
+        case SystemType::PlayerControl:
+            return ecs::UpdatePhase::Input;
+        case SystemType::Weapon:
+            return ecs::UpdatePhase::RenderPrep;
+        case SystemType::Physics:
+        case SystemType::Movement:
+        case SystemType::BehaviorTree:
+        default:
+            return ecs::UpdatePhase::Simulation;
+    }
+}
+
+std::vector<ecs::ComponentDependency> UnifiedSystem::GetComponentDependencies() const {
+    // Return appropriate dependencies based on system type
+    switch (systemType_) {
+        case SystemType::Weapon:
+            return {{typeid(Weapon), ecs::ComponentAccess::ReadWrite}};
+        case SystemType::Physics:
+            return {{typeid(Position), ecs::ComponentAccess::ReadWrite},
+                    {typeid(Velocity), ecs::ComponentAccess::ReadWrite},
+                    {typeid(RigidBody), ecs::ComponentAccess::ReadWrite}};
+        case SystemType::Movement:
+            return {{typeid(Position), ecs::ComponentAccess::ReadWrite},
+                    {typeid(Velocity), ecs::ComponentAccess::ReadWrite},
+                    {typeid(Acceleration), ecs::ComponentAccess::Read}};
+        case SystemType::PlayerControl:
+            return {{typeid(PlayerController), ecs::ComponentAccess::ReadWrite},
+                    {typeid(Velocity), ecs::ComponentAccess::ReadWrite}};
+        case SystemType::BehaviorTree:
+            return {{typeid(BehaviorTreeComponent), ecs::ComponentAccess::ReadWrite}};
+        case SystemType::Locomotion:
+            return {{typeid(LocomotionComponent), ecs::ComponentAccess::ReadWrite},
+                    {typeid(Position), ecs::ComponentAccess::ReadWrite},
+                    {typeid(Velocity), ecs::ComponentAccess::ReadWrite}};
+        case SystemType::ShipAssembly:
+            return {{typeid(ShipAssemblyComponent), ecs::ComponentAccess::ReadWrite}};
+        case SystemType::SpaceshipPhysics:
+            return {{typeid(SpaceshipPhysicsComponent), ecs::ComponentAccess::ReadWrite},
+                    {typeid(Position), ecs::ComponentAccess::ReadWrite},
+                    {typeid(Velocity), ecs::ComponentAccess::ReadWrite}};
+        case SystemType::Animation:
+            return {{typeid(AnimationComponent), ecs::ComponentAccess::ReadWrite}};
+        case SystemType::Targeting:
+            return {{typeid(TargetingComponent), ecs::ComponentAccess::ReadWrite},
+                    {typeid(Position), ecs::ComponentAccess::Read}};
+        case SystemType::Shield:
+            return {{typeid(ShieldComponent), ecs::ComponentAccess::ReadWrite}};
+        case SystemType::Navigation:
+            return {{typeid(NavigationComponent), ecs::ComponentAccess::ReadWrite},
+                    {typeid(Position), ecs::ComponentAccess::Read},
+                    {typeid(Velocity), ecs::ComponentAccess::Read}};
+        case SystemType::GameplayEvent:
+            return {{typeid(GameplayEventComponent), ecs::ComponentAccess::ReadWrite}};
+        case SystemType::MissionScript:
+            return {{typeid(MissionScriptComponent), ecs::ComponentAccess::ReadWrite}};
+        default:
+            return {};
+    }
+}
+
+std::vector<ecs::SystemDependency> UnifiedSystem::GetSystemDependencies() const {
+    // For now, return no dependencies since all UnifiedSystem instances have the same type
+    // Dependencies are handled internally based on SystemType
+    return {};
+}
+
+const char* UnifiedSystem::GetName() const {
+    switch (systemType_) {
+        case SystemType::Weapon: return "WeaponSystem";
+        case SystemType::Physics: return "PhysicsSystem";
+        case SystemType::Movement: return "MovementSystem";
+        case SystemType::PlayerControl: return "PlayerControlSystem";
+        case SystemType::BehaviorTree: return "BehaviorTreeSystem";
+        case SystemType::Locomotion: return "LocomotionSystem";
+        case SystemType::ShipAssembly: return "ShipAssemblySystem";
+        case SystemType::SpaceshipPhysics: return "SpaceshipPhysicsSystem";
+        case SystemType::Animation: return "AnimationSystem";
+        case SystemType::Targeting: return "TargetingSystem";
+        case SystemType::Shield: return "ShieldSystem";
+        case SystemType::Navigation: return "NavigationSystem";
+        case SystemType::GameplayEvent: return "GameplayEventSystem";
+        case SystemType::MissionScript: return "MissionScriptSystem";
+        default: return "UnifiedSystem";
+    }
+}
+
+// Weapon system methods
+void UnifiedSystem::ConfigureWeaponSlot(int entityId, const std::string& weaponSlot, const WeaponSlotConfig& config) {
+    weaponConfigs_[entityId][weaponSlot] = config;
+}
+
+bool UnifiedSystem::FireWeapon(EntityManager& entityManager, int entityId, const std::string& weaponSlot) {
+    auto* config = GetWeaponConfig(entityId, weaponSlot);
+    if (!config) return false;
+
+    auto& cooldown = weaponCooldowns_[entityId][weaponSlot];
+    if (cooldown > 0.0f) return false;
+
+    if (config->ammo != -1 && weaponAmmo_[entityId][weaponSlot] <= 0) return false;
+
+    // Fire weapon logic here
+    cooldown = 1.0f / config->fireRatePerSecond;
+
+    if (config->ammo != -1) {
+        weaponAmmo_[entityId][weaponSlot]--;
+    }
+
+    // Create projectile entity
+    double x, y, z;
+    if (!ExtractEntityPosition(entityManager, entityId, x, y, z)) return false;
+
+    // Add projectile creation logic here
+
+    return true;
+}
+
+bool UnifiedSystem::CanFire(int entityId, const std::string& weaponSlot) const {
+    auto* config = GetWeaponConfig(entityId, weaponSlot);
+    if (!config) return false;
+
+    if (weaponCooldowns_.at(entityId).at(weaponSlot) > 0.0f) return false;
+    if (config->ammo != -1 && weaponAmmo_.at(entityId).at(weaponSlot) <= 0) return false;
+
+    return true;
+}
+
+int UnifiedSystem::GetAmmoCount(int entityId, const std::string& weaponSlot) const {
+    auto entityIt = weaponAmmo_.find(entityId);
+    if (entityIt == weaponAmmo_.end()) return 0;
+
+    auto slotIt = entityIt->second.find(weaponSlot);
+    return slotIt != entityIt->second.end() ? slotIt->second : 0;
+}
+
+const WeaponSlotConfig* UnifiedSystem::GetWeaponConfig(int entityId, const std::string& weaponSlot) const {
+    auto entityIt = weaponConfigs_.find(entityId);
+    if (entityIt == weaponConfigs_.end()) return nullptr;
+
+    auto slotIt = entityIt->second.find(weaponSlot);
+    return slotIt != entityIt->second.end() ? &slotIt->second : nullptr;
+}
+
+bool UnifiedSystem::ExtractEntityPosition(EntityManager& entityManager, int entityId, double& x, double& y, double& z) const {
+    if (auto* pos = entityManager.GetComponent<Position>(entityId)) {
+        x = pos->x;
+        y = pos->y;
+        z = pos->z;
+        return true;
+    }
+    return false;
+}
+
+// Physics system methods
+void UnifiedSystem::UseExternalEngine(std::shared_ptr<physics::IPhysicsEngine> engine) {
+    externalEngine_ = engine;
+    activeBackend_ = engine ? physics::PhysicsBackendType::External : physics::PhysicsBackendType::BuiltIn;
+}
+
+void UnifiedSystem::ResetToBuiltin() {
+    externalEngine_.reset();
+    activeBackend_ = physics::PhysicsBackendType::BuiltIn;
+}
+
+void UnifiedSystem::SetGravity(double x, double y, double z) {
+    globalGravityX_ = x;
+    globalGravityY_ = y;
+    globalGravityZ_ = z;
+}
+
+void UnifiedSystem::SetGlobalDamping(double linear, double angular) {
+    globalLinearDamping_ = linear;
+    globalAngularDamping_ = angular;
+}
+
+void UnifiedSystem::SetMaxVelocity(double maxVel) {
+    maxVelocity_ = maxVel;
+}
+
+void UnifiedSystem::SetCollisionEnabled(bool enabled) {
+    collisionEnabled_ = enabled;
+}
+
+bool UnifiedSystem::Raycast(double originX, double originY, double originZ,
+                           double dirX, double dirY, double dirZ,
+                           double maxDistance, RaycastHit& hit) {
+    // Placeholder raycast implementation
+    (void)originX; (void)originY; (void)originZ;
+    (void)dirX; (void)dirY; (void)dirZ; (void)maxDistance; (void)hit;
+    return false;
+}
+
+std::vector<unsigned int> UnifiedSystem::OverlapSphere(double centerX, double centerY, double centerZ,
+                                                      double radius, unsigned int layerMask) {
+    (void)centerX; (void)centerY; (void)centerZ; (void)radius; (void)layerMask;
+    return {};
+}
+
+std::vector<unsigned int> UnifiedSystem::OverlapBox(double centerX, double centerY, double centerZ,
+                                                   double width, double height, double depth,
+                                                   unsigned int layerMask) {
+    (void)centerX; (void)centerY; (void)centerZ; (void)width; (void)height; (void)depth; (void)layerMask;
+    return {};
+}
+
+void UnifiedSystem::ApplyForce(unsigned int entity, double fx, double fy, double fz) {
+    (void)entity; (void)fx; (void)fy; (void)fz;
+    // Placeholder
+}
+
+void UnifiedSystem::ApplyImpulse(unsigned int entity, double ix, double iy, double iz) {
+    (void)entity; (void)ix; (void)iy; (void)iz;
+    // Placeholder
+}
+
+void UnifiedSystem::ApplyForceAtPoint(unsigned int entity, double fx, double fy, double fz,
+                                     double px, double py, double pz) {
+    (void)entity; (void)fx; (void)fy; (void)fz; (void)px; (void)py; (void)pz;
+    // Placeholder
+}
+
+// System update implementations
+void UnifiedSystem::UpdateWeaponSystem(EntityManager& entityManager, double dt) {
+    // Update weapon cooldowns
+    for (auto& entityCooldowns : weaponCooldowns_) {
+        for (auto& slotCooldown : entityCooldowns.second) {
+            if (slotCooldown.second > 0.0f) {
+                slotCooldown.second -= static_cast<float>(dt);
+                if (slotCooldown.second < 0.0f) slotCooldown.second = 0.0f;
+            }
+        }
+    }
+
+    // Weapon firing logic would go here
+    entityManager.ForEach<Weapon>([&](Entity entity, Weapon& weapon) {
+        // Process weapon firing requests
+        (void)entity; (void)weapon;
+    });
+}
+
+void UnifiedSystem::UpdatePhysicsSystem(EntityManager& entityManager, double dt) {
+    if (activeBackend_ == physics::PhysicsBackendType::External && externalEngine_) {
+        // Use external physics engine
+        externalEngine_->Step(entityManager, dt);
+    } else {
+        // Use built-in physics
+        RunBuiltinSimulation(dt);
+    }
+}
+
+void UnifiedSystem::UpdateMovementSystem(EntityManager& entityManager, double dt) {
+    if (dt <= 0.0) return;
+
+    // Basic movement integration for all entities with Position + Velocity
+    entityManager.ForEach<Position, Velocity>([&](Entity entity, Position& position, Velocity& velocity) {
+        // Update position with velocity (basic integration)
+        position.x += velocity.vx * dt;
+        position.y += velocity.vy * dt;
+        position.z += velocity.vz * dt;
+
+        // Apply acceleration if present
+        if (auto* acceleration = entityManager.GetComponent<Acceleration>(entity)) {
+            velocity.vx += acceleration->ax * dt;
+            velocity.vy += acceleration->ay * dt;
+            velocity.vz += acceleration->az * dt;
+        }
+    });
+
+    // Player physics logic
+    entityManager.ForEach<Position, Velocity, PlayerPhysics>([&](Entity entity, Position& position, Velocity& velocity, PlayerPhysics& physics) {
+        physics.isGrounded = false;
+
+        if (auto* rigidBody = entityManager.GetComponent<RigidBody>(entity)) {
+            rigidBody->useGravity = physics.enableGravity;
+        }
+
+        if (physics.enableGravity) {
+            velocity.vz += physics.gravity * dt;
+        }
+
+        if (velocity.vz > physics.maxAscentSpeed) velocity.vz = physics.maxAscentSpeed;
+        if (velocity.vz < physics.maxDescentSpeed) velocity.vz = physics.maxDescentSpeed;
+    });
+
+    // Movement bounds clamping
+    entityManager.ForEach<Position, Velocity, MovementBounds>([&](Entity entity, Position& position, Velocity& velocity, MovementBounds& bounds) {
+        // Bounds checking logic (simplified)
+        if (bounds.clampX) {
+            if (position.x < bounds.minX) {
+                position.x = bounds.minX;
+                velocity.vx = 0.0;
+            } else if (position.x > bounds.maxX) {
+                position.x = bounds.maxX;
+                velocity.vx = 0.0;
+            }
+        }
+        // Similar for Y and Z bounds
+    });
+}
+
+void UnifiedSystem::UpdatePlayerControlSystem(EntityManager& entityManager, double dt) {
+    if (dt <= 0.0) return;
+
+    entityManager.ForEach<PlayerController, Velocity>([&](Entity entity, PlayerController& controller, Velocity& velocity) {
+        const MovementParameters* movement = entityManager.GetComponent<MovementParameters>(entity);
+
+        // Movement parameter defaults
+        double strafeAcceleration = 4.0;
+        double forwardAcceleration = 4.0;
+        double backwardAcceleration = 4.0;
+        double strafeDeceleration = 4.0;
+        double forwardDeceleration = 4.0;
+        double backwardDeceleration = 4.0;
+        double strafeMaxSpeed = 5.0;
+        double forwardMaxSpeed = 5.0;
+        double backwardMaxSpeed = 5.0;
+        double friction = 0.0;
+
+        if (movement) {
+            strafeAcceleration = std::max(0.0, movement->strafeAcceleration);
+            forwardAcceleration = std::max(0.0, movement->forwardAcceleration);
+            backwardAcceleration = std::max(0.0, movement->backwardAcceleration);
+            strafeDeceleration = std::max(0.0, movement->strafeDeceleration);
+            forwardDeceleration = std::max(0.0, movement->forwardDeceleration);
+            backwardDeceleration = std::max(0.0, movement->backwardDeceleration);
+            strafeMaxSpeed = std::max(0.0, movement->strafeMaxSpeed);
+            forwardMaxSpeed = std::max(0.0, movement->forwardMaxSpeed);
+            backwardMaxSpeed = std::max(0.0, movement->backwardMaxSpeed);
+            friction = std::max(0.0, movement->friction);
+        }
+
+        // Apply input to velocity
+        if (controller.moveForward) {
+            velocity.vy += forwardAcceleration * dt;
+            if (velocity.vy > forwardMaxSpeed) velocity.vy = forwardMaxSpeed;
+        } else if (controller.moveBackward) {
+            velocity.vy -= backwardAcceleration * dt;
+            if (velocity.vy < -backwardMaxSpeed) velocity.vy = -backwardMaxSpeed;
+        } else {
+            // Deceleration
+            if (velocity.vy > 0) {
+                velocity.vy -= forwardDeceleration * dt;
+                if (velocity.vy < 0) velocity.vy = 0;
+            } else if (velocity.vy < 0) {
+                velocity.vy += backwardDeceleration * dt;
+                if (velocity.vy > 0) velocity.vy = 0;
+            }
+        }
+
+        if (controller.strafeLeft) {
+            velocity.vx -= strafeAcceleration * dt;
+            if (velocity.vx < -strafeMaxSpeed) velocity.vx = -strafeMaxSpeed;
+        } else if (controller.strafeRight) {
+            velocity.vx += strafeAcceleration * dt;
+            if (velocity.vx > strafeMaxSpeed) velocity.vx = strafeMaxSpeed;
+        } else {
+            // Deceleration
+            if (velocity.vx > 0) {
+                velocity.vx -= strafeDeceleration * dt;
+                if (velocity.vx < 0) velocity.vx = 0;
+            } else if (velocity.vx < 0) {
+                velocity.vx += strafeDeceleration * dt;
+                if (velocity.vx > 0) velocity.vx = 0;
+            }
+        }
+
+        // Apply friction
+        if (friction > 0.0) {
+            velocity.vx *= (1.0 - friction * dt);
+            velocity.vy *= (1.0 - friction * dt);
+            velocity.vz *= (1.0 - friction * dt);
+        }
+    });
+}
+
+void UnifiedSystem::UpdateBehaviorTreeSystem(EntityManager& entityManager, double dt) {
+    // Behavior tree update logic would go here
+    entityManager.ForEach<BehaviorTreeComponent>([&](Entity entity, BehaviorTreeComponent& bt) {
+        // Update behavior trees
+        (void)entity; (void)bt; (void)dt;
+    });
+}
+
+void UnifiedSystem::UpdateLocomotionSystem(EntityManager& entityManager, double dt) {
+    // Locomotion system logic would go here
+    entityManager.ForEach<LocomotionComponent>([&](Entity entity, LocomotionComponent& loco) {
+        // Update locomotion
+        (void)entity; (void)loco; (void)dt;
+    });
+}
+
+void UnifiedSystem::UpdateShipAssemblySystem(EntityManager& entityManager, double dt) {
+    // Ship assembly system logic would go here
+    entityManager.ForEach<ShipAssemblyComponent>([&](Entity entity, ShipAssemblyComponent& assembly) {
+        // Update ship assembly
+        (void)entity; (void)assembly; (void)dt;
+    });
+}
+
+void UnifiedSystem::UpdateSpaceshipPhysicsSystem(EntityManager& entityManager, double dt) {
+    // Spaceship physics system logic would go here
+    entityManager.ForEach<SpaceshipPhysicsComponent>([&](Entity entity, SpaceshipPhysicsComponent& physics) {
+        // Update spaceship physics
+        (void)entity; (void)physics; (void)dt;
+    });
+}
+
+void UnifiedSystem::UpdateAnimationSystem(EntityManager& entityManager, double dt) {
+    // Animation system logic would go here
+    entityManager.ForEach<AnimationComponent>([&](Entity entity, AnimationComponent& anim) {
+        // Update animations
+        (void)entity; (void)anim; (void)dt;
+    });
+}
+
+void UnifiedSystem::UpdateTargetingSystem(EntityManager& entityManager, double dt) {
+    // Targeting system logic would go here
+    entityManager.ForEach<TargetingComponent>([&](Entity entity, TargetingComponent& targeting) {
+        // Update targeting
+        (void)entity; (void)targeting; (void)dt;
+    });
+}
+
+void UnifiedSystem::UpdateShieldSystem(EntityManager& entityManager, double dt) {
+    // Shield system logic would go here
+    entityManager.ForEach<ShieldComponent>([&](Entity entity, ShieldComponent& shield) {
+        // Update shields
+        (void)entity; (void)shield; (void)dt;
+    });
+}
+
+void UnifiedSystem::UpdateNavigationSystem(EntityManager& entityManager, double dt) {
+    // Navigation system logic would go here
+    entityManager.ForEach<NavigationComponent>([&](Entity entity, NavigationComponent& nav) {
+        // Update navigation
+        (void)entity; (void)nav; (void)dt;
+    });
+}
+
+void UnifiedSystem::UpdateGameplayEventSystem(EntityManager& entityManager, double dt) {
+    // Gameplay event system logic would go here
+    entityManager.ForEach<GameplayEventComponent>([&](Entity entity, GameplayEventComponent& event) {
+        // Update gameplay events
+        (void)entity; (void)event; (void)dt;
+    });
+}
+
+void UnifiedSystem::UpdateMissionScriptSystem(EntityManager& entityManager, double dt) {
+    // Mission script system logic would go here
+    entityManager.ForEach<MissionScriptComponent>([&](Entity entity, MissionScriptComponent& script) {
+        // Update mission scripts
+        (void)entity; (void)script; (void)dt;
+    });
+}
+
+void UnifiedSystem::SetRandomManager(DeterministicRandom* randomManager) {
+    randomManager_ = randomManager;
+}
+
+// Physics helper implementations (simplified)
+void UnifiedSystem::ApplyGravity(double dt) {
+    (void)dt;
+    // Gravity application logic
+}
+
+void UnifiedSystem::ApplyForces(double dt) {
+    (void)dt;
+    // Force application logic
+}
+
+void UnifiedSystem::ApplyConstantForces(double dt) {
+    (void)dt;
+    // Constant force application logic
+}
+
+void UnifiedSystem::IntegrateVelocities(double dt) {
+    (void)dt;
+    // Velocity integration logic
+}
+
+void UnifiedSystem::DetectCollisions(double dt) {
+    (void)dt;
+    // Collision detection logic
+}
+
+void UnifiedSystem::ResolveCollisions(double dt) {
+    (void)dt;
+    // Collision resolution logic
+}
+
+void UnifiedSystem::UpdateCharacterControllers(double dt) {
+    (void)dt;
+    // Character controller update logic
+}
+
+void UnifiedSystem::UpdateJoints(double dt) {
+    (void)dt;
+    // Joint update logic
+}
+
+void UnifiedSystem::ClearFrameForces() {
+    // Clear frame forces logic
+}
+
+void UnifiedSystem::RunBuiltinSimulation(double dt) {
+    ApplyGravity(dt);
+    ApplyForces(dt);
+    ApplyConstantForces(dt);
+    IntegrateVelocities(dt);
+    if (collisionEnabled_) {
+        DetectCollisions(dt);
+        ResolveCollisions(dt);
+    }
+    UpdateCharacterControllers(dt);
+    UpdateJoints(dt);
+    ClearFrameForces();
+}
+
+std::vector<UnifiedSystem::CollisionPair> UnifiedSystem::DetectCollisionPairs() {
+    return {};
+}
+
+std::vector<UnifiedSystem::CollisionPair> UnifiedSystem::DetectSweptCollisionPairs(double dt) {
+    (void)dt;
+    return {};
+}
+
+bool UnifiedSystem::ComputeSweptAABB(const struct BoxCollider& a, const struct Position& posA,
+                                    const struct Velocity* velA,
+                                    const struct BoxCollider& b, const struct Position& posB,
+                                    const struct Velocity* velB, double dt,
+                                    CollisionPair& result) {
+    (void)a; (void)posA; (void)velA; (void)b; (void)posB; (void)velB; (void)dt; (void)result;
+    return false;
+}
+
+bool UnifiedSystem::CheckBoxBox(const struct BoxCollider& a, const struct Position& posA,
+                               const struct BoxCollider& b, const struct Position& posB,
+                               CollisionPair& result) {
+    (void)a; (void)posA; (void)b; (void)posB; (void)result;
+    return false;
+}
+
+bool UnifiedSystem::CheckSphereSphere(const struct SphereCollider& a, const struct Position& posA,
+                                     const struct SphereCollider& b, const struct Position& posB,
+                                     CollisionPair& result) {
+    (void)a; (void)posA; (void)b; (void)posB; (void)result;
+    return false;
+}
+
+bool UnifiedSystem::CheckBoxSphere(const struct BoxCollider& box, const struct Position& boxPos,
+                                  const struct SphereCollider& sphere, const struct Position& spherePos,
+                                  CollisionPair& result) {
+    (void)box; (void)boxPos; (void)sphere; (void)spherePos; (void)result;
+    return false;
+}
+
+void UnifiedSystem::ResolveCollisionPair(const CollisionPair& pair, double dt) {
+    (void)pair; (void)dt;
+}
+
+void UnifiedSystem::SeparateColliders(unsigned int entityA, unsigned int entityB,
+                                     double normalX, double normalY, double normalZ,
+                                     double penetration) {
+    (void)entityA; (void)entityB; (void)normalX; (void)normalY; (void)normalZ; (void)penetration;
+}
+
+double UnifiedSystem::DotProduct(double ax, double ay, double az, double bx, double by, double bz) const {
+    return ax * bx + ay * by + az * bz;
+}
+
+double UnifiedSystem::VectorLength(double x, double y, double z) const {
+    return std::sqrt(x * x + y * y + z * z);
+}
+
+void UnifiedSystem::Normalize(double& x, double& y, double& z) const {
+    double len = VectorLength(x, y, z);
+    if (len > 0.0) {
+        x /= len;
+        y /= len;
+        z /= len;
+    }
+}
+
+double UnifiedSystem::Clamp(double value, double min, double max) const {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
 }

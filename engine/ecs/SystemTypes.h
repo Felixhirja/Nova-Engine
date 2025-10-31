@@ -4,6 +4,30 @@
 #include <typeinfo>
 #include <vector>
 
+// Unified system types enumeration
+enum class SystemType {
+    Animation,
+    BehaviorTree,
+    ECSInspector,
+    GameplayEvent,
+    Locomotion,
+    MissionScript,
+    Movement,
+    Navigation,
+    Physics,
+    PlayerControl,
+    Shield,
+    ShipAssembly,
+    ShipLogistics,
+    SpaceshipPhysics,
+    Targeting,
+    Weapon,
+    // Add more system types as needed
+};
+
+// Forward declaration for UnifiedSystem
+class UnifiedSystem;
+
 namespace ecs {
 
 enum class ComponentAccess {
@@ -43,8 +67,9 @@ enum class UpdateStage {
 
 struct SystemDependency {
     std::type_index type;
+    SystemType systemType = SystemType::Animation; // Default value
 
-    explicit SystemDependency(std::type_index t) : type(t) {}
+    explicit SystemDependency(std::type_index t, SystemType st = SystemType::Animation) : type(t), systemType(st) {}
 
     template<typename T>
     static SystemDependency Requires() {

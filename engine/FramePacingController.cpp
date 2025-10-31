@@ -2,8 +2,22 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <string>
 
-FramePacingController::FramePacingController() = default;
+FramePacingController::FramePacingController() {
+    // Check for environment variable to set initial target FPS
+    const char* targetFPSEnv = std::getenv("NOVA_TARGET_FPS");
+    if (targetFPSEnv) {
+        try {
+            double envFPS = std::stod(targetFPSEnv);
+            settings_.targetFPS = std::clamp(envFPS, 30.0, 360.0);
+            forceTargetFPS_ = true; // Don't adapt if set via environment
+        } catch (...) {
+            // Invalid value, keep default
+        }
+    }
+}
 
 void FramePacingController::SetVSyncEnabled(bool enabled) {
     settings_.vsyncEnabled = enabled;
@@ -63,6 +77,10 @@ void FramePacingController::UpdateFromTimings(const FrameTimingAverages& timing)
 
     const double desiredDuration = DesiredFrameDuration().count();
 
+    // Check for environment variable to disable adaptive VSync
+    const char* noAdaptiveVSync = std::getenv("NOVA_NO_ADAPTIVE_VSYNC");
+    const bool disableAdaptiveVSync = noAdaptiveVSync && std::string(noAdaptiveVSync) == "1";
+
     if (settings_.vsyncEnabled) {
         if (desiredDuration > 0.0 && activeTime > desiredDuration * 0.95 && idleRatio < 0.05) {
             settings_.vsyncEnabled = false;
@@ -76,7 +94,8 @@ void FramePacingController::UpdateFromTimings(const FrameTimingAverages& timing)
             return;
         }
     } else {
-        if (idleRatio > 0.25) {
+        // Only enable adaptive VSync if not disabled by environment variable
+        if (!disableAdaptiveVSync && idleRatio > 0.25) {
             settings_.vsyncEnabled = true;
             if (frameDuration > 0.0 && std::isfinite(frameDuration)) {
                 settings_.targetFPS = std::clamp(1.0 / frameDuration, 30.0, 360.0);
@@ -88,6 +107,11 @@ void FramePacingController::UpdateFromTimings(const FrameTimingAverages& timing)
     if (settings_.targetFPS <= 0.0) {
         const double fallback = frameDuration > 0.0 ? 1.0 / frameDuration : 60.0;
         settings_.targetFPS = std::clamp(fallback, 30.0, 360.0);
+    }
+
+    // Don't adapt target FPS if it was set via environment variable
+    if (forceTargetFPS_) {
+        return;
     }
 
     double recommendedDuration = activeTime * 1.10;

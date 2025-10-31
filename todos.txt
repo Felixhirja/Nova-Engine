@@ -6,7 +6,7 @@ Nova Engine - TODOs (2025-10-27)
 2) Clear IntelliSense errors
 - Re-index and fix any remaining IntelliSense diagnostics across engine/ecs/*.h|.cpp, especially ShipAssembly.cpp and headers; accept when Problems panel shows no C/C++ errors for these files.
 
-3) Attach demo assembly spec
+3) Attach demo assembly spec [DONE]
 - In EngineBootstrap or Simulation startup, create a demo entity and add ShipAssemblySpec with hull 'fighter_mk1' and minimal slot assignments; accept when ShipAssemblySystem produces ShipAssemblyMetrics for this entity.
 
 4) HUD: show assembly metrics
@@ -41,3 +41,5 @@ Nova Engine - TODOs (2025-10-27)
 
 14) Fix docs markdown lint
 - Resolve markdownlint issues flagged in actors/README.md and docs/actor_rendering_guide.md (headings, blank lines, trailing newlines); accept when linter warnings clear.
+
+15) Merge every system in System

@@ -18,12 +18,10 @@
 #include <iostream>
 #include <memory>
 
-namespace {
-
 // Initialization roadmap for bootstrap.  This mirrors the logical sequencing in
 // EngineBootstrap::Run and is exposed through InitializationSequence() so that
 // external launchers can coordinate subsystem bring-up before invoking Run().
-const std::array<EngineBootstrap::InitializationStep, 7> kInitializationSequence = {{
+static const std::array<EngineBootstrap::InitializationStep, 7> kInitializationSequence = {{
     {"Configure ECS façade", "Enable archetype façade so ActorContext uses the modern entity storage."},
     {"Bind actor context", "Populate ActorContext with entity manager, scheduler, and debug name."},
     {"Discover actor registry", "Query ActorRegistry for all statically registered actors."},
@@ -33,7 +31,7 @@ const std::array<EngineBootstrap::InitializationStep, 7> kInitializationSequence
     {"Spawn demo entities", "Instantiate sample entities to validate ECS wiring and rendering hooks."}
 }};
 
-bool RenderingBackendAvailable() {
+static bool RenderingBackendAvailable() {
 #if defined(USE_GLFW) || defined(USE_SDL)
     return true;
 #else
@@ -41,13 +39,18 @@ bool RenderingBackendAvailable() {
 #endif
 }
 
-ShipAssemblyResult BuildHudAssembly() {
+struct HudAssemblyData {
     ShipAssemblyResult result;
+    ShipAssemblySpec spec;
+};
+
+static HudAssemblyData BuildHudAssembly() {
+    HudAssemblyData data;
 
     const ShipHullBlueprint* fighterHull = ShipHullCatalog::Find("fighter_mk1");
     if (!fighterHull) {
         std::cerr << "HUD assembly: failed to locate default fighter hull blueprint" << std::endl;
-        return result;
+        return data;
     }
 
     ShipAssemblyRequest request;
@@ -84,32 +87,36 @@ ShipAssemblyResult BuildHudAssembly() {
         request.slotAssignments[slot.slotId] = componentId;
     }
 
-    result = ShipAssembler::Assemble(request);
+    // Populate the spec
+    data.spec.hullId = request.hullId;
+    data.spec.slotAssignments = request.slotAssignments;
+
+    data.result = ShipAssembler::Assemble(request);
 
     std::cout << std::fixed << std::setprecision(2);
-    if (!result.IsValid()) {
-        std::cerr << "HUD assembly: assembly produced " << result.diagnostics.errors.size() << " error(s)" << std::endl;
-        for (const auto& err : result.diagnostics.errors) {
+    if (!data.result.IsValid()) {
+        std::cerr << "HUD assembly: assembly produced " << data.result.diagnostics.errors.size() << " error(s)" << std::endl;
+        for (const auto& err : data.result.diagnostics.errors) {
             std::cerr << "  -> " << err << std::endl;
         }
     } else {
         // std::cout << "HUD assembly: "
-        //           << (result.hull ? result.hull->displayName : std::string("Unknown Hull"))
-        //           << " | Net Power " << result.NetPowerMW() << " MW"
-        //           << " | Thrust/Mass " << result.ThrustToMassRatio()
+        //           << (data.result.hull ? data.result.hull->displayName : std::string("Unknown Hull"))
+        //           << " | Net Power " << data.result.NetPowerMW() << " MW"
+        //           << " | Thrust/Mass " << data.result.ThrustToMassRatio()
         //           << std::endl;
-        if (!result.diagnostics.warnings.empty()) {
+        if (!data.result.diagnostics.warnings.empty()) {
             // std::cout << "  Warnings:" << std::endl;
-            for (const auto& warn : result.diagnostics.warnings) {
+            for (const auto& warn : data.result.diagnostics.warnings) {
                 // std::cout << "    * " << warn << std::endl;
             }
         }
     }
     // std::cout.unsetf(std::ios_base::floatfield);
-    return result;
+    return data;
 }
 
-void EnsureSpriteDirectory() {
+static void EnsureSpriteDirectory() {
     std::error_code ec;
     std::filesystem::create_directories("assets/sprites", ec);
     if (ec) {
@@ -117,7 +124,7 @@ void EnsureSpriteDirectory() {
     }
 }
 
-void WriteSpriteSheet(const std::filesystem::path& path,
+static void WriteSpriteSheet(const std::filesystem::path& path,
                       unsigned char r1, unsigned char g1, unsigned char b1,
                       unsigned char r2, unsigned char g2, unsigned char b2) {
     const int frameWidth = 16;
@@ -163,7 +170,7 @@ void WriteSpriteSheet(const std::filesystem::path& path,
     std::fclose(f);
 }
 
-void RegisterDemoEntity(EntityManager& entityManager, int textureHandle, double xPosition) {
+static Entity RegisterDemoEntity(EntityManager& entityManager, int textureHandle, double xPosition) {
     Entity e = entityManager.CreateEntity();
     auto position = std::make_shared<Position>();
     position->x = xPosition;
@@ -181,9 +188,9 @@ void RegisterDemoEntity(EntityManager& entityManager, int textureHandle, double 
     sprite->textureHandle = textureHandle;
     sprite->frame = 0;
     entityManager.AddComponent<Sprite>(e, sprite);
-}
 
-} // namespace
+    return e;
+}
 
 EngineBootstrap::Result EngineBootstrap::Run(ResourceManager& resourceManager,
                                              EntityManager& entityManager,
@@ -215,7 +222,8 @@ EngineBootstrap::Result EngineBootstrap::Run(ResourceManager& resourceManager,
         // std::cout << "  -> " << def.displayName << ": " << def.conceptSummary.elevatorPitch << std::endl;
     }
 
-    result.hudAssembly = BuildHudAssembly();
+    auto hudData = BuildHudAssembly();
+    result.hudAssembly = hudData.result;
 
     EnsureSpriteDirectory();
 
@@ -237,16 +245,31 @@ EngineBootstrap::Result EngineBootstrap::Run(ResourceManager& resourceManager,
     resourceManager.RegisterSprite(demoHandle1, spriteInfo);
     resourceManager.RegisterSprite(demoHandle2, spriteInfo);
 
-    RegisterDemoEntity(entityManager, demoHandle1, -2.0);
-    RegisterDemoEntity(entityManager, demoHandle2, 2.0);
+    // Add ShipAssemblySpec to the first demo entity
+    Entity demo1 = RegisterDemoEntity(entityManager, demoHandle1, -2.0);
+    Entity demo2 = RegisterDemoEntity(entityManager, demoHandle2, 2.0);
+
+    // Add ShipAssemblySpec to demo1
+    auto spec = std::make_shared<ShipAssemblySpec>();
+    spec->hullId = hudData.spec.hullId;
+    spec->slotAssignments = hudData.spec.slotAssignments;
+    entityManager.AddComponent<ShipAssemblySpec>(demo1, spec);
 
     result.warnings = std::move(warnings);
     return result;
 }
 
 const std::vector<EngineBootstrap::InitializationStep>& EngineBootstrap::InitializationSequence() {
-    static const std::vector<InitializationStep> steps(kInitializationSequence.begin(), kInitializationSequence.end());
-    return steps;
+    static const std::vector<EngineBootstrap::InitializationStep> sequence = {{
+        {"Configure ECS façade", "Enable archetype façade so ActorContext uses the modern entity storage."},
+        {"Bind actor context", "Populate ActorContext with entity manager, scheduler, and debug name."},
+        {"Discover actor registry", "Query ActorRegistry for all statically registered actors."},
+        {"Inspect spaceship catalog", "Ensure spaceship class definitions are loaded before HUD assembly."},
+        {"Build default HUD assembly", "Assemble a baseline ship loadout used by the HUD and sample scenes."},
+        {"Prepare sprite assets", "Create sprite directories, emit demo textures, and register sprite metadata."},
+        {"Spawn demo entities", "Instantiate sample entities to validate ECS wiring and rendering hooks."}
+    }};
+    return sequence;
 }
 
 std::vector<EngineBootstrap::SubsystemStatus> EngineBootstrap::BuildSubsystemChecklist(const BootstrapConfiguration& config) {

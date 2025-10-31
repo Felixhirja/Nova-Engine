@@ -1,7 +1,6 @@
 #pragma once
 
 #include "EntityManager.h"
-#include "EntityManagerFacade.h"
 #include "System.h"
 #include "SystemSchedulerV2.h"
 
@@ -65,13 +64,13 @@ private:
 
     template<typename SystemType>
     struct SupportsFacadeUpdate<SystemType,
-                                std::void_t<decltype(std::declval<SystemType&>().Update(std::declval<EntityManagerFacade&>(),
+                                std::void_t<decltype(std::declval<SystemType&>().Update(std::declval<ecs::EntityManagerFacade&>(),
                                                                                          std::declval<double>()))>>
         : std::true_type {};
 
     void DispatchUpdate(double dt) {
         if constexpr (SupportsFacadeUpdate<LegacySystem>::value) {
-            EntityManagerFacade facadeAdapter(facade_);
+            ecs::EntityManagerFacade facadeAdapter(facade_);
             legacySystem_->Update(facadeAdapter, dt);
         } else {
             static_assert(SupportsLegacyUpdate<LegacySystem>::value, "LegacySystemAdapter requires Update(EntityManager&, double) or Update(EntityManagerFacade&, double)");

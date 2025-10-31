@@ -1,4 +1,4 @@
-#include "ecs/EntityManagerV2.h"
+#include "ecs/EntityManager.h"
 #include "ecs/SystemSchedulerV2.h"
 #include "ecs/Components.h"
 #include <cassert>

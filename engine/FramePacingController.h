@@ -36,5 +36,6 @@ private:
     FrameStageDurations averageStageDurations_{};
     double averageFrameDuration_ = 0.0;
     std::size_t averageSampleCount_ = 0;
+    bool forceTargetFPS_ = false;
 };
 

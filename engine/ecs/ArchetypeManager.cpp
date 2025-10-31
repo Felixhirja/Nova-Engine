@@ -24,6 +24,7 @@ bool RegisterKnownComponentType(Archetype* archetype, const std::type_index& typ
     if (RegisterIfMatches<Velocity>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<Acceleration>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<PhysicsBody>(archetype, typeIndex)) return true;
+    if (RegisterIfMatches<PhysicsMaterial>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<Transform2D>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<Sprite>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<Hitbox>(archetype, typeIndex)) return true;
@@ -39,6 +40,7 @@ bool RegisterKnownComponentType(Archetype* archetype, const std::type_index& typ
     if (RegisterIfMatches<DockingStatus>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<LocomotionStateMachine>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<TargetLock>(archetype, typeIndex)) return true;
+    if (RegisterIfMatches<Projectile>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<DrawComponent>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<RigidBody>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<Force>(archetype, typeIndex)) return true;

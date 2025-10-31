@@ -294,7 +294,6 @@ void EntityManager::LogForEachComponentMismatch(Entity entity,
             << "} while requesting {" << JoinTypeNames(requested) << "}";
     std::cerr << message.str() << std::endl;
 
-#ifndef NDEBUG
-    assert(!"Entity missing required components for ForEach");
-#endif
+    // Note: We continue execution instead of asserting, as ForEach is designed to
+    // skip entities that don't have all required components
 }

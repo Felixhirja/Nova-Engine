@@ -4,38 +4,38 @@
 #include <memory>
 
 // Mock systems with dependencies
-class PhysicsSystem : public System {
+class MockPhysicsSystem : public System {
 public:
     void Update(EntityManager& entityManager, double dt) override {
         // Simulate physics update
         updated = true;
     }
-    const char* GetName() const override { return "PhysicsSystem"; }
+    const char* GetName() const override { return "MockPhysicsSystem"; }
     bool updated = false;
 };
 
 class AISystem : public System {
 public:
-    AISystem(PhysicsSystem& physics) : physics_(physics) {}
+    AISystem(MockPhysicsSystem& physics) : physics_(physics) {}
     void Update(EntityManager& entityManager, double dt) override {
         if (!physics_.updated) {
-            std::cerr << "AISystem updated before PhysicsSystem" << std::endl;
+            std::cerr << "AISystem updated before MockPhysicsSystem" << std::endl;
             orderError = true;
         }
         updated = true;
     }
     std::vector<ecs::SystemDependency> GetSystemDependencies() const override {
-        return {ecs::SystemDependency::Requires<PhysicsSystem>()};
+        return {ecs::SystemDependency::Requires<MockPhysicsSystem>()};
     }
     const char* GetName() const override { return "AISystem"; }
-    PhysicsSystem& physics_;
+    MockPhysicsSystem& physics_;
     bool updated = false;
     bool orderError = false;
 };
 
 class RenderSystem : public System {
 public:
-    RenderSystem(PhysicsSystem& physics, AISystem& ai) : physics_(physics), ai_(ai) {}
+    RenderSystem(MockPhysicsSystem& physics, AISystem& ai) : physics_(physics), ai_(ai) {}
     void Update(EntityManager& entityManager, double dt) override {
         if (!physics_.updated || !ai_.updated) {
             std::cerr << "RenderSystem updated before dependencies" << std::endl;
@@ -44,14 +44,14 @@ public:
         updated = true;
     }
     std::vector<ecs::SystemDependency> GetSystemDependencies() const override {
-        return {ecs::SystemDependency::Requires<PhysicsSystem>(),
+        return {ecs::SystemDependency::Requires<MockPhysicsSystem>(),
                 ecs::SystemDependency::Requires<AISystem>()};
     }
     ecs::UpdatePhase GetUpdatePhase() const override {
         return ecs::UpdatePhase::RenderPrep;
     }
     const char* GetName() const override { return "RenderSystem"; }
-    PhysicsSystem& physics_;
+    MockPhysicsSystem& physics_;
     AISystem& ai_;
     bool updated = false;
     bool orderError = false;
@@ -62,7 +62,7 @@ bool TestDependencyOrder() {
     EntityManager em;
 
     // Register in dependency order
-    PhysicsSystem& physics = manager.RegisterSystem<PhysicsSystem>();
+    MockPhysicsSystem& physics = manager.RegisterSystem<MockPhysicsSystem>();
     AISystem& ai = manager.RegisterSystem<AISystem>(physics);
     RenderSystem& render = manager.RegisterSystem<RenderSystem>(physics, ai);
 
@@ -108,7 +108,7 @@ bool TestComplexGraph() {
     EntityManager em;
 
     // Simulate a more complex graph
-    PhysicsSystem& physics = manager.RegisterSystem<PhysicsSystem>();
+    MockPhysicsSystem& physics = manager.RegisterSystem<MockPhysicsSystem>();
     AISystem& ai = manager.RegisterSystem<AISystem>(physics);
     RenderSystem& render = manager.RegisterSystem<RenderSystem>(physics, ai);
 

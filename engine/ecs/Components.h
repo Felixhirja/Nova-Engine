@@ -1,6 +1,17 @@
 #pragma once
+
 #include "Component.h"
 #include "EntityHandle.h"
+
+using Entity = int;
+
+// ============================================================================
+// COMPONENT SYSTEM DEFINITIONS
+// ============================================================================
+// This file contains all ECS component definitions for the Nova Engine.
+// Components are organized into logical categories for clarity.
+// ============================================================================
+
 #include "../CameraSystem.h"
 #include <cmath>
 #include <deque>
@@ -15,315 +26,63 @@
 #include <variant>
 #include <vector>
 
+// ============================================================================
+// CORE COMPONENTS
+// ============================================================================
+
+/**
+ * Position: 3D position in world space
+ */
 struct Position : public Component {
     double x = 0.0;
     double y = 0.0;
     double z = 0.0;
 };
 
+/**
+ * Velocity: Linear velocity vector
+ */
 struct Velocity : public Component {
     double vx = 0.0;
     double vy = 0.0;
     double vz = 0.0;
 };
 
+/**
+ * Sprite: 2D sprite rendering component
+ */
 struct Sprite : public Component {
     int textureHandle = 0;
     int layer = 0;
     int frame = 0;
 };
 
+/**
+ * Acceleration: Linear acceleration vector
+ */
 struct Acceleration : public Component {
     double ax = 0.0;
     double ay = 0.0;
     double az = 0.0;
 };
 
-struct Transform2D : public Component {
-    double x = 0.0;
-    double y = 0.0;
-    double rotation = 0.0;
-    double scaleX = 1.0;
-    double scaleY = 1.0;
-};
-
-struct PhysicsBody : public Component {
-    double mass = 1.0;
-    double drag = 0.0;
-    bool affectedByGravity = true;
-};
-
-struct PhysicsMaterial : public Component {
-    double staticFriction = 0.6;
-    double dynamicFriction = 0.4;
-    double restitution = 0.1;
-    double density = 1.0;
-};
-
-struct Hitbox : public Component {
-    double width = 1.0;
-    double height = 1.0;
-};
-
-struct AnimationState : public Component {
-    int currentFrame = 0;
-    double frameTimer = 0.0;
-    double frameDuration = 0.1;
-    bool looping = true;
-    int startFrame = 0;
-    int endFrame = 0;
-    bool playing = true;
-    bool pingPong = false;
-    int playbackDirection = 1;
-};
-
+/**
+ * Name: Human-readable identifier for entities
+ */
 struct Name : public Component {
     std::string value;
 };
 
+/**
+ * Faction: Faction affiliation for multiplayer/gameplay
+ */
 struct Faction : public Component {
     int id = 0;
 };
 
-struct PlayerController : public Component {
-    bool moveLeft = false;
-    bool moveRight = false;
-    bool moveForward = false;
-    bool moveBackward = false;
-    bool moveUp = false;
-    bool moveDown = false;
-    bool strafeLeft = false;
-    bool strafeRight = false;
-    bool jumpRequested = false;
-    bool sprint = false;
-    bool crouch = false;
-    bool slide = false;
-    bool boost = false;
-    bool thrustMode = false;
-    double cameraYaw = camera_defaults::kDefaultYawRadians;
-    double facingYaw = 0.0;  // Player's facing direction for camera following
-};
-
-enum class LocomotionSurfaceType {
-    Unknown,
-    PlanetaryGround,
-    Spacewalk,
-    ZeroGInterior
-};
-
-struct SurfaceMovementProfile {
-    double accelerationMultiplier = 1.0;
-    double decelerationMultiplier = 1.0;
-    double maxSpeedMultiplier = 1.0;
-    double jumpImpulseMultiplier = 1.0;
-    double gravityMultiplier = 1.0;
-    double frictionMultiplier = 1.0;
-};
-
-struct HazardModifier {
-    double speedMultiplier = 1.0;
-    double accelerationMultiplier = 1.0;
-    double gravityMultiplier = 1.0;
-    double staminaDrainRate = 0.0;
-    double heatGainRate = 0.0;
-};
-
-struct EnvironmentSurface : public Component {
-    LocomotionSurfaceType surfaceType = LocomotionSurfaceType::PlanetaryGround;
-    bool overridesProfile = false;
-    SurfaceMovementProfile movementProfile;
-    bool isHazard = false;
-    HazardModifier hazardModifier;
-};
-
-struct MovementParameters : public Component {
-    double strafeAcceleration = 4.0;
-    double forwardAcceleration = 4.0;
-    double backwardAcceleration = 4.0;
-    double strafeDeceleration = 4.0;
-    double forwardDeceleration = 4.0;
-    double backwardDeceleration = 4.0;
-    double strafeMaxSpeed = 5.0;
-    double forwardMaxSpeed = 5.0;
-    double backwardMaxSpeed = 5.0;
-    double friction = 0.0;
-};
-
-struct MovementBounds : public Component {
-    double minX = -std::numeric_limits<double>::infinity();
-    double maxX = std::numeric_limits<double>::infinity();
-    double minY = -std::numeric_limits<double>::infinity();
-    double maxY = std::numeric_limits<double>::infinity();
-    double minZ = -std::numeric_limits<double>::infinity();
-    double maxZ = std::numeric_limits<double>::infinity();
-    bool clampX = false;
-    bool clampY = false;
-    bool clampZ = false;
-};
-
-struct PlayerPhysics : public Component {
-    bool enableGravity = true;
-    bool thrustMode = false;
-    bool isGrounded = true;
-    double gravity = -9.8;
-    double jumpImpulse = 6.0;
-    double maxAscentSpeed = 10.0;
-    double maxDescentSpeed = -20.0;
-    double thrustAcceleration = 8.0;
-    double thrustDamping = 6.0;
-};
-
-struct PlayerVitals : public Component {
-    double health = 100.0;
-    double maxHealth = 100.0;
-    double shields = 0.0;
-    double maxShields = 0.0;
-    double energy = 0.0;
-    double maxEnergy = 0.0;
-    double temperature = 36.0;
-    double fatigue = 0.0;
-};
-
-struct PlayerInventory : public Component {
-    struct ItemSlot {
-        std::string id;
-        std::string displayName;
-        double massTons = 0.0;
-        double volumeM3 = 0.0;
-        int quantity = 0;
-        bool equipped = false;
-        bool questItem = false;
-    };
-
-    double carriedMassTons = 0.0;
-    double carriedVolumeM3 = 0.0;
-    double maxMassTons = 120.0;
-    double maxVolumeM3 = 4.0;
-    std::vector<ItemSlot> items;
-};
-
-struct PlayerProgression : public Component {
-    double experience = 0.0;
-    double lifetimeExperience = 0.0;
-    int level = 1;
-    int skillPoints = 0;
-    int blueprintCredits = 0;
-    std::unordered_map<std::string, int> reputationByFaction;
-    std::unordered_set<std::string> unlockedSkillNodes;
-};
-
-struct DockingStatus : public Component {
-    bool isDocked = false;
-    std::string portId;
-    double alignmentScore = 0.0;
-    double lastContactTime = 0.0;
-};
-
-struct LocomotionStateMachine : public Component {
-    enum class State {
-        Idle,
-        Walk,
-        Sprint,
-        Airborne,
-        Landing,
-        Crouch,
-        Slide
-    };
-
-    struct Weights {
-        double idle = 1.0;
-        double walk = 0.0;
-        double sprint = 0.0;
-        double airborne = 0.0;
-        double landing = 0.0;
-        double crouch = 0.0;
-        double slide = 0.0;
-    };
-
-    State currentState = State::Idle;
-    State previousState = State::Idle;
-    Weights blendWeights;
-    double timeInState = 0.0;
-    double landingTimer = 0.0;
-    double landingDuration = 0.25;
-    double blendSmoothing = 8.0;
-    double idleSpeedThreshold = 0.2;
-    double walkSpeedThreshold = 1.5;
-    double sprintSpeedThreshold = 4.5;
-    double airborneVerticalSpeedThreshold = 0.2;
-    bool wasGrounded = true;
-    double crouchCameraOffset = -0.4;
-    double slideCameraOffset = -0.6;
-    double defaultCameraOffset = 0.0;
-    double cameraSmoothing = 12.0;
-    double currentCameraOffset = 0.0;
-    double stamina = 100.0;
-    double maxStamina = 100.0;
-    double staminaRegenRate = 25.0;
-    double sprintStaminaCost = 35.0;
-    double sprintAccelerationMultiplier = 1.2;
-    double sprintSpeedMultiplier = 1.35;
-    double crouchSpeedMultiplier = 0.4;
-    double crouchAccelerationMultiplier = 0.35;
-    double slideSpeedMultiplier = 1.15;
-    double slideDecelerationMultiplier = 0.45;
-    double slideDuration = 0.75;
-    double slideCooldown = 0.65;
-    double slideSpeedThreshold = 3.0;
-    double slideTimer = 0.0;
-    double slideCooldownTimer = 0.0;
-    double airborneAccelerationMultiplier = 0.5;
-    double boostDuration = 0.35;
-    double boostTimer = 0.0;
-    double boostSpeedMultiplier = 1.4;
-    double boostAccelerationMultiplier = 1.35;
-    double heat = 0.0;
-    double maxHeat = 100.0;
-    double heatDissipationRate = 35.0;
-    double boostHeatCostPerSecond = 45.0;
-    LocomotionSurfaceType activeSurfaceType = LocomotionSurfaceType::PlanetaryGround;
-    LocomotionSurfaceType defaultSurfaceType = LocomotionSurfaceType::PlanetaryGround;
-    SurfaceMovementProfile activeSurfaceProfile;
-    HazardModifier activeHazardModifier;
-    std::unordered_map<LocomotionSurfaceType, SurfaceMovementProfile> surfaceProfiles = {
-        {LocomotionSurfaceType::PlanetaryGround, SurfaceMovementProfile{}},
-        {LocomotionSurfaceType::Spacewalk, SurfaceMovementProfile{0.55, 0.4, 0.75, 0.35, 0.2, 0.1}},
-        {LocomotionSurfaceType::ZeroGInterior, SurfaceMovementProfile{0.7, 0.65, 0.85, 0.15, 0.15, 0.25}},
-    };
-    HazardModifier hazardBaseline;
-    double runtimeAccelerationMultiplier = 1.0;
-    double runtimeDecelerationMultiplier = 1.0;
-    double runtimeMaxSpeedMultiplier = 1.0;
-    double runtimeGravityMultiplier = 1.0;
-    double runtimeFrictionMultiplier = 1.0;
-    double runtimeJumpImpulseMultiplier = 1.0;
-    bool boostActive = false;
-    double baseGravity = -9.8;
-    bool baseGravityInitialized = false;
-    double baseJumpImpulse = 6.0;
-    bool baseJumpInitialized = false;
-};
-
-struct TargetLock : public Component {
-    unsigned int targetEntityId = 0;  // Entity ID to lock onto (0 = no target)
-    bool isLocked = false;            // Whether target lock is active
-    double offsetX = 0.0;             // Camera offset from target
-    double offsetY = 5.0;             // Camera offset from target
-    double offsetZ = 10.0;            // Camera offset from target
-    double followDistance = 15.0;     // Distance to maintain from target
-    double followHeight = 5.0;        // Height above target
-};
-
-struct Projectile : public Component {
-    int ownerEntity = 0;
-    std::string weaponSlot;
-};
-
-struct DamagePayload : public Component {
-    double amount = 0.0;
-    int sourceEntity = 0;
-};
-
+/**
+ * Lifetime: Component for entities that should be destroyed after time
+ */
 struct Lifetime : public Component {
     double remaining = 0.0;
 };
@@ -343,17 +102,17 @@ struct RigidBody : public Component {
     double friction = 0.5;                // Surface friction (0 = ice, 1 = rubber)
     double linearDamping = 0.01;          // Air resistance for velocity
     double angularDamping = 0.01;         // Air resistance for rotation
-    
+
     // Angular velocity (for rotation)
     double angularVelocityX = 0.0;
     double angularVelocityY = 0.0;
     double angularVelocityZ = 0.0;
-    
+
     // Orientation (Euler angles in radians)
     double rotationX = 0.0;
     double rotationY = 0.0;
     double rotationZ = 0.0;
-    
+
     // Physics state flags
     bool isKinematic = false;             // If true, not affected by forces/collisions
     bool useGravity = true;               // Whether affected by gravity
@@ -363,21 +122,21 @@ struct RigidBody : public Component {
     bool freezeRotationX = false;         // Lock X-axis rotation
     bool freezeRotationY = false;         // Lock Y-axis rotation
     bool freezeRotationZ = false;         // Lock Z-axis rotation
-    
+
     // Center of mass offset from position
     double centerOfMassX = 0.0;
     double centerOfMassY = 0.0;
     double centerOfMassZ = 0.0;
-    
+
     RigidBody() {
         UpdateInverseMass();
     }
-    
+
     void SetMass(double m) {
         mass = m;
         UpdateInverseMass();
     }
-    
+
     void UpdateInverseMass() {
         inverseMass = (mass > 0.0 && !isKinematic) ? (1.0 / mass) : 0.0;
     }
@@ -390,12 +149,12 @@ struct Force : public Component {
     double fx = 0.0;  // Force X component (Newtons)
     double fy = 0.0;  // Force Y component
     double fz = 0.0;  // Force Z component
-    
+
     // Force application point (relative to object center)
     double pointX = 0.0;
     double pointY = 0.0;
     double pointZ = 0.0;
-    
+
     // Force mode
     enum class Mode {
         Force,          // Continuous force (F = ma)
@@ -404,7 +163,7 @@ struct Force : public Component {
         VelocityChange  // Direct velocity change (applied once, ignores mass)
     };
     Mode mode = Mode::Force;
-    
+
     // Lifetime (-1 = permanent, 0 = applied and cleared, >0 = duration in seconds)
     double lifetime = -1.0;
 
@@ -441,22 +200,22 @@ struct Collider : public Component {
         Cylinder,
         Mesh  // For future complex collision meshes
     };
-    
+
     Shape shape = Shape::Box;
-    
+
     // Offset from entity position
     double offsetX = 0.0;
     double offsetY = 0.0;
     double offsetZ = 0.0;
-    
+
     // Collision layers (bitmask for filtering)
     unsigned int collisionLayer = 1;      // Which layer this collider is on
     unsigned int collisionMask = 0xFFFFFFFF;  // Which layers it can collide with
-    
+
     // Flags
     bool isTrigger = false;               // If true, generates events but no collision response
     bool isEnabled = true;                // Can be disabled without removing component
-    
+
     // Material properties (can override RigidBody values)
     double materialRestitution = -1.0;    // -1 = use RigidBody value
     double materialFriction = -1.0;       // -1 = use RigidBody value
@@ -469,7 +228,7 @@ struct BoxCollider : public Collider {
     double width = 1.0;   // X extent
     double height = 1.0;  // Y extent
     double depth = 1.0;   // Z extent
-    
+
     BoxCollider() {
         shape = Shape::Box;
     }
@@ -480,7 +239,7 @@ struct BoxCollider : public Collider {
  */
 struct SphereCollider : public Collider {
     double radius = 0.5;
-    
+
     SphereCollider() {
         shape = Shape::Sphere;
     }
@@ -492,14 +251,14 @@ struct SphereCollider : public Collider {
 struct CapsuleCollider : public Collider {
     double radius = 0.5;
     double height = 2.0;  // Total height including hemispheres
-    
+
     enum class Direction {
         X,  // Capsule aligned along X-axis
         Y,  // Capsule aligned along Y-axis (default for characters)
         Z   // Capsule aligned along Z-axis
     };
     Direction direction = Direction::Y;
-    
+
     CapsuleCollider() {
         shape = Shape::Capsule;
     }
@@ -539,7 +298,7 @@ struct GravitySource : public Component {
     double strength = 9.8;             // Gravitational acceleration at 1 unit distance
     double radius = 100.0;             // Maximum influence radius (-1 = infinite)
     bool isUniform = false;            // If true, constant gravity (like Earth's surface)
-    
+
     // Direction for uniform gravity (normalized)
     double directionX = 0.0;
     double directionY = 0.0;
@@ -630,29 +389,6 @@ struct SpaceshipFlightModel : public Component {
     double lastAngularAccelerationZ = 0.0;
 };
 
-// =========================================================================
-// SPACESHIP MARKER/DESCRIPTOR
-// =========================================================================
-/**
- * SpaceshipTag: Minimal descriptor to mark an entity as a spaceship.
- * This component carries lightweight identity metadata without implying
- * or attaching any physics/rendering/AI components. Systems may opt-in
- * to attach additional components based on this descriptor.
- */
-struct SpaceshipTag : public Component {
-    // Opaque class identifier (e.g., catalog key). Optional.
-    std::string classId;
-
-    // Human-friendly display name. Optional.
-    std::string displayName;
-
-    // Which default loadout index was intended (-1 = unspecified)
-    int loadoutIndex = -1;
-
-    // True if controlled by player; false for AI or neutral.
-    bool playerControlled = false;
-};
-
 /**
  * CharacterController: Specialized physics for player/NPC characters
  */
@@ -662,19 +398,19 @@ struct CharacterController : public Component {
     double stepOffset = 0.3;           // Maximum step height
     double slopeLimit = 45.0;          // Maximum walkable slope (degrees)
     double skinWidth = 0.08;           // Collision detection margin
-    
+
     // Movement
     double moveSpeed = 5.0;
     double sprintMultiplier = 1.5;
     double crouchMultiplier = 0.5;
     double jumpHeight = 1.5;
     double gravity = 20.0;
-    
+
     // State
     bool isGrounded = false;
     bool isCrouching = false;
     double verticalVelocity = 0.0;
-    
+
     // Ground detection
     double groundCheckDistance = 0.1;
     unsigned int groundLayer = 1;
@@ -690,203 +426,32 @@ struct Joint : public Component {
         Spring,      // Spring-damper connection
         Distance     // Fixed distance constraint
     };
-    
+
     Type type = Type::Fixed;
     unsigned int connectedEntity = 0;  // Other entity in joint (0 = world)
-    
+
     // Connection points (relative to each entity)
     double anchorX = 0.0;
     double anchorY = 0.0;
     double anchorZ = 0.0;
-    
+
     double connectedAnchorX = 0.0;
     double connectedAnchorY = 0.0;
     double connectedAnchorZ = 0.0;
-    
+
     // Type-specific parameters
     double springStrength = 100.0;     // For spring joints
     double springDamping = 10.0;       // For spring joints
     double maxDistance = 1.0;          // For distance joints
     double minDistance = 0.0;          // For distance joints
-    
+
     bool breakable = false;
     double breakForce = 1000.0;        // Force required to break joint
 };
 
-/**
- * Navigation Components for AI and pathfinding
- */
-
-// Basic 3D point/vector for spatial calculations
-struct Point3D {
-    double x, y, z;
-    Point3D(double x = 0.0, double y = 0.0, double z = 0.0) : x(x), y(y), z(z) {}
-
-    Point3D operator-(const Point3D& other) const {
-        return Point3D(x - other.x, y - other.y, z - other.z);
-    }
-
-    double distanceTo(const Point3D& other) const {
-        double dx = x - other.x;
-        double dy = y - other.y;
-        double dz = z - other.z;
-        return std::sqrt(dx*dx + dy*dy + dz*dz);
-    }
-};
-
-struct PatrolRoute : public Component {
-    std::vector<Point3D> waypoints;
-    size_t currentWaypointIndex = 0;
-    float arrivalThreshold = 10.0f; // Distance to consider waypoint reached
-};
-
-struct NavigationState : public Component {
-    Point3D targetPosition;
-    float throttle = 0.0f;
-    double yaw = 0.0;
-    double pitch = 0.0;
-    bool hasTarget = false;
-};
-
-struct NavigationGrid : public Component {
-    int width = 0;
-    int height = 0;
-    int layers = 1;
-    double cellSize = 1.0;
-    Point3D origin;
-    std::vector<uint8_t> walkableMask;
-
-    bool IsWalkable(int x, int y, int layer = 0) const {
-        if (x < 0 || y < 0 || layer < 0) return false;
-        if (x >= width || y >= height || layer >= layers) return false;
-        size_t index = static_cast<size_t>(layer) * static_cast<size_t>(width * height)
-                     + static_cast<size_t>(y * width + x);
-        if (index >= walkableMask.size()) return false;
-        return walkableMask[index] != 0;
-    }
-};
-
-enum class AIState {
-    Idle,
-    Patrolling,
-    Trading,
-    Hunting,
-    Fleeing,
-    Docked
-};
-
-struct AIBehavior : public Component {
-    AIState currentState = AIState::Idle;
-    float stateTimer = 0.0f;
-    float decisionTimer = 0.0f;
-    ecs::EntityHandle targetEntity = ecs::EntityHandle::Null();
-    float aggressionLevel = 0.5f; // 0.0 = peaceful, 1.0 = aggressive
-    float cautionLevel = 0.5f;    // 0.0 = reckless, 1.0 = cautious
-};
-
-struct BehaviorTreeHandle : public Component {
-    std::string treeId;
-    bool autoActivate = true;
-};
-
-struct MissionObjective : public Component {
-    enum class State {
-        Inactive,
-        Active,
-        Completed,
-        Failed
-    };
-
-    struct Trigger {
-        std::string id;
-        std::string description;
-        double threshold = 0.0;
-    };
-
-    std::string id;
-    std::string description;
-    State state = State::Inactive;
-    std::vector<Trigger> successConditions;
-    std::vector<Trigger> failureConditions;
-};
-
-struct MissionState : public Component {
-    std::string missionId;
-    std::deque<std::string> objectiveOrder;
-    std::unordered_map<std::string, MissionObjective::State> objectiveStates;
-    bool failed = false;
-    bool completed = false;
-};
-
-struct StatusEffect : public Component {
-    std::string id;
-    double magnitude = 0.0;
-    double duration = 0.0;
-    double elapsed = 0.0;
-    bool stacks = false;
-};
-
-struct ScriptedTrigger : public Component {
-    std::string id;
-    std::string description;
-    bool oneShot = true;
-    bool active = true;
-    std::function<bool(const Position&)> condition;
-};
-
-struct DamageEvent {
-    double amount = 0.0;
-    unsigned int sourceEntity = 0;
-    std::string damageType;
-};
-
-struct StatusEffectEvent {
-    std::string effectId;
-    double magnitude = 0.0;
-    double duration = 0.0;
-};
-
-struct GameplayEvent : public Component {
-    enum class Type {
-        Damage,
-        StatusEffectApplied,
-        TriggerActivated
-    } type = Type::Damage;
-
-    std::variant<std::monostate, DamageEvent, StatusEffectEvent, std::string> payload;
-    double timestamp = 0.0;
-};
-
-struct GameplayEventBuffer : public Component {
-    std::deque<GameplayEvent> events;
-    double lastDispatchTime = 0.0;
-
-    void Push(const GameplayEvent& event) {
-        events.push_back(event);
-    }
-
-    std::vector<GameplayEvent> ConsumeAll() {
-        std::vector<GameplayEvent> result(events.begin(), events.end());
-        events.clear();
-        return result;
-    }
-};
-
-struct DeterministicRandomSeed : public Component {
-    uint64_t baseSeed = 0u;
-    uint64_t entitySeed = 0u;
-    std::mt19937_64 generator{0u};
-
-    void Reseed(uint64_t newSeed) {
-        entitySeed = newSeed;
-        generator.seed(newSeed);
-    }
-};
-
-struct ReplayBookmark : public Component {
-    std::string label;
-    size_t frameIndex = 0u;
-};
+// ============================================================================
+// RENDERING COMPONENTS
+// ============================================================================
 
 /**
  * DrawComponent: Controls how an actor is rendered visually
@@ -1019,9 +584,542 @@ struct DrawComponent : public Component {
     }
 };
 
-// =============================================================================
+// ============================================================================
+// GAMEPLAY COMPONENTS
+// ============================================================================
+
+/**
+ * Transform2D: 2D transformation for sprites and UI elements
+ */
+struct Transform2D : public Component {
+    double x = 0.0;
+    double y = 0.0;
+    double rotation = 0.0;
+    double scaleX = 1.0;
+    double scaleY = 1.0;
+};
+
+/**
+ * PhysicsBody: Legacy physics body (being phased out)
+ */
+struct PhysicsBody : public Component {
+    double mass = 1.0;
+    double drag = 0.0;
+    bool affectedByGravity = true;
+};
+
+/**
+ * PhysicsMaterial: Material properties for physics interactions
+ */
+struct PhysicsMaterial : public Component {
+    double staticFriction = 0.6;
+    double dynamicFriction = 0.4;
+    double restitution = 0.1;
+    double density = 1.0;
+};
+
+/**
+ * Hitbox: Simple collision box for 2D physics
+ */
+struct Hitbox : public Component {
+    double width = 1.0;
+    double height = 1.0;
+};
+
+/**
+ * AnimationState: Animation controller for sprites
+ */
+struct AnimationState : public Component {
+    int currentFrame = 0;
+    double frameTimer = 0.0;
+    double frameDuration = 0.1;
+    bool looping = true;
+    int startFrame = 0;
+    int endFrame = 0;
+    bool playing = true;
+    bool pingPong = false;
+    int playbackDirection = 1;
+};
+
+/**
+ * PlayerController: Input state for player character
+ */
+struct PlayerController : public Component {
+    bool moveLeft = false;
+    bool moveRight = false;
+    bool moveForward = false;
+    bool moveBackward = false;
+    bool moveUp = false;
+    bool moveDown = false;
+    bool strafeLeft = false;
+    bool strafeRight = false;
+    bool jumpRequested = false;
+    bool sprint = false;
+    bool crouch = false;
+    bool slide = false;
+    bool boost = false;
+    bool thrustMode = false;
+    double cameraYaw = 0.0;  // Will be initialized from camera defaults
+    double facingYaw = 0.0;  // Player's facing direction for camera following
+};
+
+/**
+ * TargetLock: Camera targeting system
+ */
+struct TargetLock : public Component {
+    unsigned int targetEntityId = 0;  // Entity ID to lock onto (0 = no target)
+    bool isLocked = false;            // Whether target lock is active
+    double offsetX = 0.0;             // Camera offset from target
+    double offsetY = 5.0;             // Camera offset from target
+    double offsetZ = 10.0;            // Camera offset from target
+    double followDistance = 15.0;     // Distance to maintain from target
+    double followHeight = 5.0;        // Height above target
+};
+
+/**
+ * Projectile: Basic projectile component
+ */
+struct Projectile : public Component {
+    int ownerEntity = 0;
+    std::string weaponSlot;
+};
+
+/**
+ * DamagePayload: Damage dealing component
+ */
+struct DamagePayload : public Component {
+    double amount = 0.0;
+    int sourceEntity = 0;
+};
+
+/**
+ * DockingStatus: Docking state for ships
+ */
+struct DockingStatus : public Component {
+    bool isDocked = false;
+    std::string portId;
+    double alignmentScore = 0.0;
+    double lastContactTime = 0.0;
+};
+
+// ============================================================================
+// AI AND NAVIGATION COMPONENTS
+// ============================================================================
+
+enum class AIState {
+    Idle,
+    Patrolling,
+    Trading,
+    Hunting,
+    Fleeing,
+    Docked
+};
+
+/**
+ * Basic 3D point/vector for spatial calculations
+ */
+struct Point3D {
+    double x, y, z;
+    Point3D(double x = 0.0, double y = 0.0, double z = 0.0) : x(x), y(y), z(z) {}
+
+    Point3D operator-(const Point3D& other) const {
+        return Point3D(x - other.x, y - other.y, z - other.z);
+    }
+
+    double distanceTo(const Point3D& other) const {
+        double dx = x - other.x;
+        double dy = y - other.y;
+        double dz = z - other.z;
+        return std::sqrt(dx*dx + dy*dy + dz*dz);
+    }
+};
+
+/**
+ * PatrolRoute: AI patrol waypoints
+ */
+struct PatrolRoute : public Component {
+    std::vector<Point3D> waypoints;
+    size_t currentWaypointIndex = 0;
+    float arrivalThreshold = 10.0f; // Distance to consider waypoint reached
+};
+
+/**
+ * NavigationState: AI navigation target
+ */
+struct NavigationState : public Component {
+    Point3D targetPosition;
+    float throttle = 0.0f;
+    double yaw = 0.0;
+    double pitch = 0.0;
+    bool hasTarget = false;
+};
+
+/**
+ * NavigationGrid: 3D navigation grid for pathfinding
+ */
+struct NavigationGrid : public Component {
+    int width = 0;
+    int height = 0;
+    int layers = 1;
+    double cellSize = 1.0;
+    Point3D origin;
+    std::vector<uint8_t> walkableMask;
+
+    bool IsWalkable(int x, int y, int layer = 0) const {
+        if (x < 0 || y < 0 || layer < 0) return false;
+        if (x >= width || y >= height || layer >= layers) return false;
+        size_t index = static_cast<size_t>(layer) * static_cast<size_t>(width * height)
+                     + static_cast<size_t>(y * width + x);
+        if (index >= walkableMask.size()) return false;
+        return walkableMask[index] != 0;
+    }
+};
+
+/**
+ * AIBehavior: AI state and behavior configuration
+ */
+struct AIBehavior : public Component {
+    AIState currentState = AIState::Idle;
+    float stateTimer = 0.0f;
+    float decisionTimer = 0.0f;
+    ecs::EntityHandle targetEntity = ecs::EntityHandle::Null();
+    float aggressionLevel = 0.5f; // 0.0 = peaceful, 1.0 = aggressive
+    float cautionLevel = 0.5f;    // 0.0 = reckless, 1.0 = cautious
+};
+
+/**
+ * BehaviorTreeHandle: Reference to behavior tree
+ */
+struct BehaviorTreeHandle : public Component {
+    std::string treeId;
+    bool autoActivate = true;
+};
+
+/**
+ * MissionObjective: Mission objective state
+ */
+struct MissionObjective : public Component {
+    enum class State {
+        Inactive,
+        Active,
+        Completed,
+        Failed
+    };
+
+    struct Trigger {
+        std::string id;
+        std::string description;
+        double threshold = 0.0;
+    };
+
+    std::string id;
+    std::string description;
+    State state = State::Inactive;
+    std::vector<Trigger> successConditions;
+    std::vector<Trigger> failureConditions;
+};
+
+/**
+ * MissionState: Overall mission state
+ */
+struct MissionState : public Component {
+    std::string missionId;
+    std::deque<std::string> objectiveOrder;
+    std::unordered_map<std::string, MissionObjective::State> objectiveStates;
+    bool failed = false;
+    bool completed = false;
+};
+
+/**
+ * StatusEffect: Temporary status effects
+ */
+struct StatusEffect : public Component {
+    std::string id;
+    double magnitude = 0.0;
+    double duration = 0.0;
+    double elapsed = 0.0;
+    bool stacks = false;
+};
+
+/**
+ * ScriptedTrigger: Event triggers
+ */
+struct ScriptedTrigger : public Component {
+    std::string id;
+    std::string description;
+    bool oneShot = true;
+    bool active = true;
+    std::function<bool(const Position&)> condition;
+};
+
+/**
+ * DamageEvent: Damage event data
+ */
+struct DamageEvent {
+    double amount = 0.0;
+    unsigned int sourceEntity = 0;
+    std::string damageType;
+};
+
+/**
+ * StatusEffectEvent: Status effect event data
+ */
+struct StatusEffectEvent {
+    std::string effectId;
+    double magnitude = 0.0;
+    double duration = 0.0;
+};
+
+/**
+ * GameplayEvent: Generic gameplay event
+ */
+struct GameplayEvent : public Component {
+    enum class Type {
+        Damage,
+        StatusEffectApplied,
+        TriggerActivated
+    } type = Type::Damage;
+
+    std::variant<std::monostate, DamageEvent, StatusEffectEvent, std::string> payload;
+    double timestamp = 0.0;
+};
+
+/**
+ * GameplayEventBuffer: Event queue for gameplay systems
+ */
+struct GameplayEventBuffer : public Component {
+    std::deque<GameplayEvent> events;
+    double lastDispatchTime = 0.0;
+
+    void Push(const GameplayEvent& event) {
+        events.push_back(event);
+    }
+
+    std::vector<GameplayEvent> ConsumeAll() {
+        std::vector<GameplayEvent> result(events.begin(), events.end());
+        events.clear();
+        return result;
+    }
+};
+
+/**
+ * DeterministicRandomSeed: Seeded random number generation
+ */
+struct DeterministicRandomSeed : public Component {
+    uint64_t baseSeed = 0u;
+    uint64_t entitySeed = 0u;
+    std::mt19937_64 generator{0u};
+
+    void Reseed(uint64_t newSeed) {
+        entitySeed = newSeed;
+        generator.seed(newSeed);
+    }
+};
+
+/**
+ * ReplayBookmark: Replay system bookmarks
+ */
+struct ReplayBookmark : public Component {
+    std::string label;
+    size_t frameIndex = 0u;
+};
+
+struct MovementParameters : public Component {
+    double strafeAcceleration = 4.0;
+    double forwardAcceleration = 4.0;
+    double backwardAcceleration = 4.0;
+    double strafeDeceleration = 4.0;
+    double forwardDeceleration = 4.0;
+    double backwardDeceleration = 4.0;
+    double strafeMaxSpeed = 5.0;
+    double forwardMaxSpeed = 5.0;
+    double backwardMaxSpeed = 5.0;
+    double friction = 0.0;
+};
+
+struct MovementBounds : public Component {
+    double minX = -std::numeric_limits<double>::infinity();
+    double maxX = std::numeric_limits<double>::infinity();
+    double minY = -std::numeric_limits<double>::infinity();
+    double maxY = std::numeric_limits<double>::infinity();
+    double minZ = -std::numeric_limits<double>::infinity();
+    double maxZ = std::numeric_limits<double>::infinity();
+    bool clampX = false;
+    bool clampY = false;
+    bool clampZ = false;
+};
+
+struct PlayerPhysics : public Component {
+    bool enableGravity = true;
+    bool thrustMode = false;
+    bool isGrounded = true;
+    double gravity = -9.8;
+    double jumpImpulse = 6.0;
+    double maxAscentSpeed = 10.0;
+    double maxDescentSpeed = -20.0;
+    double thrustAcceleration = 8.0;
+    double thrustDamping = 6.0;
+};
+
+struct PlayerVitals : public Component {
+    double health = 100.0;
+    double maxHealth = 100.0;
+    double shields = 0.0;
+    double maxShields = 0.0;
+    double energy = 0.0;
+    double maxEnergy = 0.0;
+    double temperature = 36.0;
+    double fatigue = 0.0;
+};
+
+struct PlayerInventory : public Component {
+    struct ItemSlot {
+        std::string id;
+        std::string displayName;
+        double massTons = 0.0;
+        double volumeM3 = 0.0;
+        int quantity = 0;
+        bool equipped = false;
+        bool questItem = false;
+    };
+
+    double carriedMassTons = 0.0;
+    double carriedVolumeM3 = 0.0;
+    double maxMassTons = 120.0;
+    double maxVolumeM3 = 4.0;
+    std::vector<ItemSlot> items;
+};
+
+struct PlayerProgression : public Component {
+    double experience = 0.0;
+    double lifetimeExperience = 0.0;
+    int level = 1;
+    int skillPoints = 0;
+    int blueprintCredits = 0;
+    std::unordered_map<std::string, int> reputationByFaction;
+    std::unordered_set<std::string> unlockedSkillNodes;
+};
+
+enum class LocomotionSurfaceType {
+    Unknown,
+    PlanetaryGround,
+    Spacewalk,
+    ZeroGInterior
+};
+
+struct SurfaceMovementProfile {
+    double accelerationMultiplier = 1.0;
+    double decelerationMultiplier = 1.0;
+    double maxSpeedMultiplier = 1.0;
+    double jumpImpulseMultiplier = 1.0;
+    double gravityMultiplier = 1.0;
+    double frictionMultiplier = 1.0;
+};
+
+struct HazardModifier {
+    double speedMultiplier = 1.0;
+    double accelerationMultiplier = 1.0;
+    double gravityMultiplier = 1.0;
+    double staminaDrainRate = 0.0;
+    double heatGainRate = 0.0;
+};
+
+struct LocomotionStateMachine : public Component {
+    enum class State {
+        Idle,
+        Walk,
+        Sprint,
+        Airborne,
+        Landing,
+        Crouch,
+        Slide
+    };
+
+    struct Weights {
+        double idle = 1.0;
+        double walk = 0.0;
+        double sprint = 0.0;
+        double airborne = 0.0;
+        double landing = 0.0;
+        double crouch = 0.0;
+        double slide = 0.0;
+    };
+
+    State currentState = State::Idle;
+    State previousState = State::Idle;
+    Weights blendWeights;
+    double timeInState = 0.0;
+    double landingTimer = 0.0;
+    double landingDuration = 0.25;
+    double blendSmoothing = 8.0;
+    double idleSpeedThreshold = 0.2;
+    double walkSpeedThreshold = 1.5;
+    double sprintSpeedThreshold = 4.5;
+    double airborneVerticalSpeedThreshold = 0.2;
+    bool wasGrounded = true;
+    double crouchCameraOffset = -0.4;
+    double slideCameraOffset = -0.6;
+    double defaultCameraOffset = 0.0;
+    double cameraSmoothing = 12.0;
+    double currentCameraOffset = 0.0;
+    double stamina = 100.0;
+    double maxStamina = 100.0;
+    double staminaRegenRate = 25.0;
+    double sprintStaminaCost = 35.0;
+    double sprintAccelerationMultiplier = 1.2;
+    double sprintSpeedMultiplier = 1.35;
+    double crouchSpeedMultiplier = 0.4;
+    double crouchAccelerationMultiplier = 0.35;
+    double slideSpeedMultiplier = 1.15;
+    double slideDecelerationMultiplier = 0.45;
+    double slideDuration = 0.75;
+    double slideCooldown = 0.65;
+    double slideSpeedThreshold = 3.0;
+    double slideTimer = 0.0;
+    double slideCooldownTimer = 0.0;
+    double airborneAccelerationMultiplier = 0.5;
+    double boostDuration = 0.35;
+    double boostTimer = 0.0;
+    double boostSpeedMultiplier = 1.4;
+    double boostAccelerationMultiplier = 1.35;
+    double heat = 0.0;
+    double maxHeat = 100.0;
+    double heatDissipationRate = 35.0;
+    double boostHeatCostPerSecond = 45.0;
+    LocomotionSurfaceType activeSurfaceType = LocomotionSurfaceType::PlanetaryGround;
+    LocomotionSurfaceType defaultSurfaceType = LocomotionSurfaceType::PlanetaryGround;
+    SurfaceMovementProfile activeSurfaceProfile;
+    HazardModifier activeHazardModifier;
+    std::unordered_map<LocomotionSurfaceType, SurfaceMovementProfile> surfaceProfiles = {
+        {LocomotionSurfaceType::PlanetaryGround, SurfaceMovementProfile{}},
+        {LocomotionSurfaceType::Spacewalk, SurfaceMovementProfile{0.55, 0.4, 0.75, 0.35, 0.2, 0.1}},
+        {LocomotionSurfaceType::ZeroGInterior, SurfaceMovementProfile{0.7, 0.65, 0.85, 0.15, 0.15, 0.25}},
+    };
+    HazardModifier hazardBaseline;
+    double runtimeAccelerationMultiplier = 1.0;
+    double runtimeDecelerationMultiplier = 1.0;
+    double runtimeMaxSpeedMultiplier = 1.0;
+    double runtimeGravityMultiplier = 1.0;
+    double runtimeFrictionMultiplier = 1.0;
+    double runtimeJumpImpulseMultiplier = 1.0;
+    bool boostActive = false;
+    double baseGravity = -9.8;
+    bool baseGravityInitialized = false;
+    double baseJumpImpulse = 6.0;
+    bool baseJumpInitialized = false;
+};
+
+struct EnvironmentSurface : public Component {
+    LocomotionSurfaceType surfaceType = LocomotionSurfaceType::PlanetaryGround;
+    bool overridesProfile = false;
+    SurfaceMovementProfile movementProfile;
+    bool isHazard = false;
+    HazardModifier hazardModifier;
+};
+
+// ============================================================================
 // SHIP SYSTEMS COMPONENTS (Data-only; no side effects)
-// =============================================================================
+// ============================================================================
 
 // Primary power generation (e.g., reactor). Provides electrical output to the grid
 struct Reactor : public Component {
@@ -1148,9 +1246,9 @@ struct Communications : public Component {
     double broadcastRangeKm = 100.0;
 };
 
-// =============================================================================
+// ============================================================================
 // SHIP ASSEMBLY AS ECS COMPONENTS
-// =============================================================================
+// ============================================================================
 
 // Desired assembly spec attached to an entity (data-only)
 struct ShipAssemblySpec : public Component {
@@ -1174,4 +1272,39 @@ struct ShipAssemblyMetrics : public Component {
     int crewCapacity = 0;
     int avionicsModuleCount = 0;
     double avionicsPowerDrawMW = 0.0;
+};
+
+// ============================================================================
+// SPACESHIP MARKER/DESCRIPTOR
+// =========================================================================
+
+/**
+ * SpaceshipTag: Minimal descriptor to mark an entity as a spaceship.
+ * This component carries lightweight identity metadata without implying
+ * or attaching any physics/rendering/AI components. Systems may opt-in
+ * to attach additional components based on this descriptor.
+ */
+struct SpaceshipTag : public Component {
+    // Opaque class identifier (e.g., catalog key). Optional.
+    std::string classId;
+
+    // Human-friendly display name. Optional.
+    std::string displayName;
+
+    // Which default loadout index was intended (-1 = unspecified)
+    int loadoutIndex = -1;
+
+    // True if controlled by player; false for AI or neutral.
+    bool playerControlled = false;
+};
+
+/**
+ * BehaviorTreeComponent: AI behavior tree state and execution
+ */
+struct BehaviorTreeComponent : public Component {
+    std::string treeId;
+    std::string currentNodeId;
+    double executionTimer = 0.0;
+    bool isActive = true;
+    std::unordered_map<std::string, double> blackboard;
 };

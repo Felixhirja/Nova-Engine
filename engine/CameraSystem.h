@@ -21,7 +21,7 @@ class Camera;
 
 // CameraDefaults namespace
 namespace camera_defaults {
-inline constexpr double kDefaultYawRadians = 1.5707963267948966; // +X forward (π/2)
+inline constexpr double kDefaultYawRadians = 0.0; // +X forward
 }
 
 // Camera class
@@ -255,8 +255,8 @@ struct CameraFollowConfig {
     double freeVelDeadzone     = 1e-4; // velocity snap threshold
 
     // --- Free-look rotation tuning ---
-    double freeLookSensYaw     = 0.0025; // radians per pixel
-    double freeLookSensPitch   = 0.0020; // radians per pixel
+    double freeLookSensYaw     = 0.01;  // radians per pixel (increased from 0.0025 for better responsiveness)
+    double freeLookSensPitch   = 0.008; // radians per pixel (increased from 0.0020 for better responsiveness)
     bool   invertFreeLookYaw   = false;   // invert X (mouse/controller)
     bool   invertFreeLookPitch = false;   // invert Y
     bool   invertLockYaw       = false;   // invert yaw offsets in lock mode
@@ -1119,7 +1119,6 @@ inline void UpdateTargetLockCamera(Camera& camera,
     double nz = cz + (tz - cz) * posA;
 
     // Debug: Log significant position changes
-    const double posChange = std::sqrt((nx-cx)*(nx-cx) + (ny-cy)*(ny-cy) + (nz-cz)*(nz-cz));
     // Disabled frequent debug output for performance
     // if (posChange > 1.0) {  
     //     std::cout << "Large camera position change: " << posChange << " units" << std::endl;
@@ -1241,7 +1240,6 @@ inline void UpdateTargetLockCamera(Camera& camera,
 
     // Debug: Log final camera position
     static double lastNx = 0.0, lastNy = 0.0, lastNz = 0.0;
-    const double finalChange = std::sqrt((nx-lastNx)*(nx-lastNx) + (ny-lastNy)*(ny-lastNy) + (nz-lastNz)*(nz-lastNz));
     // Disabled frequent debug output for performance
     // if (finalChange > 5.0) {  // Log large jumps
     //     std::cout << "Camera jump detected: " << finalChange << " units to (" << nx << "," << ny << "," << nz << ")" << std::endl;

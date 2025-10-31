@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "ecs/EntityManagerV2.h"
+#include "ecs/EntityManager.h"
 #include "ecs/EntityHandle.h"
 
 namespace ecs {

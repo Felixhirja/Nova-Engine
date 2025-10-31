@@ -1,19 +1,9 @@
 #include "Simulation.h"
-#include "ecs/AnimationSystem.h"
-#include "ecs/BehaviorTreeSystem.h"
 #include "ecs/LegacySystemAdapter.h"
-#include "ecs/LocomotionSystem.h"
-#include "ecs/NavigationSystem.h"
-#include "ecs/MovementSystem.h"
-#include "ecs/PhysicsSystem.h"
-#include "ecs/PlayerControlSystem.h"
-#include "ecs/SpaceshipPhysicsSystem.h"
-#include "ecs/ShipAssemblySystem.h"
+#include "ecs/System.h"  // For UnifiedSystem
 #include "gameplay/GameplayEventSystem.h"
 #include "gameplay/MissionScriptSystem.h"
 #include "TargetingSystem.h"
-#include "WeaponSystem.h"
-#include "ShieldSystem.h"
 #include "CameraSystem.h"
 
 #include <algorithm>
@@ -623,23 +613,23 @@ void Simulation::Init(EntityManager* externalEm) {
     systemManager.SetDocumentationOutputPath("engine/docs/system_dependency_map.md");
     
     // Essential systems for basic movement
-    systemManager.RegisterSystem<PlayerControlSystem>();
-    systemManager.RegisterSystem<MovementSystem>();
-    systemManager.RegisterSystem<LocomotionSystem>();
+    systemManager.RegisterSystem<UnifiedSystem>(SystemType::PlayerControl);
+    systemManager.RegisterSystem<UnifiedSystem>(SystemType::Movement);
+    systemManager.RegisterSystem<UnifiedSystem>(SystemType::Locomotion);
     
     // Advanced systems - only register if enabled for performance
     if (enableAdvancedSystems) {
-        systemManager.RegisterSystem<ShipAssemblySystem>();
-        systemManager.RegisterSystem<SpaceshipPhysicsSystem>();
-        systemManager.RegisterSystem<AnimationSystem>();
-        systemManager.RegisterSystem<TargetingSystem>();
-        systemManager.RegisterSystem<WeaponSystem>();
-        systemManager.RegisterSystem<ShieldManagementSystem>();
-        auto& behaviorSystem = systemManager.RegisterSystem<BehaviorTreeSystem>();
+        systemManager.RegisterSystem(SystemType::ShipAssembly);
+        systemManager.RegisterSystem(SystemType::SpaceshipPhysics);
+        systemManager.RegisterSystem(SystemType::Animation);
+        systemManager.RegisterSystem(SystemType::Targeting);
+        systemManager.RegisterSystem(SystemType::Weapon);
+        systemManager.RegisterSystem(SystemType::Shield);
+        auto& behaviorSystem = systemManager.RegisterSystem(SystemType::BehaviorTree);
         behaviorSystem.SetRandomManager(&randomManager_);
-        systemManager.RegisterSystem<NavigationSystem>();
-        systemManager.RegisterSystem<GameplayEventSystem>();
-        systemManager.RegisterSystem<MissionScriptSystem>();
+        systemManager.RegisterSystem(SystemType::Navigation);
+        systemManager.RegisterSystem(SystemType::GameplayEvent);
+        systemManager.RegisterSystem(SystemType::MissionScript);
     }
 
     // Create player entity in ECS

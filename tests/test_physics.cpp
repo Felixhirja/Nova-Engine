@@ -408,6 +408,116 @@ void TestSpaceshipPhysicsSystem() {
     std::cout << "  Spaceship physics tests passed" << std::endl;
 }
 
+namespace {
+
+bool approx(double a, double b, double eps = 1e-4) {
+    return std::fabs(a - b) <= eps;
+}
+
+void TestImpulseApplication() {
+    std::cout << "Testing impulse application..." << std::endl;
+    
+    EntityManager entityManager;
+    PhysicsSystem physics(&entityManager);
+    physics.SetGravity(0.0, 0.0, 0.0);
+    physics.SetCollisionEnabled(false);
+
+    Entity entity = entityManager.CreateEntity();
+    auto& rigidBody = entityManager.EmplaceComponent<RigidBody>(entity);
+    rigidBody.SetMass(2.0);
+    rigidBody.useGravity = false;
+    auto& velocity = entityManager.EmplaceComponent<Velocity>(entity);
+    velocity.vx = 0.0;
+
+    physics.ApplyImpulse(entity, 10.0, 0.0, 0.0);
+    physics.Update(entityManager, 0.016);
+
+    if (!approx(velocity.vx, 5.0, 1e-3)) {
+        std::cerr << "Impulse did not apply expected velocity change: " << velocity.vx << std::endl;
+        assert(false);
+    }
+    if (entityManager.HasComponent<Force>(entity)) {
+        std::cerr << "Impulse force component was not cleared after update" << std::endl;
+        assert(false);
+    }
+    
+    std::cout << "  Impulse application tests passed" << std::endl;
+}
+
+void TestConstantForceAcceleration() {
+    std::cout << "Testing constant force acceleration..." << std::endl;
+    
+    EntityManager entityManager;
+    PhysicsSystem physics(&entityManager);
+    physics.SetGravity(0.0, 0.0, 0.0);
+    physics.SetCollisionEnabled(false);
+
+    Entity entity = entityManager.CreateEntity();
+    auto& rigidBody = entityManager.EmplaceComponent<RigidBody>(entity);
+    rigidBody.SetMass(5.0);
+    rigidBody.useGravity = false;
+    auto& velocity = entityManager.EmplaceComponent<Velocity>(entity);
+    auto& constantForce = entityManager.EmplaceComponent<ConstantForce>(entity);
+    constantForce.forceX = 50.0;
+
+    physics.Update(entityManager, 0.5);
+
+    double expected = (constantForce.forceX * rigidBody.inverseMass) * 0.5;
+    if (!approx(velocity.vx, expected, 1e-3)) {
+        std::cerr << "Constant force produced unexpected velocity: " << velocity.vx
+                  << " expected " << expected << std::endl;
+        assert(false);
+    }
+    
+    std::cout << "  Constant force acceleration tests passed" << std::endl;
+}
+
+void TestPointGravitySource() {
+    std::cout << "Testing point gravity source..." << std::endl;
+    
+    EntityManager entityManager;
+    PhysicsSystem physics(&entityManager);
+    physics.SetGravity(0.0, 0.0, 0.0);
+    physics.SetCollisionEnabled(false);
+
+    Entity sourceEntity = entityManager.CreateEntity();
+    auto& sourcePos = entityManager.EmplaceComponent<Position>(sourceEntity);
+    sourcePos.x = 0.0;
+    sourcePos.y = 0.0;
+    sourcePos.z = 0.0;
+    auto& gravitySource = entityManager.EmplaceComponent<GravitySource>(sourceEntity);
+    gravitySource.strength = 9.8;
+    gravitySource.radius = 0.0; // Infinite range
+    gravitySource.isUniform = false;
+
+    Entity entity = entityManager.CreateEntity();
+    auto& position = entityManager.EmplaceComponent<Position>(entity);
+    position.x = 0.0;
+    position.y = 0.0;
+    position.z = 10.0;
+    auto& rigidBody = entityManager.EmplaceComponent<RigidBody>(entity);
+    rigidBody.SetMass(1.0);
+    rigidBody.useGravity = true;
+    auto& velocity = entityManager.EmplaceComponent<Velocity>(entity);
+
+    physics.Update(entityManager, 1.0);
+
+    if (!(velocity.vz < 0.0)) {
+        std::cerr << "Gravity source failed to accelerate entity toward origin" << std::endl;
+        assert(false);
+    }
+    double expectedVz = -0.098; // strength / distance^2 at 10 units
+    if (!approx(velocity.vz, expectedVz, 5e-3)) {
+        std::cerr << "Gravity source produced unexpected velocity: " << velocity.vz
+                  << " expected near " << expectedVz << std::endl;
+        assert(false);
+    }
+    
+    std::cout << "  Point gravity source tests passed" << std::endl;
+}
+
+} // namespace
+
 int main() {
     std::cout << "Running Physics System Tests" << std::endl;
     std::cout << "=============================" << std::endl;
@@ -424,6 +534,9 @@ int main() {
     TestBulletPhysicsEngineIntegration();
     TestPhysXPhysicsEngineIntegration();
     TestSpaceshipPhysicsSystem();
+    TestImpulseApplication();
+    TestConstantForceAcceleration();
+    TestPointGravitySource();
     
     std::cout << "=============================" << std::endl;
     std::cout << "All physics tests passed!" << std::endl;
