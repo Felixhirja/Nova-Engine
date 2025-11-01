@@ -87,7 +87,7 @@ public:
     ~Viewport3D();
 
     void Init();
-    void Render(const class Camera* camera, double playerX, double playerY, double playerZ, bool targetLocked = false, ecs::EntityManagerV2* entityManager = nullptr);
+    void Render(const class Camera* camera, double playerX, double playerY, double playerZ, bool targetLocked = false, ecs::EntityManagerV2* entityManager = nullptr, EntityManager* legacyEntityManager = nullptr);
     void BeginFrame();
     void FinishFrame();
     void ActivateView(const class Camera* camera, double playerX, double playerY, double playerZ, size_t viewIndex);
@@ -276,7 +276,8 @@ private:
                            double playerY,
                            double playerZ,
                            bool targetLocked,
-                           ecs::EntityManagerV2* entityManager);
+                           ecs::EntityManagerV2* entityManager,
+                           EntityManager* legacyEntityManager);
 #ifdef USE_SDL
     void EnsureSpaceshipHudTexture();
 #endif

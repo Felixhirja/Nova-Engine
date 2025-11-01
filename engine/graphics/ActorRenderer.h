@@ -20,8 +20,11 @@ public:
     // Initialize the renderer (load shaders, etc.)
     bool Initialize();
 
-    // Render all drawable actors
+    // Render all drawable actors (V2 API)
     void Render(ecs::EntityManagerV2& entityManager, const Camera* camera = nullptr);
+    
+    // Render all drawable actors (Legacy API)
+    void RenderLegacy(EntityManager& entityManager, const Camera* camera = nullptr);
 
     // Cleanup resources
     void Cleanup();
@@ -68,10 +71,18 @@ inline bool ActorRenderer::Initialize() {
 inline void ActorRenderer::Render(ecs::EntityManagerV2& entityManager, const Camera* camera) {
     if (!initialized_) return;
 
+    static int debugCounter = 0;
+    if (++debugCounter % 120 == 0) {
+        std::cout << "ActorRenderer::Render called" << std::endl;
+    }
+
     // Iterate through all entities with DrawComponent
+    int entityCount = 0;
     entityManager.ForEach<DrawComponent, Position>(
-        [this, camera](ecs::EntityHandle entity, DrawComponent& draw, Position& position) {
+        [this, camera, &entityCount](ecs::EntityHandle entity, DrawComponent& draw, Position& position) {
             (void)entity;
+            entityCount++;
+            
             if (!draw.visible) return;
 
             // Update animation if needed
@@ -112,6 +123,73 @@ inline void ActorRenderer::Render(ecs::EntityManagerV2& entityManager, const Cam
             }
         }
     );
+    
+    static int debugCounter2 = 0;
+    if (++debugCounter2 % 120 == 0) {
+        std::cout << "ActorRenderer: Found " << entityCount << " entities with DrawComponent+Position" << std::endl;
+    }
+}
+
+inline void ActorRenderer::RenderLegacy(EntityManager& entityManager, const Camera* camera) {
+    if (!initialized_) return;
+
+    static int debugCounter = 0;
+    if (++debugCounter % 120 == 0) {
+        std::cout << "ActorRenderer::RenderLegacy called" << std::endl;
+    }
+
+    // Iterate through all entities with DrawComponent
+    int entityCount = 0;
+    entityManager.ForEach<DrawComponent, Position>(
+        [this, camera, &entityCount](Entity entity, DrawComponent& draw, Position& position) {
+            (void)entity;
+            entityCount++;
+            
+            if (!draw.visible) return;
+
+            // Update animation if needed
+            if (draw.animated) {
+                draw.UpdateAnimation(1.0f / 60.0f); // Assume 60 FPS
+            }
+
+            // Render based on mode
+            switch (draw.mode) {
+                case DrawComponent::RenderMode::Sprite2D:
+                    RenderSprite2D(draw, position);
+                    break;
+                case DrawComponent::RenderMode::Billboard:
+                    RenderBillboard(draw, position, camera);
+                    break;
+                case DrawComponent::RenderMode::Mesh3D:
+                    RenderMesh3D(draw, position);
+                    break;
+                case DrawComponent::RenderMode::Particles:
+                    RenderParticles(draw, position);
+                    break;
+                case DrawComponent::RenderMode::Wireframe:
+                    RenderWireframe(draw, position);
+                    break;
+                case DrawComponent::RenderMode::Custom:
+                    if (draw.customRenderCallback) {
+                        draw.customRenderCallback(draw, position);
+                    }
+                    break;
+                case DrawComponent::RenderMode::None:
+                default:
+                    break;
+            }
+
+            // Render debug info if requested
+            if (draw.showBoundingBox || draw.showCollisionShape) {
+                RenderDebugInfo(draw, position);
+            }
+        }
+    );
+    
+    static int debugCounter2 = 0;
+    if (++debugCounter2 % 120 == 0) {
+        std::cout << "ActorRenderer::RenderLegacy: Found " << entityCount << " entities with DrawComponent+Position" << std::endl;
+    }
 }
 
 inline void ActorRenderer::RenderSprite2D(const DrawComponent& draw, const Position& position) {
@@ -132,10 +210,66 @@ inline void ActorRenderer::RenderBillboard(const DrawComponent& draw, const Posi
 }
 
 inline void ActorRenderer::RenderMesh3D(const DrawComponent& draw, const Position& position) {
-    (void)draw;
-    (void)position;
-    // TODO: Implement 3D mesh rendering
-    // This would render the actual 3D model of spaceships, stations, etc.
+    static int debugCounter = 0;
+    if (++debugCounter % 120 == 0) {
+        std::cout << "RenderMesh3D called at pos (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
+    }
+    
+    // Fallback: Render a simple colored cube
+    glPushMatrix();
+    glTranslatef(static_cast<float>(position.x), static_cast<float>(position.y), static_cast<float>(position.z));
+    
+    float scale = draw.meshScale;
+    glScalef(scale, scale, scale);
+    
+    // Apply tint color
+    glColor3f(draw.tintR, draw.tintG, draw.tintB);
+    
+    // Draw a simple cube using immediate mode (fallback when no mesh loaded)
+    glBegin(GL_QUADS);
+    
+    // Front face
+    glVertex3f(-0.5f, -0.5f,  0.5f);
+    glVertex3f( 0.5f, -0.5f,  0.5f);
+    glVertex3f( 0.5f,  0.5f,  0.5f);
+    glVertex3f(-0.5f,  0.5f,  0.5f);
+    
+    // Back face
+    glVertex3f(-0.5f, -0.5f, -0.5f);
+    glVertex3f(-0.5f,  0.5f, -0.5f);
+    glVertex3f( 0.5f,  0.5f, -0.5f);
+    glVertex3f( 0.5f, -0.5f, -0.5f);
+    
+    // Top face
+    glVertex3f(-0.5f,  0.5f, -0.5f);
+    glVertex3f(-0.5f,  0.5f,  0.5f);
+    glVertex3f( 0.5f,  0.5f,  0.5f);
+    glVertex3f( 0.5f,  0.5f, -0.5f);
+    
+    // Bottom face
+    glVertex3f(-0.5f, -0.5f, -0.5f);
+    glVertex3f( 0.5f, -0.5f, -0.5f);
+    glVertex3f( 0.5f, -0.5f,  0.5f);
+    glVertex3f(-0.5f, -0.5f,  0.5f);
+    
+    // Right face
+    glVertex3f( 0.5f, -0.5f, -0.5f);
+    glVertex3f( 0.5f,  0.5f, -0.5f);
+    glVertex3f( 0.5f,  0.5f,  0.5f);
+    glVertex3f( 0.5f, -0.5f,  0.5f);
+    
+    // Left face
+    glVertex3f(-0.5f, -0.5f, -0.5f);
+    glVertex3f(-0.5f, -0.5f,  0.5f);
+    glVertex3f(-0.5f,  0.5f,  0.5f);
+    glVertex3f(-0.5f,  0.5f, -0.5f);
+    
+    glEnd();
+    
+    glPopMatrix();
+    
+    // Reset color
+    glColor3f(1.0f, 1.0f, 1.0f);
 }
 
 inline void ActorRenderer::RenderParticles(const DrawComponent& draw, const Position& position) {

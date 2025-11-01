@@ -817,7 +817,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         runtime.targetLocked = playerView.isTargetLocked;
 
         viewport->Clear();
-        viewport->Render(camera.get(), playerView.worldX, playerView.worldY, playerView.worldZ, runtime.targetLocked);
+        viewport->Render(camera.get(), playerView.worldX, playerView.worldY, playerView.worldZ, runtime.targetLocked, nullptr, entityManager.get());
 
         Transform playerTransform;
         playerTransform.x = playerView.worldX;

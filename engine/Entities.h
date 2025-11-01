@@ -1,7 +1,7 @@
 #pragma once 
  
 // Auto-generated - includes all entity headers for registration 
-// Generated on: 01/11/2025 19:49:46.84 
+// Generated on: 01/11/2025 20:35:23.52 
  
 // Include common entity headers first 
 #include "EntityCommon.h" 

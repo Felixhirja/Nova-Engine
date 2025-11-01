@@ -1766,3 +1766,39 @@ Camera created
 Simulation initialized
 Feedback systems initialized
 MainLoop::Init finished
+main started
+MainLoop::Init started
+GamepadManager: attempt=true, available=true, library=XInput1_4.dll
+Viewport3D constructed
+Viewport3D::Init returned
+Layouts configured & frame pacing hint set
+GLFW callbacks set
+Input set GLFW window
+Camera created
+Simulation initialized
+Feedback systems initialized
+MainLoop::Init finished
+main started
+MainLoop::Init started
+GamepadManager: attempt=true, available=true, library=XInput1_4.dll
+Viewport3D constructed
+Viewport3D::Init returned
+Layouts configured & frame pacing hint set
+GLFW callbacks set
+Input set GLFW window
+Camera created
+Simulation initialized
+Feedback systems initialized
+MainLoop::Init finished
+main started
+MainLoop::Init started
+GamepadManager: attempt=true, available=true, library=XInput1_4.dll
+Viewport3D constructed
+Viewport3D::Init returned
+Layouts configured & frame pacing hint set
+GLFW callbacks set
+Input set GLFW window
+Camera created
+Simulation initialized
+Feedback systems initialized
+MainLoop::Init finished

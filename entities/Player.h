@@ -19,6 +19,15 @@ public:
             vp->viewportId = 0;
             em->AddComponent<ViewportID>(context_.GetEntity(), vp);
             
+            // Add DrawComponent for visual rendering
+            auto draw = std::make_shared<DrawComponent>();
+            draw->mode = DrawComponent::RenderMode::Mesh3D;
+            draw->visible = true;
+            draw->meshHandle = 0;  // 0 = use fallback cube
+            draw->meshScale = 0.5f;
+            draw->SetTint(0.2f, 0.8f, 1.0f);  // Cyan color for player
+            em->AddComponent<DrawComponent>(context_.GetEntity(), draw);
+            
             // Add CameraComponent so camera follows this entity
             auto cam = std::make_shared<CameraComponent>();
             cam->isActive = true;

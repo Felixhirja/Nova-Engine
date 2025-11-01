@@ -631,7 +631,7 @@ void APIENTRY OpenGLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum 
 namespace {
     bool g_ShowWorldAxes = true;              // Toggle world-origin axes in 3D
     bool g_ShowMiniAxesGizmo = false;         // Toggle 2D mini axes gizmo in HUD (default off)
-    bool g_ShowStaticGrid = false;            // Toggle static grid drawing (expensive - 30x30 lines)
+    bool g_ShowStaticGrid = true;             // Toggle static grid drawing (expensive - 30x30 lines)
     bool g_ShowCameraDebug = false;           // Toggle camera debug visuals (expensive - body, frustum, etc.)
     float g_WorldAxisLength = 10.0f;          // Length of world axes in scene units
     float g_WorldAxisLineWidth = 3.0f;        // Line width for world axes
@@ -2318,10 +2318,17 @@ void Viewport3D::RenderViewContent(const ViewportView& view,
                                    double playerY,
                                    double playerZ,
                                    bool targetLocked,
-                                   ecs::EntityManagerV2* entityManager) {
-    (void)entityManager;
+                                   ecs::EntityManagerV2* entityManager,
+                                   EntityManager* legacyEntityManager) {
 #if defined(USE_GLFW) || defined(USE_SDL)
     if (IsUsingGLBackend()) {
+        // Render entities with DrawComponent (try legacy first, then V2)
+        if (legacyEntityManager && actorRenderer_) {
+            actorRenderer_->RenderLegacy(*legacyEntityManager, camera);
+        } else if (entityManager && actorRenderer_) {
+            actorRenderer_->Render(*entityManager, camera);
+        }
+        
         if (view.role == ViewRole::Minimap) {
             DrawMinimapOverlay(playerX, playerY, playerZ);
         } else if (camera) {
@@ -2334,6 +2341,8 @@ void Viewport3D::RenderViewContent(const ViewportView& view,
         (void)playerY;
         (void)playerZ;
         (void)targetLocked;
+        (void)entityManager;
+        (void)legacyEntityManager;
     } else {
         (void)view;
         (void)camera;
@@ -2341,6 +2350,8 @@ void Viewport3D::RenderViewContent(const ViewportView& view,
         (void)playerY;
         (void)playerZ;
         (void)targetLocked;
+        (void)entityManager;
+        (void)legacyEntityManager;
     }
 #else
     (void)view;
@@ -2350,6 +2361,7 @@ void Viewport3D::RenderViewContent(const ViewportView& view,
     (void)playerZ;
     (void)targetLocked;
     (void)entityManager;
+    (void)legacyEntityManager;
 #endif
 }
 
@@ -2806,7 +2818,7 @@ void Viewport3D::Init() {
     if (debugLogging_) std::cout << "Viewport3D Initialized with size " << width << "x" << height << " (ASCII fallback)" << std::endl;
 }
 
-void Viewport3D::Render(const class Camera* camera, double playerX, double playerY, double playerZ, bool targetLocked, ecs::EntityManagerV2* entityManager) {
+void Viewport3D::Render(const class Camera* camera, double playerX, double playerY, double playerZ, bool targetLocked, ecs::EntityManagerV2* entityManager, EntityManager* legacyEntityManager) {
 #ifndef NDEBUG
     if (glDebugMessageCallback != nullptr) {
         glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 2, -1, "Viewport3D::Render");
@@ -2851,7 +2863,7 @@ void Viewport3D::Render(const class Camera* camera, double playerX, double playe
         const ViewportView& view = layout.views[i];
         auto viewStart = std::chrono::steady_clock::now();
         ActivateView(camera, playerX, playerY, playerZ, i);
-        RenderViewContent(view, camera, playerX, playerY, playerZ, targetLocked, entityManager);
+        RenderViewContent(view, camera, playerX, playerY, playerZ, targetLocked, entityManager, legacyEntityManager);
         auto viewEnd = std::chrono::steady_clock::now();
         double milliseconds = std::chrono::duration<double, std::milli>(viewEnd - viewStart).count();
         UpdateViewTiming(i, view, milliseconds);
@@ -3274,11 +3286,9 @@ void Viewport3D::DrawStaticGrid() {
         return;
     }
 
-#ifndef NDEBUG
     if (!g_ShowStaticGrid) {
         return;
     }
-#endif
 
     EnsureLineBatcher3D();
     if (!lineBatcher3D_) {
