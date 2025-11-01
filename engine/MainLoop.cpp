@@ -17,7 +17,7 @@
 #include "AudioFeedbackSystem.h"
 #include "HUDAlertSystem.h"
 #include "ActorRegistry.h"
-// #include "Player.h" // Removed - Player actor deleted
+#include "Entities.h"  // Include ALL entities for automatic rendering
 #include <iostream>
 #include <chrono>
 #include <algorithm>
@@ -30,7 +30,7 @@
 #include <cstdio>
 
 // Simple replacement for Player::CameraViewState
-using CameraViewState = Player::CameraViewState;
+// CameraViewState is defined in Player.h
 #include <string>
 #include <sstream>
 #ifdef USE_SDL
@@ -312,25 +312,9 @@ void MainLoop::Init() {
     bootstrapActorContext_ = bootstrapResult.actorContext;
     registeredActorTypes_ = std::move(bootstrapResult.actorTypes);
 
-    if (entityManager && simulation) {
-        ecs::EntityHandle playerHandle = entityManager->GetArchetypeHandle(simulation->GetPlayerEntity());
-        if (playerHandle.IsValid()) {
-            ActorContext playerContext = bootstrapActorContext_.WithEntity(playerHandle);
-            playerContext.debugName = "player_actor";
-            auto actor = ActorRegistry::Instance().Create("Player", playerContext);
-            if (!actor) {
-                std::cerr << "[MainLoop] Player actor factory returned null" << std::endl;
-            } else if (auto* typed = dynamic_cast<Player*>(actor.get())) {
-                playerActor_.reset(typed);
-                actor.release();
-            } else {
-                std::cerr << "[MainLoop] Actor registry returned unexpected type for 'player'" << std::endl;
-            }
-        } else {
-            std::cerr << "[MainLoop] Unable to resolve player archetype handle for actor binding"
-                      << std::endl;
-        }
-    }
+    // Player actor removed - entities are managed directly by ECS
+    // playerActor_ = std::make_unique<Player>();
+    // playerActor_->Initialize();
     ConfigureEnergyTelemetry();
 
     stateMachine.TransitionTo(EngineState::Running);
@@ -565,12 +549,12 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         bool down = Input::IsKeyHeld('c') || Input::IsKeyHeld('C');
 
 #ifdef USE_GLFW
-        bool cameraForward = Input::IsArrowKeyHeld(GLFW_KEY_UP);
-        bool cameraBackward = Input::IsArrowKeyHeld(GLFW_KEY_DOWN);
-        bool cameraLeft = Input::IsArrowKeyHeld(GLFW_KEY_LEFT);
-        bool cameraRight = Input::IsArrowKeyHeld(GLFW_KEY_RIGHT);
-        bool cameraUp = Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_UP);
-        bool cameraDown = Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_DOWN);
+        bool cameraForward = Input::IsArrowKeyHeld(GLFW_KEY_UP) || forward;
+        bool cameraBackward = Input::IsArrowKeyHeld(GLFW_KEY_DOWN) || backward;
+        bool cameraLeft = Input::IsArrowKeyHeld(GLFW_KEY_LEFT) || strafeLeft;
+        bool cameraRight = Input::IsArrowKeyHeld(GLFW_KEY_RIGHT) || strafeRight;
+        bool cameraUp = (Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_UP)) || up;
+        bool cameraDown = (Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_DOWN)) || down;
 #else
         bool cameraForward = false;
         bool cameraBackward = false;
@@ -598,13 +582,13 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
         runtime.captureMouse = !IsInMainMenu();
 
-        bool wantRelative = runtime.targetLocked;
+        bool wantRelative = runtime.captureMouse || runtime.targetLocked;
 #ifdef USE_GLFW
         GLFWwindow* focusWindow = (viewport && viewport->GetGLFWWindow())
             ? static_cast<GLFWwindow*>(viewport->GetGLFWWindow())
             : nullptr;
         const bool hasFocus = focusWindow && glfwGetWindowAttrib(focusWindow, GLFW_FOCUSED);
-        wantRelative = (runtime.captureMouse || runtime.targetLocked) && hasFocus;
+        wantRelative = wantRelative && hasFocus;
         if (wantRelative != runtime.isRelativeMode) {
             if (focusWindow) {
                 glfwSetInputMode(focusWindow, GLFW_CURSOR, wantRelative ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
@@ -627,9 +611,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         }
 #endif
 
-        double playerInputYaw = (playerActor_ && playerActor_->IsBound())
-                                    ? playerActor_->GetCameraViewState().facingYaw
-                                    : 0.0;
+        double playerInputYaw = 0.0;  // Player yaw will come from simulation entity
         if (simulation) {
             simulation->SetPlayerInput(forward, backward, up, down, strafeLeft, strafeRight, playerInputYaw);
         }
@@ -696,7 +678,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 #endif
 
         if (camera) {
-            double cameraMoveSpeed = 0.5;
+            double cameraMoveSpeed = 10.0;  // Increased from 0.5 for better responsiveness
             double deltaTime = deltaSeconds > 0.0 ? deltaSeconds : fixedDt;
             // Process mouse input for camera offsets BEFORE camera update
             const double mouseDecay = 0.96;
@@ -731,14 +713,39 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                 mouseLookPitchOffset *= mouseDecay;
             }
 
+            // Check if we have an entity with CameraComponent to follow
+            Entity cameraTargetEntity = 0;
+            int highestPriority = -1;
+            bool foundCameraTarget = false;
+            
+            if (entityManager) {
+                // Find the highest priority entity with CameraComponent
+                entityManager->ForEach<Position, CameraComponent>(
+                    [&](Entity e, Position& /*pos*/, CameraComponent& cam) {
+                        if (cam.isActive && cam.priority > highestPriority) {
+                            cameraTargetEntity = e;
+                            highestPriority = cam.priority;
+                            foundCameraTarget = true;
+                        }
+                    }
+                );
+            }
+
             CameraViewState cameraAnchor;
-            if (playerActor_ && playerActor_->IsBound()) {
-                cameraAnchor = playerActor_->GetCameraViewState();
-            } else if (simulation) {
-                cameraAnchor.worldX = simulation->GetPlayerX();
-                cameraAnchor.worldY = simulation->GetPlayerY();
-                cameraAnchor.worldZ = simulation->GetPlayerZ();
-                cameraAnchor.isTargetLocked = runtime.targetLocked;
+            if (foundCameraTarget && entityManager) {
+                // When we have a camera entity, use the camera's current position
+                // as the anchor so it doesn't get pulled toward the entity position.
+                // This allows free camera movement.
+                cameraAnchor.worldX = camera->x();
+                cameraAnchor.worldY = camera->y();
+                cameraAnchor.worldZ = camera->z();
+                cameraAnchor.isTargetLocked = false;
+            } else {
+                // Free camera mode - use camera's current position
+                cameraAnchor.worldX = camera->x();
+                cameraAnchor.worldY = camera->y();
+                cameraAnchor.worldZ = camera->z();
+                cameraAnchor.isTargetLocked = false;
             }
             runtime.targetLocked = cameraAnchor.isTargetLocked;
 
@@ -761,7 +768,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             movementInput.mouseDeltaX = runtime.mouseDeltaX;
             movementInput.mouseDeltaY = runtime.mouseDeltaY;
 
-            cameraFollowController.Update(*camera, followInput, movementInput, deltaTime, simulation->GetActivePhysicsEngine().get());
+            cameraFollowController.Update(*camera, followInput, movementInput, deltaTime, simulation ? simulation->GetActivePhysicsEngine().get() : nullptr);
         }
     };
 
@@ -799,14 +806,8 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             viewport->SetShowHudHints(secondsSinceStart < 5.0);
         }
 
-        if (playerActor_ && playerActor_->IsBound()) {
-            // playerActor_->PumpEvents(secondsSinceStart);
-        }
-
         CameraViewState playerView;
-        if (playerActor_ && playerActor_->IsBound()) {
-            playerView = playerActor_->GetCameraViewState();
-        } else if (simulation) {
+        if (simulation) {
             playerView.worldX = simulation->GetPlayerX();
             playerView.worldY = simulation->GetPlayerY();
             playerView.worldZ = simulation->GetPlayerZ();
@@ -824,6 +825,19 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         playerTransform.z = playerView.worldZ;
         Entity playerEntity = simulation ? simulation->GetPlayerEntity() : 0;
         viewport->DrawEntity(playerEntity, playerTransform);
+
+        // Render all entities with ViewportID component (fallback to cube if no model)
+        if (entityManager) {
+            entityManager->ForEach<Position, ViewportID>([&](Entity e, Position& pos, ViewportID& vp) {
+                if (e != playerEntity && vp.viewportId == 0) {  // Skip player, render entities in viewport 0
+                    Transform entityTransform;
+                    entityTransform.x = pos.x;
+                    entityTransform.y = pos.y;
+                    entityTransform.z = pos.z;
+                    viewport->DrawEntity(e, entityTransform);  // Will use cube as fallback
+                }
+            });
+        }
 
         if (camera) {
             double wheelDelta = Input::GetMouseWheelDelta();

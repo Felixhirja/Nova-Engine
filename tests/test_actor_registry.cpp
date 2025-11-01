@@ -1,5 +1,5 @@
 #include "ActorRegistry.h"
-#include "Actors.h"  // Include all actor headers for registration
+#include "Entities.h"  // Include all entity headers for registration
 #include <iostream>
 
 int main() {

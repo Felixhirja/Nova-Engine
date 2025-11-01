@@ -2284,7 +2284,15 @@ void Viewport3D::ActivateOpenGLView(const ViewportView& view, const Camera* came
                   playerX, playerY, playerZ,
                   0.0, 1.0, 0.0);
     } else {
-        camera->ApplyToOpenGL();
+        // Apply camera transformation using gluLookAt
+        double cosYaw = std::cos(camera->yaw());
+        double sinYaw = std::sin(camera->yaw());
+        double cosPitch = std::cos(camera->pitch());
+        double sinPitch = std::sin(camera->pitch());
+        double targetX = camera->x() + cosYaw * cosPitch;
+        double targetY = camera->y() + sinPitch;
+        double targetZ = camera->z() + sinYaw * cosPitch;
+        gluLookAt(camera->x(), camera->y(), camera->z(), targetX, targetY, targetZ, 0, 1, 0);
     }
 #else
     (void)view;

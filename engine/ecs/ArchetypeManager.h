@@ -71,27 +71,46 @@ public:
         return GetOrCreateArchetype(newSig);
     }
     
-    // Get all archetypes that contain specific component type
+    // Get all archetypes that contain specific component type (cached)
     template<typename T>
     std::vector<Archetype*> GetArchetypesWithComponent() {
-        std::vector<Archetype*> result;
         std::type_index typeIndex(typeid(T));
         
+        // Check cache first
+        auto it = archetypeCache_.find(typeIndex);
+        if (it != archetypeCache_.end() && !needsCacheRebuild_) {
+            return it->second;
+        }
+        
+        // Build cache entry
+        std::vector<Archetype*> result;
         for (auto& archetype : archetypes_) {
             if (archetype->GetSignature().Contains(typeIndex)) {
                 result.push_back(archetype.get());
             }
         }
         
+        archetypeCache_[typeIndex] = result;
         return result;
     }
     
-    // Get all archetypes that contain ALL specified component types
+    // Get all archetypes that contain ALL specified component types (cached)
     template<typename... Ts>
     std::vector<Archetype*> GetArchetypesWithComponents() {
-        std::vector<Archetype*> result;
+        // Create compound key for multi-component queries
         std::vector<std::type_index> requiredTypes = {std::type_index(typeid(Ts))...};
+        std::sort(requiredTypes.begin(), requiredTypes.end());
         
+        ComponentSignature querySig(requiredTypes);
+        
+        // Check multi-component cache
+        auto it = multiComponentCache_.find(querySig);
+        if (it != multiComponentCache_.end() && !needsCacheRebuild_) {
+            return it->second;
+        }
+        
+        // Build cache entry
+        std::vector<Archetype*> result;
         for (auto& archetype : archetypes_) {
             bool hasAll = true;
             for (const auto& type : requiredTypes) {
@@ -105,6 +124,7 @@ public:
             }
         }
         
+        multiComponentCache_[querySig] = result;
         return result;
     }
     
@@ -118,14 +138,40 @@ public:
         return total;
     }
     
+    size_t GetMemoryUsage() const {
+        size_t total = sizeof(ArchetypeManager);
+        for (const auto& archetype : archetypes_) {
+            total += archetype->GetMemoryUsage();
+        }
+        return total;
+    }
+    
     // Clear all archetypes
     void Clear() {
         archetypes_.clear();
         signatureToArchetype_.clear();
+        archetypeCache_.clear();
+        multiComponentCache_.clear();
         nextArchetypeId_ = 0;
+        needsCacheRebuild_ = false;
         
         // Recreate empty archetype
         CreateArchetype(ComponentSignature());
+    }
+    
+    // Optimize memory by releasing unused capacity
+    void Shrink() {
+        for (auto& archetype : archetypes_) {
+            if (archetype->GetEntityCount() == 0 && archetype->GetId() != 0) {
+                // Can potentially remove empty non-zero archetypes
+            }
+        }
+    }
+    
+    void InvalidateCache() {
+        needsCacheRebuild_ = true;
+        archetypeCache_.clear();
+        multiComponentCache_.clear();
     }
     
     // Get all archetypes (for debugging/profiling)
@@ -146,6 +192,7 @@ private:
         
         archetypes_.push_back(std::move(archetype));
         signatureToArchetype_[signature] = id;
+        needsCacheRebuild_ = true;
         
         return ptr;
     }
@@ -155,7 +202,10 @@ private:
 
     std::vector<std::unique_ptr<Archetype>> archetypes_;
     std::unordered_map<ComponentSignature, uint32_t> signatureToArchetype_;
+    std::unordered_map<std::type_index, std::vector<Archetype*>> archetypeCache_;
+    std::unordered_map<ComponentSignature, std::vector<Archetype*>> multiComponentCache_;
     uint32_t nextArchetypeId_ = 0;
+    bool needsCacheRebuild_ = false;
     std::unordered_set<std::type_index> registeredComponentTypes_;
 };
 

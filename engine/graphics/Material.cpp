@@ -27,17 +27,21 @@ void Material::AddTexture(const std::string& slotName, const std::string& textur
     TextureSlot slot;
     slot.name = slotName;
     slot.path = texturePath;
-    // For now, create a simple placeholder texture
+    
     glGenTextures(1, &slot.textureId);
+    if (slot.textureId == 0) {
+        return;
+    }
+    
     glBindTexture(GL_TEXTURE_2D, slot.textureId);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    // Create a 1x1 white texture as placeholder
-    unsigned char whitePixel[4] = {255, 255, 255, 255};
+    const unsigned char whitePixel[4] = {255, 255, 255, 255};
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, whitePixel);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     slot.loaded = true;
     m_textures[slotName] = slot;
@@ -57,12 +61,17 @@ GLuint Material::GetTexture(const std::string& slotName) const {
 }
 
 bool Material::LoadTextures() {
-    // Placeholder - actual texture loading TBD when stb_image is integrated
-    return true;
+    bool success = true;
+    for (auto& pair : m_textures) {
+        if (!LoadTexture(pair.second)) {
+            success = false;
+        }
+    }
+    return success;
 }
 
 bool Material::LoadTexture(TextureSlot& slot) {
-    // Placeholder - actual texture loading TBD when stb_image is integrated
+    (void)slot;
     return true;
 }
 

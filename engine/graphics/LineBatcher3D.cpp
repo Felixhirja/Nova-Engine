@@ -31,7 +31,11 @@ void LineBatcher3D::AddPoint(float x, float y, float z,
 
 void LineBatcher3D::EnsureCapacity(size_t requiredVerts) {
     if (requiredVerts > vboCapacity_) {
-        vboCapacity_ = std::max(requiredVerts, vboCapacity_ * 2 + 256);
+        size_t newCapacity = std::max(requiredVerts, vboCapacity_ * 2);
+        if (vboCapacity_ == 0) {
+            newCapacity = std::max(requiredVerts, size_t(256));
+        }
+        vboCapacity_ = newCapacity;
         glBindBuffer(GL_ARRAY_BUFFER, vbo_);
         glBufferData(GL_ARRAY_BUFFER, vboCapacity_ * sizeof(Vertex), nullptr, GL_STREAM_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);

@@ -1,4 +1,4 @@
-#include "actors/Spaceship.h"
+#include "entities/Spaceship.h"
 
 #include <iostream>
 

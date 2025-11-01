@@ -4,7 +4,7 @@
 #include <optional>
 
 class EntityManager;
-class PhysicsSystem;
+class UnifiedSystem;
 
 namespace physics {
 
@@ -34,7 +34,7 @@ public:
 
     virtual PhysicsBackendType GetBackendType() const noexcept = 0;
     virtual void Initialize(const PhysicsEngineInitParams& params) = 0;
-    virtual void StepSimulation(PhysicsSystem& system, EntityManager& entityManager, double dt) = 0;
+    virtual void StepSimulation(UnifiedSystem& system, EntityManager& entityManager, double dt) = 0;
     virtual const PhysicsEngineInitParams& GetInitParams() const noexcept = 0;
 
     // Raycast from origin in direction, up to maxDistance
@@ -43,7 +43,7 @@ public:
                                               double maxDistance) = 0;
 
 protected:
-    PhysicsSystem* physicsSystem_ = nullptr;
+    UnifiedSystem* unifiedSystem_ = nullptr;
 };
 
 std::string ToString(PhysicsBackendType type);

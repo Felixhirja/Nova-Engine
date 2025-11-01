@@ -613,23 +613,23 @@ void Simulation::Init(EntityManager* externalEm) {
     systemManager.SetDocumentationOutputPath("engine/docs/system_dependency_map.md");
     
     // Essential systems for basic movement
-    systemManager.RegisterSystem<UnifiedSystem>(SystemType::PlayerControl);
-    systemManager.RegisterSystem<UnifiedSystem>(SystemType::Movement);
-    systemManager.RegisterSystem<UnifiedSystem>(SystemType::Locomotion);
+    systemManager.RegisterUnifiedSystem(SystemType::PlayerControl);
+    systemManager.RegisterUnifiedSystem(SystemType::Movement);
+    systemManager.RegisterUnifiedSystem(SystemType::Locomotion);
     
     // Advanced systems - only register if enabled for performance
     if (enableAdvancedSystems) {
-        systemManager.RegisterSystem(SystemType::ShipAssembly);
-        systemManager.RegisterSystem(SystemType::SpaceshipPhysics);
-        systemManager.RegisterSystem(SystemType::Animation);
-        systemManager.RegisterSystem(SystemType::Targeting);
-        systemManager.RegisterSystem(SystemType::Weapon);
-        systemManager.RegisterSystem(SystemType::Shield);
-        auto& behaviorSystem = systemManager.RegisterSystem(SystemType::BehaviorTree);
+        systemManager.RegisterUnifiedSystem(SystemType::ShipAssembly);
+        systemManager.RegisterUnifiedSystem(SystemType::SpaceshipPhysics);
+        systemManager.RegisterUnifiedSystem(SystemType::Animation);
+        systemManager.RegisterUnifiedSystem(SystemType::Targeting);
+        systemManager.RegisterUnifiedSystem(SystemType::Weapon);
+        systemManager.RegisterUnifiedSystem(SystemType::Shield);
+        auto& behaviorSystem = systemManager.RegisterUnifiedSystem(SystemType::BehaviorTree);
         behaviorSystem.SetRandomManager(&randomManager_);
-        systemManager.RegisterSystem(SystemType::Navigation);
-        systemManager.RegisterSystem(SystemType::GameplayEvent);
-        systemManager.RegisterSystem(SystemType::MissionScript);
+        systemManager.RegisterUnifiedSystem(SystemType::Navigation);
+        systemManager.RegisterUnifiedSystem(SystemType::GameplayEvent);
+        systemManager.RegisterUnifiedSystem(SystemType::MissionScript);
     }
 
     // Create player entity in ECS
@@ -694,9 +694,10 @@ void Simulation::Init(EntityManager* externalEm) {
 
     CreatePlayerPhysicsComponents(*useEm, *physics);
 
-    if (physicsSystem) {
-        physicsSystem->SetGravity(0.0, 0.0, physics->gravity);
-    }
+    // Note: Physics system is now handled by UnifiedSystem
+    // if (physicsSystem) {
+    //     physicsSystem->SetGravity(0.0, 0.0, physics->gravity);
+    // }
 
     MovementBounds resolvedBounds = movementBoundsConfig;
     if (useMovementBoundsFile) {
@@ -910,9 +911,10 @@ LocomotionStateMachine::Weights Simulation::GetLocomotionBlendWeights() const {
 }
 
 std::shared_ptr<physics::IPhysicsEngine> Simulation::GetActivePhysicsEngine() const {
-    if (physicsSystem) {
-        return physicsSystem->GetActiveEngine();
-    }
+    // Note: Physics engine is now managed by UnifiedSystem
+    // if (physicsSystem) {
+    //     return physicsSystem->GetActiveEngine();
+    // }
     return nullptr;
 }
 
@@ -1133,70 +1135,8 @@ void Simulation::ConfigureSchedulerV2(EntityManager& entityManager) {
     entityManager.EnableArchetypeFacade();
     schedulerV2_.Clear();
 
-    using PlayerAdapter = ecs::LegacySystemAdapter<PlayerControlSystem>;
-    using AssemblyAdapter = ecs::LegacySystemAdapter<ShipAssemblySystem>;
-    using SpaceshipAdapter = ecs::LegacySystemAdapter<SpaceshipPhysicsSystem>;
-    using MovementAdapter = ecs::LegacySystemAdapter<MovementSystem>;
-    using LocomotionAdapter = ecs::LegacySystemAdapter<LocomotionSystem>;
-    using AnimationAdapter = ecs::LegacySystemAdapter<AnimationSystem>;
-    using TargetingAdapter = ecs::LegacySystemAdapter<TargetingSystem>;
-    using WeaponAdapter = ecs::LegacySystemAdapter<WeaponSystem>;
-    using ShieldAdapter = ecs::LegacySystemAdapter<ShieldManagementSystem>;
-
-    // Essential systems for basic movement
-    ecs::LegacySystemAdapterConfig playerConfig;
-    playerConfig.phase = ecs::UpdatePhase::Input;
-    schedulerV2_.RegisterSystem<PlayerAdapter>(entityManager, playerConfig);
-
-    ecs::LegacySystemAdapterConfig movementConfig;
-    movementConfig.phase = ecs::UpdatePhase::Simulation;
-    movementConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<PlayerAdapter>());
-    schedulerV2_.RegisterSystem<MovementAdapter>(entityManager, movementConfig);
-
-    ecs::LegacySystemAdapterConfig locomotionConfig;
-    locomotionConfig.phase = ecs::UpdatePhase::Simulation;
-    locomotionConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<MovementAdapter>());
-    schedulerV2_.RegisterSystem<LocomotionAdapter>(entityManager, locomotionConfig);
-
-    // Advanced systems - only register if enabled for performance
-    if (enableAdvancedSystems) {
-        ecs::LegacySystemAdapterConfig assemblyConfig;
-        assemblyConfig.phase = ecs::UpdatePhase::Input;
-        assemblyConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<PlayerAdapter>());
-        schedulerV2_.RegisterSystem<AssemblyAdapter>(entityManager, assemblyConfig);
-
-        ecs::LegacySystemAdapterConfig spaceshipConfig;
-        spaceshipConfig.phase = ecs::UpdatePhase::Input;
-        spaceshipConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<AssemblyAdapter>());
-        schedulerV2_.RegisterSystem<SpaceshipAdapter>(entityManager, spaceshipConfig);
-
-        // Update movement dependencies to include spaceship system
-        movementConfig.systemDependencies.clear();
-        movementConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<SpaceshipAdapter>());
-        // Note: We can't modify existing registration, so this won't work perfectly
-        // For now, keep the simplified version without complex dependencies
-
-        ecs::LegacySystemAdapterConfig animationConfig;
-        animationConfig.phase = ecs::UpdatePhase::Simulation;
-        animationConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<LocomotionAdapter>());
-        schedulerV2_.RegisterSystem<AnimationAdapter>(entityManager, animationConfig);
-
-        ecs::LegacySystemAdapterConfig targetingConfig;
-        targetingConfig.phase = ecs::UpdatePhase::Simulation;
-        targetingConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<AnimationAdapter>());
-        schedulerV2_.RegisterSystem<TargetingAdapter>(entityManager, targetingConfig);
-
-        ecs::LegacySystemAdapterConfig weaponConfig;
-        weaponConfig.phase = ecs::UpdatePhase::RenderPrep;
-        weaponConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<TargetingAdapter>());
-        schedulerV2_.RegisterSystem<WeaponAdapter>(entityManager, weaponConfig);
-
-        ecs::LegacySystemAdapterConfig shieldConfig;
-        shieldConfig.phase = ecs::UpdatePhase::RenderPrep;
-        shieldConfig.systemDependencies.push_back(ecs::SystemDependency::Requires<WeaponAdapter>());
-        schedulerV2_.RegisterSystem<ShieldAdapter>(entityManager, shieldConfig);
-    }
-
+    // Note: With unified system, individual system adapters are no longer needed
+    // All systems are now handled by UnifiedSystem instances registered in Init()
     schedulerConfigured_ = true;
 }
 

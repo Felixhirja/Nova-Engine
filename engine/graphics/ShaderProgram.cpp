@@ -92,12 +92,6 @@ bool ShaderProgram::LoadFromSource(const std::string& vertexSrc, const std::stri
         return false;
     }
 
-    // std::cout << "Shader compiled successfully";
-    if (!vertexPath_.empty()) {
-        // std::cout << " (" << vertexPath_ << ", " << fragmentPath_ << ")";
-    }
-    // std::cout << std::endl;
-
     return true;
 }
 
@@ -157,16 +151,23 @@ bool ShaderProgram::LinkProgram() {
 
     glLinkProgram(programID_);
 
-    GLint success;
+    GLint success = 0;
     glGetProgramiv(programID_, GL_LINK_STATUS, &success);
     if (!success) {
-        GLchar infoLog[1024];
-        glGetProgramInfoLog(programID_, 1024, NULL, infoLog);
-        std::cerr << "Shader program linking failed:\n" << infoLog << std::endl;
+        GLint logLength = 0;
+        glGetProgramiv(programID_, GL_INFO_LOG_LENGTH, &logLength);
+        
+        if (logLength > 0) {
+            std::string infoLog(logLength, '\0');
+            glGetProgramInfoLog(programID_, logLength, nullptr, &infoLog[0]);
+            errorLog_ = "Shader program linking failed:\n" + infoLog;
+        } else {
+            errorLog_ = "Shader program linking failed (no error log available)";
+        }
+        
+        std::cerr << errorLog_ << std::endl;
         return false;
     }
-    
-    std::cout << "Shader program linked successfully." << std::endl;
 
     // Detach and delete shaders after linking
     glDetachShader(programID_, vertexShaderID_);

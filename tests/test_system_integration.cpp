@@ -3,45 +3,47 @@
 #include <iostream>
 #include <memory>
 
-// Mock systems with dependencies
-class MockPhysicsSystem : public System {
+// Mock systems using UnifiedSystem with different SystemTypes
+class MockPhysicsSystem : public UnifiedSystem {
 public:
+    MockPhysicsSystem() : UnifiedSystem(SystemType::Physics) {}
     void Update(EntityManager& entityManager, double dt) override {
         // Simulate physics update
         updated = true;
+        // Do not call UnifiedSystem::Update to avoid dispatch
     }
-    const char* GetName() const override { return "MockPhysicsSystem"; }
     bool updated = false;
 };
 
-class AISystem : public System {
+class AISystem : public UnifiedSystem {
 public:
-    AISystem(MockPhysicsSystem& physics) : physics_(physics) {}
+    AISystem(MockPhysicsSystem& physics) : UnifiedSystem(SystemType::BehaviorTree), physics_(physics) {}
     void Update(EntityManager& entityManager, double dt) override {
         if (!physics_.updated) {
             std::cerr << "AISystem updated before MockPhysicsSystem" << std::endl;
             orderError = true;
         }
         updated = true;
+        // Do not call UnifiedSystem::Update to avoid dispatch
     }
     std::vector<ecs::SystemDependency> GetSystemDependencies() const override {
         return {ecs::SystemDependency::Requires<MockPhysicsSystem>()};
     }
-    const char* GetName() const override { return "AISystem"; }
     MockPhysicsSystem& physics_;
     bool updated = false;
     bool orderError = false;
 };
 
-class RenderSystem : public System {
+class RenderSystem : public UnifiedSystem {
 public:
-    RenderSystem(MockPhysicsSystem& physics, AISystem& ai) : physics_(physics), ai_(ai) {}
+    RenderSystem(MockPhysicsSystem& physics, AISystem& ai) : UnifiedSystem(SystemType::Animation), physics_(physics), ai_(ai) {}
     void Update(EntityManager& entityManager, double dt) override {
         if (!physics_.updated || !ai_.updated) {
             std::cerr << "RenderSystem updated before dependencies" << std::endl;
             orderError = true;
         }
         updated = true;
+        // Do not call UnifiedSystem::Update to avoid dispatch
     }
     std::vector<ecs::SystemDependency> GetSystemDependencies() const override {
         return {ecs::SystemDependency::Requires<MockPhysicsSystem>(),
@@ -50,7 +52,6 @@ public:
     ecs::UpdatePhase GetUpdatePhase() const override {
         return ecs::UpdatePhase::RenderPrep;
     }
-    const char* GetName() const override { return "RenderSystem"; }
     MockPhysicsSystem& physics_;
     AISystem& ai_;
     bool updated = false;
@@ -61,19 +62,27 @@ bool TestDependencyOrder() {
     SystemManager manager;
     EntityManager em;
 
-    // Register in dependency order
-    MockPhysicsSystem& physics = manager.RegisterSystem<MockPhysicsSystem>();
-    AISystem& ai = manager.RegisterSystem<AISystem>(physics);
-    RenderSystem& render = manager.RegisterSystem<RenderSystem>(physics, ai);
+    // Create system instances directly
+    MockPhysicsSystem physics;
+    AISystem ai(physics);
+    RenderSystem render(physics, ai);
+
+    // Register systems using RegisterSystem template method
+    MockPhysicsSystem& physicsRef = manager.RegisterSystem<MockPhysicsSystem>();
+    AISystem& aiRef = manager.RegisterSystem<AISystem>(physicsRef);
+    RenderSystem& renderRef = manager.RegisterSystem<RenderSystem>(physicsRef, aiRef);
 
     manager.UpdateAll(em, 1.0);
 
-    if (!physics.updated || !ai.updated || !render.updated) {
+    if (!physicsRef.updated || !aiRef.updated || !renderRef.updated) {
         std::cerr << "All systems should be updated" << std::endl;
+        std::cerr << "Physics updated: " << physicsRef.updated << std::endl;
+        std::cerr << "AI updated: " << aiRef.updated << std::endl;
+        std::cerr << "Render updated: " << renderRef.updated << std::endl;
         return false;
     }
 
-    if (ai.orderError || render.orderError) {
+    if (aiRef.orderError || renderRef.orderError) {
         std::cerr << "Dependency order not respected" << std::endl;
         return false;
     }
@@ -81,7 +90,7 @@ bool TestDependencyOrder() {
     const auto& metadata = manager.GetRegisteredSystemMetadata();
     bool renderMetadataVerified = false;
     for (const auto& entry : metadata) {
-        if (entry.name == "RenderSystem") {
+        if (entry.name == "AnimationSystem") {
             if (entry.phase != ecs::UpdatePhase::RenderPrep) {
                 std::cerr << "RenderSystem should be registered in RenderPrep phase" << std::endl;
                 return false;
@@ -113,10 +122,12 @@ bool TestComplexGraph() {
     RenderSystem& render = manager.RegisterSystem<RenderSystem>(physics, ai);
 
     // Add another independent system
-    class AudioSystem : public System {
+    class AudioSystem : public UnifiedSystem {
     public:
+        AudioSystem() : UnifiedSystem(SystemType::Animation) {}
         void Update(EntityManager& entityManager, double dt) override {
             updated = true;
+            // Do not call UnifiedSystem::Update to avoid dispatch
         }
         bool updated = false;
     };
@@ -127,6 +138,10 @@ bool TestComplexGraph() {
 
     if (!physics.updated || !ai.updated || !render.updated || !audio.updated) {
         std::cerr << "All systems should be updated" << std::endl;
+        std::cerr << "Physics updated: " << physics.updated << std::endl;
+        std::cerr << "AI updated: " << ai.updated << std::endl;
+        std::cerr << "Render updated: " << render.updated << std::endl;
+        std::cerr << "Audio updated: " << audio.updated << std::endl;
         return false;
     }
 

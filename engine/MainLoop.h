@@ -8,14 +8,15 @@
 
 #include "CameraSystem.h"
 #include "EngineStateMachine.h"
+#include "ecs/EntityManager.h"
 #include "ecs/ShipAssembly.h"
 #include "FramePacingController.h"
 #include "EnergyHUDTelemetry.h"
 #include "EnergyManagementSystem.h"
 #include "MainMenu.h"
 #include "ActorContext.h"
-#include "../actors/Player.h"
 
+// Forward declarations
 class Viewport3D;
 class Simulation;
 class ResourceManager;
@@ -24,6 +25,7 @@ class VisualFeedbackSystem;
 class AudioFeedbackSystem;
 class HUDAlertSystem;
 class ECSInspector;
+struct CameraViewState;
 
 class Camera;
 
@@ -66,7 +68,6 @@ private:
     // Canonical ECS entity manager
     std::unique_ptr<EntityManager> entityManager;
     std::unique_ptr<ECSInspector> ecsInspector;
-    std::unique_ptr<Player> playerActor_;
     // Feedback systems
     std::unique_ptr<VisualFeedbackSystem> visualFeedbackSystem;
     std::unique_ptr<AudioFeedbackSystem> audioFeedbackSystem;

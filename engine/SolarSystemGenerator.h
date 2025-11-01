@@ -5,7 +5,7 @@
 #include <memory>
 #include <random>
 #include <cstdint>
-#include "CelestialBody.h"
+#include "ecs/Components.h"
 #include "ecs/EntityManager.h"
 
 /**

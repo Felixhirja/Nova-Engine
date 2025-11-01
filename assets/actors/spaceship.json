@@ -1,0 +1,9 @@
+{
+    "name": "Generic Spaceship",
+    "class": "Fighter",
+    "speed": 120.0,
+    "health": 800,
+    "shield": 300,
+    "model": "generic_ship",
+    "faction": "neutral"
+}

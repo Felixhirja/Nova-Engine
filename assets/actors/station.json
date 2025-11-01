@@ -1,0 +1,11 @@
+{
+    "name": "Alpha Outpost",
+    "health": 8000.0,
+    "shield": 3000.0,
+    "model": "station_model_high",
+    "dockingCapacity": 6,
+    "services": ["trading", "repair", "missions"],
+    "behaviorScript": "station_behaviors.lua",
+    "type": "military",
+    "faction": "federation"
+}

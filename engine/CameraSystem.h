@@ -88,20 +88,8 @@ public:
     }
 
     // Apply camera transformation to OpenGL modelview matrix
-    void ApplyToOpenGL() const {
-        // Assuming gluLookAt or similar; simplified
-        // In real OpenGL, you'd use gluLookAt(x_, y_, z_, targetX, targetY, targetZ, upX, upY, upZ)
-        // But since we have pitch/yaw, compute target
-        double cosYaw = std::cos(yaw_);
-        double sinYaw = std::sin(yaw_);
-        double cosPitch = std::cos(pitch_);
-        double sinPitch = std::sin(pitch_);
-        double targetX = x_ + cosYaw * cosPitch;
-        double targetY = y_ + sinPitch;
-        double targetZ = z_ + sinYaw * cosPitch;
-        // gluLookAt(x_, y_, z_, targetX, targetY, targetZ, 0, 1, 0);
-        // But since we can't call OpenGL here, this is a placeholder
-    }
+    // Note: This is called from Viewport3D which has access to gluLookAt
+    void ApplyToOpenGL() const;
 
     // Column-major view matrix (right, up, -forward, translation).
     std::array<double, 16> GetViewMatrix() const noexcept {
@@ -494,8 +482,23 @@ inline void CameraFollowController::Update(Camera& camera,
         state_.targetLockTransition = 0.0;
     }
 
-    UpdateTargetLockCamera(camera, state_, config_, followInput, deltaTime, physicsEngine);
+    // Debug: log which systems are active
+    static double debugTimer2 = 0.0;
+    debugTimer2 += deltaTime;
+    if (debugTimer2 > 2.0) {
+        std::cout << "CameraController - isLocked:" << followInput.isTargetLocked 
+                  << " transition:" << state_.targetLockTransition
+                  << " callingTargetLock:" << (followInput.isTargetLocked || state_.targetLockTransition > 0.0)
+                  << " callingFree:" << (!followInput.isTargetLocked && state_.targetLockTransition <= 0.0) << std::endl;
+        debugTimer2 = 0.0;
+    }
 
+    // Only update target lock camera if we're in target lock mode or transitioning
+    if (followInput.isTargetLocked || state_.targetLockTransition > 0.0) {
+        UpdateTargetLockCamera(camera, state_, config_, followInput, deltaTime, physicsEngine);
+    }
+
+    // Apply free camera controls when not locked
     if (!followInput.isTargetLocked && state_.targetLockTransition <= 0.0) {
         ApplyFreeLookRotation(camera, movementInput, config_, deltaTime);
         ApplyFreeCameraMovement(camera, followInput, movementInput, config_, deltaTime);
@@ -586,6 +589,17 @@ inline void CameraFollowController::ApplyFreeCameraMovement(Camera& camera,
     snapZero(state_.freeVelX);
     snapZero(state_.freeVelY);
     snapZero(state_.freeVelZ);
+
+    // Debug output
+    static double debugTimer = 0.0;
+    debugTimer += dt;
+    if (debugTimer > 1.0) {
+        std::cout << "Camera movement - Input: fwd=" << fwdIn << " right=" << rightIn << " up=" << upIn 
+                  << " | Vel: (" << state_.freeVelX << "," << state_.freeVelY << "," << state_.freeVelZ << ")"
+                  << " | Pos: (" << camera.x() << "," << camera.y() << "," << camera.z() << ")"
+                  << " | dt=" << dt << " alpha=" << velAlpha << std::endl;
+        debugTimer = 0.0;
+    }
 
     // Integrate
     camera.SetPosition(camera.x() + state_.freeVelX * dt,

@@ -44,7 +44,12 @@ public:
 template<typename T>
 class TypedComponentArray : public ComponentArray {
 public:
-    TypedComponentArray() { components_.reserve(64); }
+    TypedComponentArray() { 
+        components_.reserve(64);
+        if constexpr (ComponentTraits<T>::PreferredAlignment > alignof(std::max_align_t)) {
+            // Reserve extra space for alignment padding if needed
+        }
+    }
     ~TypedComponentArray() override = default;
     
     void* Get(size_t index) override {
@@ -350,6 +355,25 @@ public:
         for (auto& [typeIndex, array] : componentArrays_) {
             array->Clear();
         }
+    }
+    
+    // Get memory usage statistics
+    size_t GetMemoryUsage() const {
+        size_t total = sizeof(Archetype);
+        total += entities_.capacity() * sizeof(EntityHandle);
+        for (const auto& [typeIndex, array] : componentArrays_) {
+            (void)typeIndex;
+            total += array->Capacity() * array->ElementSize();
+        }
+        return total;
+    }
+    
+    // Get cache efficiency hint (entities per cache line)
+    static constexpr size_t GetCacheLineSize() { return 64; }
+    
+    template<typename T>
+    size_t GetComponentsPerCacheLine() const {
+        return GetCacheLineSize() / sizeof(T);
     }
     
     // Iteration support - get all component arrays for fast ForEach

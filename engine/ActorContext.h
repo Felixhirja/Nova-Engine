@@ -1,46 +1,40 @@
 #pragma once
 
-#include <string>
+// ActorContext depends on EntityManager being fully defined
+// This header MUST be included AFTER "ecs/EntityManager.h"
+#ifndef ECS_ENTITY_MANAGER_H
+#error "ActorContext.h requires ecs/EntityManager.h to be included first"
+#endif
 
-#include "ecs/EntityManager.h"
-#include "ecs/EntityHandle.h"
+#include <memory>
 
-namespace ecs {
-class SystemSchedulerV2;
-}
+// Forward declare Entity type from global namespace
+using Entity = int;
 
-struct ActorContext {
-    ecs::EntityManagerV2* entityManager = nullptr;
-    ecs::SystemSchedulerV2* scheduler = nullptr;
-    ecs::EntityHandle entity = ecs::EntityHandle::Null();
-    std::string debugName;
+/**
+ * ActorContext: Simple ECS integration for actors
+ * Beginner-friendly interface for accessing entity components
+ * 
+ * REQUIREMENT: Must include "ecs/EntityManager.h" before this header
+ */
+class ActorContext {
+public:
+    ActorContext() = default;
+    ActorContext(::EntityManager& em, Entity entity)
+        : entityManager_(&em), entity_(entity) {}
 
-    bool HasEntity() const {
-        return entityManager && entity.IsValid() && entityManager->IsAlive(entity);
-    }
+    // Simple accessors
+    ::EntityManager* GetEntityManager() const { return entityManager_; }
+    Entity GetEntity() const { return entity_; }
 
-    bool HasScheduler() const {
-        return scheduler != nullptr;
-    }
-
-    void ResetEntity() {
-        entity = ecs::EntityHandle::Null();
-    }
+    // Convenience template methods (defined in ActorContextImpl.h)
+    template<typename T>
+    T* GetComponent() const;
 
     template<typename T>
-    T* GetComponent() const {
-        if (!entityManager || !entity.IsValid()) {
-            return nullptr;
-        }
-        if (!entityManager->IsAlive(entity)) {
-            return nullptr;
-        }
-        return entityManager->GetComponent<T>(entity);
-    }
+    void AddComponent(T component) const;
 
-    ActorContext WithEntity(ecs::EntityHandle handle) const {
-        ActorContext copy = *this;
-        copy.entity = handle;
-        return copy;
-    }
+private:
+    ::EntityManager* entityManager_ = nullptr;
+    Entity entity_ = 0;
 };

@@ -117,15 +117,19 @@ void UIBatcher::Cleanup() {
 void UIBatcher::EnsureCapacity(size_t requiredVertices, size_t requiredIndices) {
     bool needResize = false;
     
-    // Check vertex capacity
     if (requiredVertices > vboCapacity_) {
         vboCapacity_ = std::max(requiredVertices, vboCapacity_ + vboCapacity_ / 2);
+        if (vboCapacity_ == 0) {
+            vboCapacity_ = std::max(requiredVertices, size_t(400));
+        }
         needResize = true;
     }
     
-    // Check index capacity
     if (requiredIndices > iboCapacity_) {
         iboCapacity_ = std::max(requiredIndices, iboCapacity_ + iboCapacity_ / 2);
+        if (iboCapacity_ == 0) {
+            iboCapacity_ = std::max(requiredIndices, size_t(600));
+        }
         needResize = true;
     }
     
@@ -133,13 +137,11 @@ void UIBatcher::EnsureCapacity(size_t requiredVertices, size_t requiredIndices) 
         return;
     }
     
-    // Reallocate VBO
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glBufferData(GL_ARRAY_BUFFER, vboCapacity_ * sizeof(UIVertex),
                 nullptr, GL_STREAM_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     
-    // Reallocate IBO
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, iboCapacity_ * sizeof(GLuint),
                 nullptr, GL_STREAM_DRAW);
@@ -160,29 +162,26 @@ void UIBatcher::Begin(int screenWidth, int screenHeight) {
 
 void UIBatcher::AddQuad(float x, float y, float width, float height,
                        float r, float g, float b, float a) {
-    // Calculate quad corners
-    // Note: Caller is responsible for setting up correct projection
-    // (top-left origin vs bottom-left origin)
-    float x1 = x;
-    float y1 = y;
-    float x2 = x + width;
-    float y2 = y + height;
+    if (width <= 0.0f || height <= 0.0f) {
+        return;
+    }
     
-    // Add 4 vertices (order doesn't matter since we're using indexed rendering)
-    GLuint baseIndex = static_cast<GLuint>(vertices_.size());
+    const float x1 = x;
+    const float y1 = y;
+    const float x2 = x + width;
+    const float y2 = y + height;
     
-    vertices_.push_back({x1, y1, r, g, b, a});  // Top-left (or bottom-left)
-    vertices_.push_back({x2, y1, r, g, b, a});  // Top-right (or bottom-right)
-    vertices_.push_back({x2, y2, r, g, b, a});  // Bottom-right (or top-right)
-    vertices_.push_back({x1, y2, r, g, b, a});  // Bottom-left (or top-left)
+    const GLuint baseIndex = static_cast<GLuint>(vertices_.size());
     
-    // Add 6 indices for 2 triangles (quad)
-    // Triangle 1: 0-1-2
+    vertices_.push_back({x1, y1, r, g, b, a});
+    vertices_.push_back({x2, y1, r, g, b, a});
+    vertices_.push_back({x2, y2, r, g, b, a});
+    vertices_.push_back({x1, y2, r, g, b, a});
+    
     indices_.push_back(baseIndex + 0);
     indices_.push_back(baseIndex + 1);
     indices_.push_back(baseIndex + 2);
     
-    // Triangle 2: 0-2-3
     indices_.push_back(baseIndex + 0);
     indices_.push_back(baseIndex + 2);
     indices_.push_back(baseIndex + 3);
@@ -193,15 +192,16 @@ void UIBatcher::AddQuad(float x, float y, float width, float height,
 void UIBatcher::AddRectOutline(float x, float y, float width, float height,
                                float thickness,
                                float r, float g, float b, float a) {
-    if (thickness <= 0.0f) return;
-    // Top
-    AddQuad(x, y, width, thickness, r, g, b, a);
-    // Bottom
-    AddQuad(x, y + height - thickness, width, thickness, r, g, b, a);
-    // Left
-    AddQuad(x, y, thickness, height, r, g, b, a);
-    // Right
-    AddQuad(x + width - thickness, y, thickness, height, r, g, b, a);
+    if (thickness <= 0.0f || width <= 0.0f || height <= 0.0f) {
+        return;
+    }
+    
+    const float clampedThickness = std::min(thickness, std::min(width, height) * 0.5f);
+    
+    AddQuad(x, y, width, clampedThickness, r, g, b, a);
+    AddQuad(x, y + height - clampedThickness, width, clampedThickness, r, g, b, a);
+    AddQuad(x, y, clampedThickness, height, r, g, b, a);
+    AddQuad(x + width - clampedThickness, y, clampedThickness, height, r, g, b, a);
 }
 
 void UIBatcher::AddTriangle(float x1, float y1,

@@ -1,6 +1,7 @@
 #ifndef ENGINE_BOOTSTRAP_H
 #define ENGINE_BOOTSTRAP_H
 
+#include "ecs/EntityManager.h"
 #include "ecs/ShipAssembly.h"
 #include "ActorContext.h"
 #include "BootstrapConfiguration.h"
@@ -43,11 +44,11 @@ public:
     static std::vector<SubsystemStatus> BuildSubsystemChecklist(const BootstrapConfiguration& config);
 
     Result Run(ResourceManager& resourceManager,
-               EntityManager& entityManager,
+               ::EntityManager& entityManager,
                ecs::SystemSchedulerV2* scheduler) const;
 
     void Shutdown(ResourceManager& resourceManager,
-                  EntityManager& entityManager,
+                  ::EntityManager& entityManager,
                   ecs::SystemSchedulerV2* scheduler) const;
 };
 

@@ -166,9 +166,16 @@ size_t InstancedMeshRenderer::GetBatchCount() const {
 }
 
 void InstancedMeshRenderer::SetupInstanceBuffer(Batch& batch) {
+    if (batch.instanceVBO != 0) {
+        return;
+    }
+    
     glGenBuffers(1, &batch.instanceVBO);
+    if (batch.instanceVBO == 0) {
+        return;
+    }
+    
     glBindBuffer(GL_ARRAY_BUFFER, batch.instanceVBO);
-    // Allocate buffer (will be updated in UpdateInstanceBuffer)
     const GLsizeiptr bufferSize = static_cast<GLsizeiptr>(batch.instances.size() * INSTANCE_DATA_SIZE);
     glBufferData(GL_ARRAY_BUFFER, bufferSize, nullptr, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);

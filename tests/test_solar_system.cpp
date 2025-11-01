@@ -1,7 +1,6 @@
 #include "../engine/SolarSystem.h"
-#include "../engine/CelestialBody.h"
-#include "../engine/ecs/EntityManager.h"
 #include "../engine/ecs/Components.h"
+#include "../engine/ecs/EntityManager.h"
 
 #include <cassert>
 #include <cmath>

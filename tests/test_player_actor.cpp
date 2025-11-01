@@ -1,4 +1,4 @@
-#include "../actors/Player.h"
+#include "../entities/Player.h"
 #include "../engine/ActorContext.h"
 #include "../engine/ecs/EntityManagerV2.h"
 #include <iostream>

@@ -28,11 +28,22 @@ struct ComponentTraits {
             }
         }
     }
+    
+    // SIMD-friendly alignment hint
+    static constexpr size_t PreferredAlignment = alignof(T) >= 16 ? alignof(T) : 16;
+    
+    // Check if component is suitable for SIMD operations
+    static constexpr bool IsSIMDFriendly = std::is_trivially_copyable_v<T> && 
+                                           (sizeof(T) == 4 || sizeof(T) == 8 || 
+                                            sizeof(T) == 16 || sizeof(T) == 32);
 };
 
 template<typename T>
 inline constexpr bool IsTriviallyRelocatable =
     ComponentTraits<T>::CopyPolicy == ComponentCopyPolicy::Trivial;
+
+template<typename T>
+inline constexpr bool IsSIMDFriendly = ComponentTraits<T>::IsSIMDFriendly;
 
 } // namespace ecs
 

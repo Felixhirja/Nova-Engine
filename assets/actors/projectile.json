@@ -1,0 +1,12 @@
+{
+    "name": "Plasma Bolt",
+    "type": "Projectile",
+    "speed": 500.0,
+    "damage": 150,
+    "lifetime": 10.0,
+    "model": "plasma_bolt",
+    "effects": {
+        "trail": "plasma_trail",
+        "impact": "plasma_explosion"
+    }
+}

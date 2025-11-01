@@ -1,5 +1,4 @@
-#include "ecs/ShieldSystem.h"
-#include "EnergyManagementSystem.h"
+#include "ecs/System.h"
 #include "ecs/EntityManager.h"
 #include <iostream>
 #include <cmath>
@@ -12,44 +11,59 @@ int main() {
     // Create an EntityManager for systems that need it
     EntityManager entityManager;
     
-    // Test shield initialization
-    ShieldManagementSystem shieldSys;
-    int entityId = 1;
+    // Create UnifiedSystem instances for shield and energy management
+    UnifiedSystem shieldSystem(SystemType::Shield);
+    UnifiedSystem energySystem(SystemType::Shield); // Using Shield type for energy management too
     
-    shieldSys.InitializeShield(entityId, 150.0, 5.0, 3.0, 0.8, "shield_array_light");
+    // Create entity first
+    Entity entity = entityManager.CreateEntity();
+    int entityId = entity;
     
-    const ShieldState* state = shieldSys.GetShieldState(entityId);
+    // Initialize shield component on entity
+    entityManager.EmplaceComponent<ShieldComponent>(entityId, 
+        150.0,  // currentShields
+        150.0,  // maxShields
+        5.0,    // rechargeRate
+        3.0,    // rechargeDelay
+        0.0,    // lastDamageTime
+        true    // isActive
+    );
+    
+    // Initialize shield system
+    shieldSystem.InitializeShield(entityId, 150.0, 5.0, 3.0, 0.8, "shield_array_light");
+    
+    const ShieldComponent* state = entityManager.GetComponent<ShieldComponent>(entityId);
     if (!state) {
         std::cerr << "Shield state not found after initialization" << std::endl;
         return 1;
     }
     
-    if (!approxEqual(state->currentCapacityMJ, 150.0) || !approxEqual(state->maxCapacityMJ, 150.0)) {
+    if (!approxEqual(state->currentShields, 150.0) || !approxEqual(state->maxShields, 150.0)) {
         std::cerr << "Shield initialized with incorrect capacity" << std::endl;
         return 2;
     }
     
-    if (!approxEqual(shieldSys.GetShieldPercentage(entityId), 1.0)) {
+    if (!approxEqual(shieldSystem.GetShieldPercentage(entityId), 1.0)) {
         std::cerr << "Shield should be at 100%" << std::endl;
         return 3;
     }
     
     // Test damage absorption
-    double hullDamage = shieldSys.ApplyDamage(entityId, 50.0, &entityManager);
+    double hullDamage = shieldSystem.ApplyDamage(entityId, 50.0, &entityManager);
     // 50 damage * 0.8 absorption = 40 to shield, 10 to hull
     if (!approxEqual(hullDamage, 10.0)) {
         std::cerr << "Hull damage incorrect: expected 10.0, got " << hullDamage << std::endl;
         return 4;
     }
     
-    state = shieldSys.GetShieldState(entityId);
-    if (!approxEqual(state->currentCapacityMJ, 110.0)) {
-        std::cerr << "Shield capacity incorrect after damage: " << state->currentCapacityMJ << std::endl;
+    state = entityManager.GetComponent<ShieldComponent>(entityId);
+    if (!approxEqual(state->currentShields, 110.0)) {
+        std::cerr << "Shield capacity incorrect after damage: " << state->currentShields << std::endl;
         return 5;
     }
     
     // Test shield depletion and overflow
-    hullDamage = shieldSys.ApplyDamage(entityId, 200.0, &entityManager);
+    hullDamage = shieldSystem.ApplyDamage(entityId, 200.0, &entityManager);
     // 200 * 0.8 = 160 absorbed, but only 110 available
     // 50 overflow + 40 unabsorbed = 90 to hull
     if (!approxEqual(hullDamage, 90.0)) {
@@ -57,35 +71,34 @@ int main() {
         return 6;
     }
     
-    state = shieldSys.GetShieldState(entityId);
-    if (!approxEqual(state->currentCapacityMJ, 0.0)) {
+    state = entityManager.GetComponent<ShieldComponent>(entityId);
+    if (!approxEqual(state->currentShields, 0.0)) {
         std::cerr << "Shield should be depleted" << std::endl;
         return 7;
     }
     
     // Test recharge delay
-    shieldSys.Update(entityManager, 2.0); // 2 seconds, still within delay
-    state = shieldSys.GetShieldState(entityId);
-    if (state->currentCapacityMJ > 0.1) {
+    shieldSystem.Update(entityManager, 2.0); // 2 seconds, still within delay
+    state = entityManager.GetComponent<ShieldComponent>(entityId);
+    if (state->currentShields > 0.1) {
         std::cerr << "Shield should not recharge during delay period" << std::endl;
         return 8;
     }
     
-    shieldSys.Update(entityManager, 2.0); // 2 more seconds, total 4, past 3-second delay
-    state = shieldSys.GetShieldState(entityId);
+    shieldSystem.Update(entityManager, 2.0); // 2 more seconds, total 4, past 3-second delay
+    state = entityManager.GetComponent<ShieldComponent>(entityId);
     // Should recharge: 2 second * 5 MJ/s = 10 MJ (recharges for full deltaTime once delay passed)
-    if (!approxEqual(state->currentCapacityMJ, 10.0, 0.1)) {
-        std::cerr << "Shield recharge incorrect: expected ~10.0, got " << state->currentCapacityMJ << std::endl;
+    if (!approxEqual(state->currentShields, 10.0, 0.1)) {
+        std::cerr << "Shield recharge incorrect: expected ~10.0, got " << state->currentShields << std::endl;
         return 9;
     }
     
     // Test energy management
-    EnergyManagementSystem energySys;
     int shipId = 10;
     
-    energySys.Initialize(shipId, 30.0, 8.0, 10.0, 12.0);
+    energySystem.InitializeEnergy(shipId, 30.0, 8.0, 10.0, 1.0);
     
-    const EnergyManagementState* energyState = energySys.GetState(shipId);
+    const EnergyComponent* energyState = energySystem.GetEnergyState(shipId);
     if (!energyState) {
         std::cerr << "Energy state not found after initialization" << std::endl;
         return 10;
@@ -100,8 +113,8 @@ int main() {
     }
     
     // Test power distribution
-    energySys.Update(shipId, 1.0f);
-    energyState = energySys.GetState(shipId);
+    energySystem.UpdateEnergy(shipId, 1.0f);
+    energyState = energySystem.GetEnergyState(shipId);
     
     if (!approxEqual(energyState->shieldPowerMW, 9.9, 0.5) ||
         !approxEqual(energyState->weaponPowerMW, 9.9, 0.5) ||
@@ -111,23 +124,21 @@ int main() {
     }
     
     // Test power diversion
-    energySys.DivertPower(shipId, PowerPriority::Shields, 0.0);
-    energyState = energySys.GetState(shipId);
-    
+    energySystem.DivertPower(shipId, PowerPriority::Shields, 0.1);
+    energyState = energySystem.GetEnergyState(shipId);
+
     if (energyState->shieldAllocation <= 0.33) {
         std::cerr << "Shield allocation should increase after diversion" << std::endl;
         return 13;
-    }
-    
-    // Test HasPower
-    if (!energySys.HasPower(shipId, PowerPriority::Thrusters)) {
+    }    // Test HasPower
+    if (!energySystem.HasPower(shipId, PowerPriority::Thrusters)) {
         std::cerr << "Thrusters should have sufficient power" << std::endl;
         return 14;
     }
     
     // Test custom allocation
-    energySys.SetAllocation(shipId, 0.5, 0.3, 0.2);
-    energyState = energySys.GetState(shipId);
+    energySystem.SetEnergyAllocation(shipId, 0.5, 0.3, 0.2);
+    energyState = energySystem.GetEnergyState(shipId);
     
     if (!approxEqual(energyState->shieldAllocation, 0.5, 0.01) ||
         !approxEqual(energyState->weaponAllocation, 0.3, 0.01) ||

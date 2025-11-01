@@ -12,7 +12,7 @@ struct Vec3 {
 };
 
 // Targeting system for lock-on mechanics and range checks
-class TargetingSystem : public System {
+class TargetingSystem : public UnifiedSystem {
 public:
     TargetingSystem();
 

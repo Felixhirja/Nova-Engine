@@ -8,21 +8,20 @@ Nova Engine is a 3D C++17 game engine focused on space simulation with physicall
 ### Core Systems
 - **Engine Core** (`engine/`): MainLoop, Viewport3D, Input, Simulation - handles game loop, rendering, and input
 - **ECS System** (`engine/ecs/`): Dual ECS implementation (legacy EntityManager + modern EntityManagerV2 with archetypes)
-- **Actor System** (`actors/`): Game objects (Spaceship, NPC, Station, Projectile) with automatic registration
+- **Entity System** (`entities/`): Game objects (Spaceship, NPC, Station, Projectile) with automatic registration
 - **Graphics Pipeline** (`engine/graphics/`): OpenGL rendering with multiple modes (Mesh3D, Billboard, Sprite2D, Particles)
 - **Physics** (`engine/physics/`): Movement, collision, and physics simulation systems
 
 ### Key Design Patterns
 
 #### Actor Registration
-Actors use automatic registration via macros. Always include actor headers in `engine/Actors.h` via the build system:
+Entities use automatic registration via build system. Add new entity headers to `entities/` directory - the build system auto-generates `engine/Entities.h`:
 
 ```cpp
-// In actor header (e.g., actors/Spaceship.h)
-class Spaceship : public IActor {
+// In entities/YourNewEntity.h
+class YourNewActor : public IActor {
     // ... implementation
 };
-REGISTER_ACTOR(Spaceship, "Spaceship")  // Auto-registers with ActorRegistry
 ```
 
 #### Component-Based Architecture
@@ -62,7 +61,7 @@ make clean             # Remove all build artifacts
 Tests are comprehensive and cover all major systems. Run specific tests:
 ```bash
 ./tests/test_simulation          # Core game loop
-./tests/test_camera             # Camera systems
+./tests/test_camera_comprehensive # Camera systems
 ./tests/test_ecs_v2             # Modern ECS
 ./tests/test_physics            # Physics simulation
 ./tests/test_ship_assembly      # Spaceship creation
@@ -79,11 +78,35 @@ Use PowerShell scripts for DLL management:
 - **Windows**: MSYS2/MinGW with bundled DLLs in `lib/`
 - **Build System**: Makefile auto-detects platform and dependencies
 
+## Build System Details
+
+### Automatic Actor Registration
+The build system automatically generates `engine/Entities.h` from all headers in `entities/` directory using pure Makefile commands:
+- Add new entity `.h` files to `entities/` 
+- Run `make` - the Makefile generates `engine/Actors.h` automatically with:
+  - Timestamp of generation
+  - Total actor count
+  - Proper include statements
+  - Completion marker
+- No external scripts needed - uses built-in shell commands
+- Cross-platform compatible (Windows/Unix)
+
+### Dependency Detection
+- GLFW/FreeType detection via pkg-config (Linux/macOS) or fallback paths (Windows)
+- OpenGL context requirements: 4.3+ Core Profile (4.6 recommended)
+- Windows DLLs bundled in `lib/` for runtime distribution
+
+### Test Compilation
+Each test compiles independently against engine objects (excluding main.o):
+```makefile
+tests/test_simulation: tests/test_simulation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
+```
+
 ## Code Conventions
 
 ### File Organization
 - `engine/`: Core engine systems
-- `actors/`: Game object implementations
+- `entities/`: Game object implementations
 - `assets/`: Game assets (models, textures, configs)
 - `docs/`: Design documents and guides
 - `tests/`: Unit and integration tests
@@ -150,6 +173,19 @@ struct Position : Component {
 struct Velocity : Component {
     double vx = 0.0, vy = 0.0, vz = 0.0;
 };
+```
+
+### Behavior Tree AI
+```cpp
+// Create behavior tree nodes
+auto sequence = std::make_shared<SequenceNode>();
+sequence->AddChild(std::make_shared<TargetingNode>());
+sequence->AddChild(std::make_shared<ManeuverNode>([](NavigationState& nav) {
+    // Custom maneuver logic
+}));
+
+// Register with library
+BehaviorTreeLibrary::GetInstance().RegisterTree("fighter_ai", sequence);
 ```
 
 ## Rendering Integration
@@ -238,7 +274,7 @@ Press `I` in-game to open ECS inspector. Use `[`/`]` to cycle filters, `0` to cl
 
 ## Common Pitfalls
 
-1. **Actor Registration**: Always include new actor headers in build system
+1. **Entity Registration**: Always add new entity headers to `entities/` directory - build system auto-generates includes
 2. **ECS Component Access**: Check `IsAlive(entity)` before accessing components
 3. **OpenGL Context**: Ensure valid context before rendering operations
 4. **Cross-Platform Paths**: Use forward slashes in code, let build system handle conversion
@@ -259,4 +295,6 @@ The engine is migrating from legacy ECS to modern archetype-based system:
 - **Modern**: `EntityManagerV2` with contiguous arrays (10-50x faster)
 - **Migration**: New systems use V2, legacy code remains compatible
 
-Prefer modern ECS for new features while maintaining backward compatibility.
+**File Organization**: Related actor functionality is consolidated:
+- `SpaceshipSpawn.cpp` merged into `Spaceship.cpp` for better cohesion
+- Actor spawning logic centralized with spaceship catalog functionality

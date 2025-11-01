@@ -1,7 +1,6 @@
 #include "EntityManager.h"
 #include "Components.h"
 #include "TypeNameUtils.h"
-#include "../CelestialBody.h"
 
 #include <algorithm>
 #include <cassert>
@@ -268,32 +267,10 @@ std::string JoinTypeNames(const std::vector<std::type_index>& types) {
 void EntityManager::LogForEachComponentMismatch(Entity entity,
                                                 const std::vector<std::type_index>& requested,
                                                 const std::vector<std::type_index>& missing) {
-    if (missing.empty()) {
-        return;
-    }
-
-    static std::unordered_set<std::string> loggedMessages;
-    std::ostringstream keyStream;
-    keyStream << entity;
-    for (const auto& type : missing) {
-        keyStream << '|' << type.name();
-    }
-    keyStream << "->";
-    for (const auto& type : requested) {
-        keyStream << type.name() << ';';
-    }
-
-    std::string key = keyStream.str();
-    if (!loggedMessages.insert(key).second) {
-        return;
-    }
-
-    std::ostringstream message;
-    message << "[ECS] ForEach mismatch on entity " << entity
-            << ": missing {" << JoinTypeNames(missing)
-            << "} while requesting {" << JoinTypeNames(requested) << "}";
-    std::cerr << message.str() << std::endl;
-
-    // Note: We continue execution instead of asserting, as ForEach is designed to
-    // skip entities that don't have all required components
+    // Disabled: These warnings are too verbose and are expected behavior
+    // ForEach is designed to skip entities that don't have all required components
+    (void)entity;
+    (void)requested;
+    (void)missing;
+    return;
 }

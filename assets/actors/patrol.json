@@ -1,0 +1,14 @@
+{
+    "name": "Patrol NPC",
+    "type": "Patrol",
+    "speed": 100.0,
+    "health": 1200,
+    "shield": 600,
+    "model": "patrol_ship",
+    "faction": "military",
+    "ai": {
+        "behavior": "defensive",
+        "patrolRadius": 1000,
+        "responseTime": 5.0
+    }
+}

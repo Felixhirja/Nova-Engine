@@ -16,6 +16,7 @@
 #include "DeterministicRandom.h"
 #include "Components.h"
 #include "../physics/PhysicsEngine.h"
+#include "../EnergyManagementSystem.h"
 
 class EntityManager;
 namespace ecs {
@@ -85,7 +86,7 @@ public:
     void SetCollisionEnabled(bool enabled);
     bool Raycast(double originX, double originY, double originZ,
                  double dirX, double dirY, double dirZ,
-                 double maxDistance, RaycastHit& hit);
+                double maxDistance, physics::RaycastHit& hit);
     std::vector<unsigned int> OverlapSphere(double centerX, double centerY, double centerZ,
                                             double radius, unsigned int layerMask = 0xFFFFFFFF);
     std::vector<unsigned int> OverlapBox(double centerX, double centerY, double centerZ,
@@ -100,6 +101,22 @@ public:
     double GetGravityZ() const { return globalGravityZ_; }
 
     void SetRandomManager(DeterministicRandom* randomManager);
+
+    // Shield management methods
+    void InitializeShield(Entity entity, double maxCapacity, double rechargeRate, 
+                         double rechargeDelay, double absorptionRatio, const std::string& shieldType);
+    const ShieldComponent* GetShieldState(Entity entity) const;
+    double GetShieldPercentage(Entity entity) const;
+    double ApplyDamage(Entity entity, double damage, EntityManager* entityManager);
+
+    // Energy management methods
+    void InitializeEnergy(Entity entity, double totalCapacity, double rechargeRate, 
+                         double consumptionRate, double efficiency);
+    const EnergyComponent* GetEnergyState(Entity entity) const;
+    void UpdateEnergy(Entity entity, double dt);
+    void DivertPower(Entity entity, PowerPriority priority, double amount);
+    bool HasPower(Entity entity, PowerPriority priority) const;
+    void SetEnergyAllocation(Entity entity, double shieldAlloc, double weaponAlloc, double thrusterAlloc);
 
 private:
     // System-specific update methods
@@ -137,6 +154,13 @@ private:
     // Behavior tree system state
     DeterministicRandom* randomManager_ = nullptr;
 
+    // Shield system state
+    std::unordered_map<Entity, double> shieldAbsorptionRatios_;
+    std::unordered_map<Entity, std::string> shieldTypes_;
+
+    // Energy system state
+    std::unordered_map<Entity, EnergyComponent> energyComponents_;
+
     // Helper methods
     const WeaponSlotConfig* GetWeaponConfig(int entityId, const std::string& weaponSlot) const;
     bool ExtractEntityPosition(EntityManager& entityManager, int entityId, double& x, double& y, double& z) const;
@@ -171,13 +195,14 @@ private:
     void ResolveCollisionPair(const CollisionPair& pair, double dt);
     void SeparateColliders(unsigned int entityA, unsigned int entityB,
                           double normalX, double normalY, double normalZ,
-                          double penetration);
+                         double penetration);
     double DotProduct(double ax, double ay, double az, double bx, double by, double bz) const;
     double VectorLength(double x, double y, double z) const;
     void Normalize(double& x, double& y, double& z) const;
     double Clamp(double value, double min, double max) const;
 };
 
+// Unified system class that contains all system functionality
 class SystemManager {
 public:
     SystemManager() = default;
@@ -202,15 +227,13 @@ public:
     }
 
     // Specialized method for UnifiedSystem
-    UnifiedSystem& RegisterSystem(SystemType systemType) {
+    UnifiedSystem& RegisterUnifiedSystem(SystemType systemType) {
         auto registration = std::make_unique<RegisteredSystem>();
         registration->instance = std::make_unique<UnifiedSystem>(systemType);
         UnifiedSystem& ref = *static_cast<UnifiedSystem*>(registration->instance.get());
         registration->legacyType = std::type_index(typeid(UnifiedSystem));
-        registration->wrapperType = std::type_index(typeid(LegacySystemWrapper<UnifiedSystem>));
-        registration->factory = [](SystemManager& manager, RegisteredSystem& registrationRef) {
-            return std::make_unique<LegacySystemWrapper<UnifiedSystem>>(manager, registrationRef);
-        };
+        registration->wrapperType = std::type_index(typeid(void)); // Placeholder
+        registration->factory = nullptr; // Not used for legacy systems
         RefreshRegistrationMetadata(*registration);
         systems_.emplace_back(std::move(registration));
         scheduleDirty_ = true;
@@ -308,3 +331,7 @@ private:
 // Include all system headers for convenience
 // Note: Individual system classes have been merged into UnifiedSystem
 // These headers are kept for reference but are no longer used
+
+// Automatic registration of actors for high level code no include
+// Actors are automatically registered via build system (Actors.h)
+// High-level code uses ActorRegistry::Instance().Create() without manual includes

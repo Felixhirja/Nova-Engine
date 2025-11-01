@@ -23,6 +23,13 @@ enum class SpaceshipClassType {
 // Slot size standardization for component fit checks
 enum class SlotSize { XS, Small, Medium, Large, XL, XXL };
 
+// Hardpoint categories for weapon/utility/module mounting
+enum class HardpointCategory {
+    PrimaryWeapon,
+    Utility,
+    Module
+};
+
 // Component categories that can occupy hull slots
 enum class ComponentSlotCategory {
     PowerPlant,

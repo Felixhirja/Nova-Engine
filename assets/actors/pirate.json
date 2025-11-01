@@ -1,0 +1,14 @@
+{
+    "name": "Pirate NPC",
+    "type": "Pirate",
+    "speed": 140.0,
+    "health": 900,
+    "shield": 400,
+    "model": "pirate_ship",
+    "faction": "pirates",
+    "ai": {
+        "behavior": "aggressive",
+        "aggroRange": 800,
+        "attackRange": 300
+    }
+}

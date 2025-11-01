@@ -1,4 +1,4 @@
-#include "../engine/CelestialBody.h"
+#include "../engine/ecs/Components.h"
 
 #include <cassert>
 #include <cmath>

@@ -5,7 +5,7 @@
 #include <limits>
 #include <utility>
 
-TargetingSystem::TargetingSystem() {}
+TargetingSystem::TargetingSystem() : UnifiedSystem(SystemType::BehaviorTree) {}
 
 void TargetingSystem::Update(EntityManager& entityManager, double dt) {
     float deltaTime = static_cast<float>(dt);

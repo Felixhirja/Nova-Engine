@@ -37,6 +37,9 @@ struct Position : public Component {
     double x = 0.0;
     double y = 0.0;
     double z = 0.0;
+    
+    Position() = default;
+    Position(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
 };
 
 /**
@@ -46,6 +49,9 @@ struct Velocity : public Component {
     double vx = 0.0;
     double vy = 0.0;
     double vz = 0.0;
+    
+    Velocity() = default;
+    Velocity(double vx_, double vy_, double vz_) : vx(vx_), vy(vy_), vz(vz_) {}
 };
 
 /**
@@ -55,6 +61,10 @@ struct Sprite : public Component {
     int textureHandle = 0;
     int layer = 0;
     int frame = 0;
+    
+    Sprite() = default;
+    Sprite(int tex, int lyr) : textureHandle(tex), layer(lyr) {}
+    Sprite(int tex, int lyr, int frm) : textureHandle(tex), layer(lyr), frame(frm) {}
 };
 
 /**
@@ -74,10 +84,34 @@ struct Name : public Component {
 };
 
 /**
+ * ViewportID: Reference to which viewport should render this entity
+ */
+struct ViewportID : public Component {
+    int viewportId = 0;  // 0 = main viewport, can support multiple viewports
+    
+    ViewportID() = default;
+    explicit ViewportID(int vp) : viewportId(vp) {}
+};
+
+/**
+ * CameraComponent: Marks an entity as camera target for following
+ */
+struct CameraComponent : public Component {
+    bool isActive = true;        // Whether this camera target is currently active
+    int priority = 0;            // Higher priority cameras take precedence (e.g., player = 100)
+    
+    CameraComponent() = default;
+    explicit CameraComponent(int prio) : priority(prio) {}
+};
+
+/**
  * Faction: Faction affiliation for multiplayer/gameplay
  */
 struct Faction : public Component {
     int id = 0;
+    
+    Faction() = default;
+    Faction(int factionId) : id(factionId) {}
 };
 
 /**
@@ -677,9 +711,9 @@ struct TargetLock : public Component {
 };
 
 /**
- * Projectile: Basic projectile component
+ * ProjectileComponent: Basic projectile component
  */
-struct Projectile : public Component {
+struct ProjectileComponent : public Component {
     int ownerEntity = 0;
     std::string weaponSlot;
 };
@@ -1254,6 +1288,10 @@ struct Communications : public Component {
 struct ShipAssemblySpec : public Component {
     std::string hullId;                                           // Target hull blueprint id
     std::unordered_map<std::string, std::string> slotAssignments; // slotId -> componentId
+    
+    ShipAssemblySpec() = default;
+    ShipAssemblySpec(std::string hull, std::unordered_map<std::string, std::string> slots)
+        : hullId(std::move(hull)), slotAssignments(std::move(slots)) {}
 };
 
 // Summary metrics from an assembly evaluation
@@ -1307,4 +1345,521 @@ struct BehaviorTreeComponent : public Component {
     double executionTimer = 0.0;
     bool isActive = true;
     std::unordered_map<std::string, double> blackboard;
+};
+
+/**
+ * WeaponSlotConfig: Configuration for weapon slots
+ */
+struct WeaponSlotConfig {
+    float fireRatePerSecond = 1.0f;
+    int ammo = -1; // -1 = infinite
+    double damage = 10.0;
+    double projectileSpeed = 100.0;
+    double projectileLifetime = 2.0;
+    float muzzleDirX = 1.0f;
+    float muzzleDirY = 0.0f;
+    float muzzleDirZ = 0.0f;
+};
+
+/**
+ * Weapon: Basic weapon component for firing projectiles
+ */
+struct Weapon : public Component {
+    WeaponSlotConfig config;
+    double lastFireTime = 0.0;
+    bool isFiring = false;
+    Entity targetEntity = 0;
+};
+
+/**
+ * LocomotionComponent: Movement and locomotion state
+ */
+struct LocomotionComponent : public Component {
+    double speed = 0.0;
+    double maxSpeed = 10.0;
+    double acceleration = 5.0;
+    double deceleration = 5.0;
+    bool isGrounded = true;
+    double jumpForce = 10.0;
+    double stamina = 100.0;
+    double maxStamina = 100.0;
+};
+
+/**
+ * ShipAssemblyComponent: Spaceship assembly and configuration
+ */
+struct ShipAssemblyComponent : public Component {
+    std::string shipType;
+    std::vector<std::string> installedModules;
+    double assemblyProgress = 1.0; // 0-1, 1 = complete
+    bool isAssembled = true;
+};
+
+/**
+ * SpaceshipPhysicsComponent: Advanced physics for spaceships
+ */
+struct SpaceshipPhysicsComponent : public Component {
+    double thrustPower = 100.0;
+    double rotationTorque = 50.0;
+    double mass = 1000.0;
+    double dragCoefficient = 0.1;
+    bool hasGravityDrive = false;
+    double fuelLevel = 100.0;
+    double maxFuel = 100.0;
+};
+
+/**
+ * AnimationComponent: Animation state and playback
+ */
+struct AnimationComponent : public Component {
+    std::string currentAnimation;
+    double animationTime = 0.0;
+    double animationSpeed = 1.0;
+    bool isLooping = true;
+    bool isPlaying = true;
+    std::unordered_map<std::string, double> animationLengths;
+};
+
+/**
+ * TargetingComponent: Target acquisition and tracking
+ */
+struct TargetingComponent : public Component {
+    Entity currentTarget = 0;
+    double lockOnProgress = 0.0;
+    double maxLockOnRange = 1000.0;
+    bool isLocked = false;
+    double lastScanTime = 0.0;
+    std::vector<Entity> potentialTargets;
+};
+
+/**
+ * ShieldComponent: Energy shield system
+ */
+/**
+ * Health: Health/hit points component
+ */
+struct Health : public Component {
+    double current = 100.0;
+    double maximum = 100.0;
+    
+    Health() = default;
+    Health(double cur, double max) : current(cur), maximum(max) {}
+};
+
+struct ShieldComponent : public Component {
+    double currentShields = 100.0;
+    double maxShields = 100.0;
+    double rechargeRate = 10.0; // per second
+    double rechargeDelay = 2.0; // seconds after taking damage
+    double lastDamageTime = 0.0;
+    bool isActive = true;
+
+    // Parameterized constructor for EmplaceComponent
+    ShieldComponent(double current = 100.0, double max = 100.0, double recharge = 10.0, 
+                   double delay = 2.0, double lastDamage = 0.0, bool active = true)
+        : currentShields(current), maxShields(max), rechargeRate(recharge), 
+          rechargeDelay(delay), lastDamageTime(lastDamage), isActive(active) {}
+};
+
+// Alias for backward compatibility
+using Shield = ShieldComponent;
+
+/**
+ * NavigationComponent: Pathfinding and navigation
+ */
+struct NavigationComponent : public Component {
+    std::vector<std::pair<double, double>> path;
+    size_t currentPathIndex = 0;
+    Entity destinationEntity = 0;
+    double arrivalRadius = 10.0;
+    bool isNavigating = false;
+    double lastPathUpdate = 0.0;
+};
+
+/**
+ * GameplayEventComponent: Event system integration
+ */
+struct GameplayEventComponent : public Component {
+    std::queue<std::string> pendingEvents;
+    std::unordered_map<std::string, double> eventTimers;
+    bool isProcessingEvents = true;
+    double lastEventTime = 0.0;
+};
+
+/**
+ * MissionScriptComponent: Mission scripting system
+ */
+struct MissionScriptComponent : public Component {
+    std::string currentMissionId;
+    std::unordered_map<std::string, std::string> missionState;
+    std::vector<std::string> activeObjectives;
+    double missionTimer = 0.0;
+    bool isMissionActive = false;
+};
+
+/**
+ * EnergyComponent: Power management and distribution system for ships
+ */
+struct EnergyComponent : public Component {
+    double totalPowerCapacityMW = 30.0;  // Total power generation capacity in MW
+    double currentPowerMW = 30.0;        // Current available power in MW
+    double shieldAllocation = 0.33;      // Fraction of power allocated to shields (0.0-1.0)  
+    double weaponAllocation = 0.33;      // Fraction of power allocated to weapons (0.0-1.0)
+    double thrusterAllocation = 0.34;    // Fraction of power allocated to thrusters (0.0-1.0)
+    double shieldPowerMW = 9.9;          // Actual power delivered to shields in MW
+    double weaponPowerMW = 9.9;          // Actual power delivered to weapons in MW
+    double thrusterPowerMW = 10.2;       // Actual power delivered to thrusters in MW
+    double rechargeRateMW = 8.0;         // Base recharge rate in MW per second
+    double consumptionRateMW = 10.0;     // Base consumption rate in MW per second
+    double efficiency = 0.8;             // Power system efficiency (0.0-1.0)
+    bool isActive = true;                // Whether the power system is active
+};
+
+// ============================================================================
+// CELESTIAL BODY COMPONENTS
+// ============================================================================
+
+/**
+ * Vector3: 3D vector utility for celestial mechanics
+ */
+struct Vector3 {
+    double x, y, z;
+    Vector3() : x(0.0), y(0.0), z(0.0) {}
+    Vector3(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
+    
+    double Length() const {
+        return std::sqrt(x*x + y*y + z*z);
+    }
+    
+    Vector3 Normalized() const {
+        double len = Length();
+        if (len > 0.0) return Vector3(x/len, y/len, z/len);
+        return Vector3(0, 0, 0);
+    }
+    
+    Vector3 operator+(const Vector3& other) const {
+        return Vector3(x + other.x, y + other.y, z + other.z);
+    }
+    
+    Vector3 operator-(const Vector3& other) const {
+        return Vector3(x - other.x, y - other.y, z - other.z);
+    }
+    
+    Vector3 operator*(double scalar) const {
+        return Vector3(x * scalar, y * scalar, z * scalar);
+    }
+    
+    double Dot(const Vector3& other) const {
+        return x * other.x + y * other.y + z * other.z;
+    }
+    
+    Vector3 Cross(const Vector3& other) const {
+        return Vector3(
+            y * other.z - z * other.y,
+            z * other.x - x * other.z,
+            x * other.y - y * other.x
+        );
+    }
+    
+    double Distance(const Vector3& other) const {
+        double dx = x - other.x;
+        double dy = y - other.y;
+        double dz = z - other.z;
+        return std::sqrt(dx*dx + dy*dy + dz*dz);
+    }
+};
+
+/**
+ * CelestialBodyComponent: Core properties of any celestial body
+ */
+struct CelestialBodyComponent : public Component {
+    enum class BodyType {
+        Star,
+        RockyPlanet,      // Mercury, Venus, Earth, Mars type
+        GasGiant,         // Jupiter, Saturn type
+        IceGiant,         // Uranus, Neptune type
+        Moon,
+        Asteroid,
+        SpaceStation,
+        AsteroidBelt
+    };
+    
+    BodyType type = BodyType::RockyPlanet;
+    std::string name = "Unnamed";
+    
+    // Physical properties
+    double mass = 5.972e24;           // kg (Earth default)
+    double radius = 6371.0;           // km (Earth default)
+    double rotationPeriod = 24.0;     // hours
+    double axialTilt = 0.0;           // degrees
+    double temperature = 288.0;       // Kelvin (Earth default: ~15°C)
+    
+    // Composition and features
+    bool hasAtmosphere = false;
+    double atmosphereDensity = 0.0;   // kg/m³
+    bool hasRings = false;
+    bool hasMagneticField = false;
+    bool isHabitable = false;
+    
+    // Gameplay properties
+    bool isLandable = false;
+    bool isDockable = false;          // For stations
+    int faction = 0;                  // Faction ownership (0 = neutral)
+};
+
+/**
+ * OrbitalComponent: Orbital mechanics using Keplerian elements
+ */
+struct OrbitalComponent : public Component {
+    unsigned int parentEntity = 0;    // Entity ID of parent body (0 = orbits star/barycenter)
+    
+    // Classical orbital elements
+    double semiMajorAxis = 1.0;       // AU for planets, km for moons
+    double eccentricity = 0.0;        // 0 = circular, 0-1 = ellipse
+    double inclination = 0.0;         // degrees from reference plane
+    double longitudeOfAscendingNode = 0.0;  // Ω (degrees)
+    double argumentOfPeriapsis = 0.0; // ω (degrees)
+    double meanAnomalyAtEpoch = 0.0;  // M₀ (degrees)
+    
+    // Derived properties
+    double orbitalPeriod = 365.25;    // days
+    double currentMeanAnomaly = 0.0;  // Current M (degrees)
+    
+    // Cached position (updated by orbital system)
+    Vector3 cachedPosition = Vector3(0, 0, 0);
+    Vector3 cachedVelocity = Vector3(0, 0, 0);
+    double lastUpdateTime = 0.0;
+};
+
+/**
+ * VisualCelestialComponent: Visual representation for celestial bodies
+ */
+struct VisualCelestialComponent : public Component {
+    int textureHandle = -1;
+    int normalMapHandle = -1;
+    int cloudTextureHandle = -1;
+    
+    // Color (used if no texture or for tinting)
+    float colorR = 1.0f;
+    float colorG = 1.0f;
+    float colorB = 1.0f;
+    
+    // Material properties
+    float emissive = 0.0f;            // For stars (0-1)
+    float specular = 0.0f;            // For water/ice reflection
+    float roughness = 0.5f;           // Surface roughness
+    float metallic = 0.0f;            // Metallic property
+    
+    // Clouds (for applicable planets)
+    float cloudCoverage = 0.0f;       // 0-1
+    float cloudSpeed = 0.0f;          // Rotation speed relative to surface
+    
+    // Rings (for gas giants)
+    int ringTextureHandle = -1;
+    float ringInnerRadius = 0.0f;     // km
+    float ringOuterRadius = 0.0f;     // km
+    float ringOpacity = 1.0f;
+    
+    // LOD settings
+    int currentLOD = 0;               // 0 = highest detail
+    float lodDistance0 = 100.0f;      // Distance thresholds for LOD
+    float lodDistance1 = 500.0f;
+    float lodDistance2 = 2000.0f;
+
+    // Shader configuration (populated by SolarSystem when available)
+    std::string surfaceVertexShader;      // Vertex shader for body surface
+    std::string surfaceFragmentShader;    // Fragment shader for body surface
+    std::string orbitVertexShader;        // Vertex shader for orbit visualization
+    std::string orbitFragmentShader;      // Fragment shader for orbit visualization
+};
+
+/**
+ * AtmosphereComponent: Atmospheric properties for planets
+ */
+struct AtmosphereComponent : public Component {
+    float density = 1.225f;           // kg/m³ at surface (Earth = 1.225)
+    float scaleHeight = 8.5f;         // km (thickness)
+    float pressure = 101.325f;        // kPa at surface
+    
+    // Visual properties
+    float colorR = 0.5f;
+    float colorG = 0.7f;
+    float colorB = 1.0f;
+    float colorA = 0.3f;              // Atmosphere glow intensity
+    
+    // Composition (simplified)
+    float oxygenRatio = 0.21f;        // For habitability
+    float nitrogenRatio = 0.78f;
+    float carbonDioxideRatio = 0.0004f;
+    
+    // Weather effects
+    bool hasWeather = false;
+    float cloudSpeed = 10.0f;         // m/s
+    float weatherIntensity = 0.5f;    // For visual effects
+};
+
+/**
+ * SpaceStationComponent: Properties specific to space stations
+ */
+struct SpaceStationComponent : public Component {
+    enum class StationType {
+        Trading,      // Commodity markets
+        Military,     // Defense and security
+        Research,     // Scientific facilities
+        Mining,       // Ore processing
+        Residential,  // Habitation
+        Shipyard      // Ship construction and repair
+    };
+    
+    StationType stationType = StationType::Trading;
+    
+    // Facilities
+    int dockingPorts = 4;
+    bool hasShipyard = false;
+    bool hasRepairFacility = false;
+    bool hasRefuelStation = true;
+    bool hasMarket = false;
+    
+    // Population and resources
+    int population = 1000;
+    int maxPopulation = 5000;
+    
+    // Services (bit flags could be used for more services)
+    std::vector<int> availableServices; // Service IDs
+    
+    // Economy
+    int wealthLevel = 1;              // 1-5, affects prices and available goods
+};
+
+/**
+ * SatelliteSystemComponent: Component for tracking a body's moons/satellites
+ */
+struct SatelliteSystemComponent : public Component {
+    std::vector<unsigned int> satelliteEntities; // Entity IDs of moons/stations
+    int moonCount = 0;
+    int stationCount = 0;
+};
+
+/**
+ * StarComponent: Star-specific properties
+ */
+struct StarComponent : public Component {
+    enum class SpectralType {
+        O,  // Blue, very hot, massive
+        B,  // Blue-white, hot
+        A,  // White, hot
+        F,  // Yellow-white, medium
+        G,  // Yellow, Sun-like
+        K,  // Orange, cool
+        M   // Red, cool, small
+    };
+    
+    SpectralType spectralType = SpectralType::G;
+    int spectralSubclass = 2;         // 0-9 (e.g., G2 for Sun)
+    
+    double luminosity = 1.0;          // Relative to Sun
+    double surfaceTemperature = 5778.0; // Kelvin
+    
+    // Habitable zone boundaries
+    double habitableZoneInner = 0.95; // AU
+    double habitableZoneOuter = 1.37; // AU
+    
+    // Visual effects
+    float coronaSize = 1.5f;          // Multiplier for corona render
+    bool hasFlares = true;            // Solar flares
+    float flareIntensity = 0.5f;
+};
+
+/**
+ * AsteroidBeltComponent: Asteroid belt region (not individual asteroids)
+ */
+struct AsteroidBeltComponent : public Component {
+    double innerRadius = 2.2;         // AU
+    double outerRadius = 3.2;         // AU
+    double thickness = 0.5;           // AU (vertical extent)
+    
+    enum class DensityLevel {
+        Sparse,
+        Moderate,
+        Dense,
+        VeryDense
+    };
+    DensityLevel density = DensityLevel::Moderate;
+    
+    enum class CompositionType {
+        Metallic,   // Iron, nickel
+        Rocky,      // Silicates
+        Icy,        // Water ice, frozen volatiles
+        Mixed       // Combination
+    };
+    CompositionType composition = CompositionType::Rocky;
+    
+    // Approximate count of significant asteroids
+    int asteroidCount = 1000;
+    
+    // Resource richness (for mining gameplay)
+    float resourceRichness = 0.5f;    // 0-1
+};
+
+/**
+ * PlanetComponent: Planet-specific additional data
+ */
+struct PlanetComponent : public Component {
+    // Geological activity
+    bool isTectonicallyActive = false;
+    bool hasVolcanism = false;
+    
+    // Surface features
+    bool hasOceans = false;
+    float oceanCoverage = 0.0f;       // 0-1 (Earth = 0.71)
+    bool hasIceCaps = false;
+    float iceCoverage = 0.0f;
+    
+    // Biosphere
+    bool hasLife = false;
+    bool hasIntelligentLife = false;
+    float biodiversityIndex = 0.0f;   // 0-1
+    
+    // Resources
+    float mineralWealth = 0.5f;       // 0-1, mining value
+    float organicResources = 0.0f;    // 0-1, biological resources
+    
+    // Surface conditions
+    float gravity = 9.81f;            // m/s² (Earth = 9.81)
+    float radiationLevel = 0.0f;      // Sieverts/hour (hazard level)
+};
+
+/**
+ * OrbitalPosition: Result of orbital position calculation
+ */
+struct OrbitalPosition {
+    Vector3 position;
+    Vector3 velocity;
+    double trueAnomaly = 0.0;         // Current angle in orbit
+    double distance = 0.0;            // Distance from parent
+    bool isValid = false;
+};
+
+/**
+ * GenerationParameters: Parameters for procedural celestial body generation
+ */
+struct GenerationParameters {
+    unsigned int seed = 0;
+    
+    // System-wide parameters
+    int minPlanets = 3;
+    int maxPlanets = 10;
+    float gasGiantProbability = 0.4f;
+    float asteroidBeltProbability = 0.7f;
+    float moonProbability = 0.6f;     // For rocky planets
+    
+    // Station generation
+    int minStations = 2;
+    int maxStations = 8;
+    float stationNearHabitableProbability = 0.8f;
+    
+    // Visual variety
+    bool generateRings = true;
+    bool generateAtmospheres = true;
+    bool generateMoons = true;
 };

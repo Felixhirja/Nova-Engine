@@ -1,6 +1,5 @@
 #include "ArchetypeManager.h"
 #include "Components.h"
-#include "../CelestialBody.h"
 
 #include <typeindex>
 
@@ -40,7 +39,7 @@ bool RegisterKnownComponentType(Archetype* archetype, const std::type_index& typ
     if (RegisterIfMatches<DockingStatus>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<LocomotionStateMachine>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<TargetLock>(archetype, typeIndex)) return true;
-    if (RegisterIfMatches<Projectile>(archetype, typeIndex)) return true;
+    if (RegisterIfMatches<ProjectileComponent>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<DrawComponent>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<RigidBody>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<Force>(archetype, typeIndex)) return true;

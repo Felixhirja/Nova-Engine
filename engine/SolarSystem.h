@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include "CelestialBody.h"
+#include "ecs/Components.h"
 #include "Mesh.h"
 #include "ecs/EntityManager.h"
 

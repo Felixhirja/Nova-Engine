@@ -5,7 +5,8 @@
 namespace ecs {
 
 // Entity ID is 32-bit: 24 bits for index, 8 bits for generation
-// This allows 16 million entities with 256 recycling generations per ID
+// Index: 0-16,777,215 (16M+ entities)
+// Generation: 0-255 (256 recycling generations per slot to detect stale handles)
 using EntityIndex = uint32_t;
 using EntityGeneration = uint8_t;
 
@@ -14,6 +15,8 @@ struct EntityHandle {
     static constexpr EntityIndex INDEX_MASK = 0x00FFFFFF;  // 24 bits
     static constexpr uint32_t GENERATION_SHIFT = 24;
     static constexpr EntityIndex NULL_INDEX = INDEX_MASK;  // Reserved for null entity
+    static constexpr EntityIndex MAX_ENTITIES = INDEX_MASK;  // 16,777,215 entities
+    static constexpr EntityGeneration MAX_GENERATION = 255;
     
     uint32_t value = 0;  // Packed: [8-bit generation][24-bit index]
     

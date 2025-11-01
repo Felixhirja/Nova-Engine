@@ -101,13 +101,14 @@ void ParticleRenderer::Cleanup() {
 
 void ParticleRenderer::EnsureCapacity(size_t requiredVertices) {
     if (requiredVertices <= vboCapacity_) {
-        return;  // Sufficient capacity
+        return;
     }
     
-    // Grow by 1.5x or to required size, whichever is larger
     size_t newCapacity = std::max(requiredVertices, vboCapacity_ + vboCapacity_ / 2);
+    if (vboCapacity_ == 0) {
+        newCapacity = std::max(requiredVertices, size_t(1000));
+    }
     
-    // Reallocate VBO
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glBufferData(GL_ARRAY_BUFFER, newCapacity * sizeof(ParticleVertex),
                 nullptr, GL_STREAM_DRAW);
@@ -136,16 +137,15 @@ void ParticleRenderer::BuildVertexData(const std::vector<Particle>& particles,
         v.b = p.b;
         v.a = p.a;
         
-        // Calculate size based on distance to camera (perspective sizing)
         if (camera) {
-            double dx = p.x - camera->x();
-            double dy = p.y - camera->y();
-            double dz = p.z - camera->z();
-            double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+            const double dx = p.x - camera->x();
+            const double dy = p.y - camera->y();
+            const double dz = p.z - camera->z();
+            const double distSq = dx*dx + dy*dy + dz*dz;
+            const double dist = std::sqrt(distSq);
             
-            // Size based on distance (closer = bigger on screen)
-            float screenSize = p.size * 10.0f / static_cast<float>(dist + 1.0);
-            v.size = std::max(1.0f, std::min(20.0f, screenSize));
+            const float screenSize = p.size * 10.0f / static_cast<float>(dist + 1.0);
+            v.size = std::clamp(screenSize, 1.0f, 20.0f);
         } else {
             v.size = p.size * 10.0f;
         }

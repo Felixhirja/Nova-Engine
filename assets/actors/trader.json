@@ -1,0 +1,14 @@
+{
+    "name": "Trader NPC",
+    "type": "Trader",
+    "speed": 80.0,
+    "health": 600,
+    "shield": 200,
+    "model": "trader_ship",
+    "faction": "neutral",
+    "ai": {
+        "behavior": "trade",
+        "tradeRadius": 500,
+        "cargoCapacity": 1000
+    }
+}

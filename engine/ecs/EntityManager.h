@@ -1,4 +1,7 @@
 #pragma once
+#ifndef ECS_ENTITY_MANAGER_H
+#define ECS_ENTITY_MANAGER_H
+
 #include <cassert>
 #include <array>
 #include <functional>
@@ -11,13 +14,16 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <stdexcept>
 #include "Component.h"
 #include "ArchetypeManager.h"
 #include "EntityHandle.h"
 #include "Components.h"
 #include "TransitionPlan.h"
 #include <iostream>
-#include "../CelestialBody.h"
+
+// Forward declarations to avoid external dependencies
+struct CelestialBodyComponent;
 
 // ============================================================================
 // ENTITY MANAGER V2 (ARCHETYPE-BASED)
@@ -43,23 +49,51 @@ public:
             index = freeIndices_.back();
             freeIndices_.pop_back();
             
-            // Increment generation to invalidate old handles
-            generation = ++entityMetadata_[index].generation;
-        } else {
-            // Allocate new entity slot
-            index = static_cast<EntityIndex>(entityMetadata_.size());
-            generation = 0;
-            entityMetadata_.emplace_back(generation, 0, 0);  // Empty archetype (ID 0)
+            EntityMetadata& meta = entityMetadata_[index];
+            
+            // Check generation overflow
+            if (meta.generation == EntityHandle::MAX_GENERATION) {
+                // Generation overflow - skip this slot and try next
+                if (!freeIndices_.empty()) {
+                    return CreateEntity();
+                }
+                // If no more free slots, fall through to allocate new
+            } else {
+                generation = ++meta.generation;
+                
+                EntityHandle handle(index, generation);
+                meta.alive = true;
+                meta.archetypeId = 0;
+                
+                Archetype* archetype = archetypeManager_.GetArchetype(0);
+                if (!archetype) {
+                    throw std::runtime_error("Empty archetype not initialized");
+                }
+                meta.indexInArchetype = static_cast<uint32_t>(archetype->AddEntity(handle));
+                
+                return handle;
+            }
         }
+        
+        // Check entity limit (24-bit index = 16,777,215 entities max)
+        if (entityMetadata_.size() >= EntityHandle::MAX_ENTITIES) {
+            throw std::runtime_error("Entity limit reached (16,777,215 entities maximum)");
+        }
+        
+        // Allocate new entity slot
+        index = static_cast<EntityIndex>(entityMetadata_.size());
+        generation = 0;
+        entityMetadata_.emplace_back(generation, 0, 0);
         
         EntityHandle handle(index, generation);
         EntityMetadata& meta = entityMetadata_[index];
         meta.alive = true;
-        meta.archetypeId = 0;  // Start in empty archetype
+        meta.archetypeId = 0;
         
-        // Add to empty archetype
         Archetype* archetype = archetypeManager_.GetArchetype(0);
-        assert(archetype != nullptr && "Empty archetype must exist");
+        if (!archetype) {
+            throw std::runtime_error("Empty archetype not initialized");
+        }
         meta.indexInArchetype = static_cast<uint32_t>(archetype->AddEntity(handle));
         
         return handle;
@@ -117,6 +151,8 @@ public:
         if (!IsAlive(handle)) return nullptr;
         
         EntityIndex index = handle.Index();
+        if (index >= entityMetadata_.size()) return nullptr;
+        
         const EntityMetadata& meta = entityMetadata_[index];
         
         Archetype* archetype = archetypeManager_.GetArchetype(meta.archetypeId);
@@ -130,6 +166,8 @@ public:
         if (!IsAlive(handle)) return nullptr;
         
         EntityIndex index = handle.Index();
+        if (index >= entityMetadata_.size()) return nullptr;
+        
         const EntityMetadata& meta = entityMetadata_[index];
         
         const Archetype* archetype = archetypeManager_.GetArchetype(meta.archetypeId);
@@ -153,9 +191,13 @@ public:
             if (!components) continue;
             
             // Iterate over contiguous arrays (cache-friendly!)
-            size_t count = entities.size();
+            const size_t count = entities.size();
+            const EntityHandle* entityData = entities.data();
+            T* componentData = components->data();
+            
+            // Linear traversal optimized for CPU cache prefetching
             for (size_t i = 0; i < count; ++i) {
-                func(entities[i], (*components)[i]);
+                func(entityData[i], componentData[i]);
             }
         }
     }
@@ -184,16 +226,22 @@ public:
             
             if (!allExist) continue;
             
-            // Iterate over contiguous arrays
-            size_t count = entities.size();
-            for (size_t i = 0; i < count; ++i) {
-                if constexpr (sizeof...(Ts) == 0) {
-                    func(entities[i], (*comp1)[i], (*comp2)[i]);
-                } else {
-                    std::apply([&](auto*... arrays) {
-                        func(entities[i], (*comp1)[i], (*comp2)[i], (*arrays)[i]...);
-                    }, restArrays);
+            // Iterate over contiguous arrays with optimized pointer access
+            const size_t count = entities.size();
+            const EntityHandle* entityData = entities.data();
+            T1* data1 = comp1->data();
+            T2* data2 = comp2->data();
+            
+            if constexpr (sizeof...(Ts) == 0) {
+                for (size_t i = 0; i < count; ++i) {
+                    func(entityData[i], data1[i], data2[i]);
                 }
+            } else {
+                std::apply([&](auto*... arrays) {
+                    for (size_t i = 0; i < count; ++i) {
+                        func(entityData[i], data1[i], data2[i], (*arrays)[i]...);
+                    }
+                }, restArrays);
             }
         }
     }
@@ -218,6 +266,23 @@ public:
         }
     }
     
+    // ===== Batch Operations =====
+    
+    template<typename Func>
+    void CreateEntities(size_t count, Func&& func) {
+        for (size_t i = 0; i < count; ++i) {
+            EntityHandle handle = CreateEntity();
+            func(handle);
+        }
+    }
+    
+    template<typename... Components>
+    EntityHandle CreateEntityWith(Components&&... components) {
+        EntityHandle handle = CreateEntity();
+        (AddComponent<Components>(handle, std::forward<Components>(components)), ...);
+        return handle;
+    }
+    
     // ===== Statistics & Debugging =====
     
     size_t GetEntityCount() const {
@@ -230,6 +295,14 @@ public:
     
     size_t GetArchetypeCount() const {
         return archetypeManager_.GetArchetypeCount();
+    }
+    
+    size_t GetMemoryUsage() const {
+        size_t total = 0;
+        total += entityMetadata_.size() * sizeof(EntityMetadata);
+        total += freeIndices_.capacity() * sizeof(EntityIndex);
+        total += deferredCommands_.capacity() * sizeof(std::unique_ptr<DeferredCommand>);
+        return total;
     }
     
     const ArchetypeManager& GetArchetypeManager() const {
@@ -305,13 +378,17 @@ private:
 
     template<typename T, typename... Args>
     T& AddComponentImmediate(EntityHandle handle, Args&&... args) {
-        assert(IsAlive(handle) && "Cannot add component to dead entity");
+        if (!IsAlive(handle)) {
+            throw std::runtime_error("Cannot add component to dead entity");
+        }
 
         EntityIndex index = handle.Index();
         EntityMetadata& meta = entityMetadata_[index];
 
         Archetype* oldArchetype = archetypeManager_.GetArchetype(meta.archetypeId);
-        assert(oldArchetype != nullptr && "Entity's archetype is null");
+        if (!oldArchetype) {
+            throw std::runtime_error("Entity's archetype is null");
+        }
 
         if (oldArchetype->HasComponentType<T>()) {
             return *oldArchetype->GetComponent<T>(meta.indexInArchetype);
@@ -325,10 +402,15 @@ private:
         }
 
         T* componentPtr = newArchetype->GetComponent<T>(meta.indexInArchetype);
-        assert(componentPtr != nullptr && "Component not found in new archetype");
+        if (!componentPtr) {
+            throw std::runtime_error("Component not found in new archetype");
+        }
         T& component = *componentPtr;
         component = T(std::forward<Args>(args)...);
-        assert(newArchetype->ValidateIntegrity());
+        
+        if (!newArchetype->ValidateIntegrity()) {
+            throw std::runtime_error("Archetype integrity validation failed after adding component");
+        }
         return component;
     }
 
@@ -340,7 +422,9 @@ private:
         EntityMetadata& meta = entityMetadata_[index];
 
         Archetype* oldArchetype = archetypeManager_.GetArchetype(meta.archetypeId);
-        assert(oldArchetype != nullptr && "Entity's archetype is null");
+        if (!oldArchetype) {
+            throw std::runtime_error("Entity's archetype is null");
+        }
 
         Archetype* newArchetype = archetypeManager_.GetArchetypeWithRemoved<T>(
             oldArchetype->GetSignature());
@@ -357,11 +441,16 @@ private:
         Archetype* archetype = archetypeManager_.GetArchetype(meta.archetypeId);
         if (archetype) {
             EntityHandle swappedEntity = archetype->RemoveEntity(meta.indexInArchetype);
-            assert(archetype->ValidateIntegrity());
+            
+            if (!archetype->ValidateIntegrity()) {
+                throw std::runtime_error("Archetype integrity validation failed after entity removal");
+            }
 
             if (swappedEntity.IsValid() && swappedEntity != handle) {
                 EntityIndex swappedIndex = swappedEntity.Index();
-                entityMetadata_[swappedIndex].indexInArchetype = meta.indexInArchetype;
+                if (swappedIndex < entityMetadata_.size()) {
+                    entityMetadata_[swappedIndex].indexInArchetype = meta.indexInArchetype;
+                }
             }
         }
 
@@ -413,6 +502,9 @@ private:
 
     template<typename T, typename... Args>
     T& QueueDeferredAdd(EntityHandle handle, Args&&... args) {
+        // Reserve space to prevent reallocation invalidating reference
+        deferredCommands_.reserve(deferredCommands_.size() + 1);
+        
         auto command = std::make_unique<DeferredAddCommand<T>>(handle, std::forward<Args>(args)...);
         T& reference = command->ComponentData();
         deferredCommands_.push_back(std::move(command));
@@ -523,6 +615,7 @@ public:
         Hitbox,
         AnimationState,
         Name,
+        ViewportID,
         PlayerController,
         MovementParameters,
         MovementBounds,
@@ -533,7 +626,7 @@ public:
         DockingStatus,
         LocomotionStateMachine,
         TargetLock,
-        Projectile,
+        ProjectileComponent,
         RigidBody,
         Force,
         Collider,
@@ -542,6 +635,7 @@ public:
         ConstantForce,
         CharacterController,
         Joint,
+        CameraComponent,
         CelestialBodyComponent,
         OrbitalComponent,
         VisualCelestialComponent,
@@ -1014,3 +1108,5 @@ private:
 };
 
 } // namespace ecs
+
+#endif // ECS_ENTITY_MANAGER_H
