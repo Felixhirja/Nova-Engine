@@ -9,7 +9,7 @@
 #include "graphics/LineBatcher3D.h"
 #include "graphics/MaterialLibrary.h"
 #include "graphics/InstancedMeshRenderer.h"
-#include "graphics/ActorRenderer.h"
+#include "graphics/EntityRenderer.h"
 #include "graphics/ShaderManager.h"
 #include "Mesh.h"
 #if (defined(USE_GLFW) || defined(USE_SDL))
@@ -226,7 +226,7 @@ private:
     GLFWwindow* glfwWindow;
 #endif
     std::unique_ptr<ParticleRenderer, ParticleRendererDeleter> particleRenderer_;
-    std::unique_ptr<ActorRenderer> actorRenderer_;
+    std::unique_ptr<EntityRenderer> entityRenderer_;
     std::vector<ViewportLayout> layouts_;
     size_t activeLayoutIndex_;
     std::unique_ptr<UIBatcher> uiBatcher_;

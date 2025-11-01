@@ -482,16 +482,16 @@ inline void CameraFollowController::Update(Camera& camera,
         state_.targetLockTransition = 0.0;
     }
 
-    // Debug: log which systems are active
-    static double debugTimer2 = 0.0;
-    debugTimer2 += deltaTime;
-    if (debugTimer2 > 2.0) {
-        std::cout << "CameraController - isLocked:" << followInput.isTargetLocked 
-                  << " transition:" << state_.targetLockTransition
-                  << " callingTargetLock:" << (followInput.isTargetLocked || state_.targetLockTransition > 0.0)
-                  << " callingFree:" << (!followInput.isTargetLocked && state_.targetLockTransition <= 0.0) << std::endl;
-        debugTimer2 = 0.0;
-    }
+    // Debug: log which systems are active (disabled - too spammy)
+    // static double debugTimer2 = 0.0;
+    // debugTimer2 += deltaTime;
+    // if (debugTimer2 > 10.0) {
+    //     std::cout << "CameraController - isLocked:" << followInput.isTargetLocked 
+    //               << " transition:" << state_.targetLockTransition
+    //               << " callingTargetLock:" << (followInput.isTargetLocked || state_.targetLockTransition > 0.0)
+    //               << " callingFree:" << (!followInput.isTargetLocked && state_.targetLockTransition <= 0.0) << std::endl;
+    //     debugTimer2 = 0.0;
+    // }
 
     // Only update target lock camera if we're in target lock mode or transitioning
     if (followInput.isTargetLocked || state_.targetLockTransition > 0.0) {
@@ -590,16 +590,16 @@ inline void CameraFollowController::ApplyFreeCameraMovement(Camera& camera,
     snapZero(state_.freeVelY);
     snapZero(state_.freeVelZ);
 
-    // Debug output
-    static double debugTimer = 0.0;
-    debugTimer += dt;
-    if (debugTimer > 1.0) {
-        std::cout << "Camera movement - Input: fwd=" << fwdIn << " right=" << rightIn << " up=" << upIn 
-                  << " | Vel: (" << state_.freeVelX << "," << state_.freeVelY << "," << state_.freeVelZ << ")"
-                  << " | Pos: (" << camera.x() << "," << camera.y() << "," << camera.z() << ")"
-                  << " | dt=" << dt << " alpha=" << velAlpha << std::endl;
-        debugTimer = 0.0;
-    }
+    // Debug output (disabled - too spammy)
+    // static double debugTimer = 0.0;
+    // debugTimer += dt;
+    // if (debugTimer > 1.0) {
+    //     std::cout << "Camera movement - Input: fwd=" << fwdIn << " right=" << rightIn << " up=" << upIn 
+    //               << " | Vel: (" << state_.freeVelX << "," << state_.freeVelY << "," << state_.freeVelZ << ")"
+    //               << " | Pos: (" << camera.x() << "," << camera.y() << "," << camera.z() << ")"
+    //               << " | dt=" << dt << " alpha=" << velAlpha << std::endl;
+    //     debugTimer = 0.0;
+    // }
 
     // Integrate
     camera.SetPosition(camera.x() + state_.freeVelX * dt,

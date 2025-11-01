@@ -612,10 +612,10 @@ void Simulation::Init(EntityManager* externalEm) {
     systemManager.Clear();
     systemManager.SetDocumentationOutputPath("engine/docs/system_dependency_map.md");
     
-    // Essential systems for basic movement
-    systemManager.RegisterUnifiedSystem(SystemType::PlayerControl);
-    systemManager.RegisterUnifiedSystem(SystemType::Movement);
-    systemManager.RegisterUnifiedSystem(SystemType::Locomotion);
+    // Essential systems for basic movement - save pointers for direct invocation
+    playerControlSystem = &systemManager.RegisterUnifiedSystem(SystemType::PlayerControl);
+    movementSystem = &systemManager.RegisterUnifiedSystem(SystemType::Movement);
+    locomotionSystem = &systemManager.RegisterUnifiedSystem(SystemType::Locomotion);
     
     // Advanced systems - only register if enabled for performance
     if (enableAdvancedSystems) {
@@ -633,22 +633,31 @@ void Simulation::Init(EntityManager* externalEm) {
     }
 
     // Create player entity in ECS
+    std::cout << "[Simulation] Creating player entity..." << std::endl;
+    std::cout.flush();
     playerEntity = useEm->CreateEntity();
+    std::cout << "[Simulation] Player entity ID: " << playerEntity << std::endl;
+    std::cout.flush();
+    
     auto pos = std::make_shared<Position>();
     pos->x = 0.0;
     pos->y = 0.0;
     useEm->AddComponent<Position>(playerEntity, pos);
+    std::cout << "[Simulation] Added Position component (0, 0, 0)" << std::endl;
+    std::cout.flush();
 
     auto vel = std::make_shared<Velocity>();
     vel->vx = 0.0;
     vel->vy = 0.0;
     useEm->AddComponent<Velocity>(playerEntity, vel);
+    std::cout << "[Simulation] Added Velocity component" << std::endl;
 
     auto acc = std::make_shared<Acceleration>();
     acc->ax = 0.0;
     acc->ay = 0.0;
     acc->az = 0.0;
     useEm->AddComponent<Acceleration>(playerEntity, acc);
+    std::cout << "[Simulation] Added Acceleration component" << std::endl;
 
     auto controller = std::make_shared<PlayerController>();
     controller->moveLeft = false;
@@ -665,24 +674,40 @@ void Simulation::Init(EntityManager* externalEm) {
     controller->boost = false;
     controller->cameraYaw = Camera::kDefaultYawRadians;
     useEm->AddComponent<PlayerController>(playerEntity, controller);
+    std::cout << "[Simulation] Added PlayerController component" << std::endl;
 
     auto physics = std::make_shared<PlayerPhysics>();
     physics->thrustMode = useThrustMode;
     physics->enableGravity = true;
     physics->isGrounded = true;
     useEm->AddComponent<PlayerPhysics>(playerEntity, physics);
+    std::cout << "[Simulation] Added PlayerPhysics component (thrustMode:" << useThrustMode << ", gravity:enabled)" << std::endl;
 
     auto vitals = std::make_shared<PlayerVitals>();
     vitals->health = vitals->maxHealth;
     vitals->shields = 50.0;
     vitals->maxShields = 50.0;
     useEm->AddComponent<PlayerVitals>(playerEntity, vitals);
+    std::cout << "[Simulation] Added PlayerVitals component (health:" << vitals->health << ", shields:" << vitals->shields << ")" << std::endl;
+
+    // Add DrawComponent for visual rendering (fallback cube)
+    auto draw = std::make_shared<DrawComponent>();
+    draw->mode = DrawComponent::RenderMode::Mesh3D;
+    draw->visible = true;
+    draw->meshHandle = 0;  // 0 = use fallback cube
+    draw->meshScale = 1.0f;
+    draw->tintR = 0.2f;
+    draw->tintG = 0.8f;
+    draw->tintB = 1.0f;  // Cyan color for player
+    useEm->AddComponent<DrawComponent>(playerEntity, draw);
+    std::cout << "[Simulation] Added DrawComponent (Mesh3D, cyan tint, scale:" << draw->meshScale << ")" << std::endl;
 
     auto inventory = std::make_shared<PlayerInventory>();
     inventory->items.push_back(PlayerInventory::ItemSlot{
         "starter_rations", "Frontier Survival Rations", 0.02, 0.005, 5, false, true
     });
     useEm->AddComponent<PlayerInventory>(playerEntity, inventory);
+    std::cout << "[Simulation] Added PlayerInventory component" << std::endl;
 
     auto progression = std::make_shared<PlayerProgression>();
     progression->level = 1;
@@ -691,8 +716,11 @@ void Simulation::Init(EntityManager* externalEm) {
     progression->reputationByFaction["aurora_spacers_guild"] = 5;
     progression->blueprintCredits = 0;
     useEm->AddComponent<PlayerProgression>(playerEntity, progression);
+    std::cout << "[Simulation] Added PlayerProgression component (level:" << progression->level << ")" << std::endl;
 
     CreatePlayerPhysicsComponents(*useEm, *physics);
+
+   
 
     // Note: Physics system is now handled by UnifiedSystem
     // if (physicsSystem) {
@@ -745,6 +773,7 @@ void Simulation::Init(EntityManager* externalEm) {
     locomotion->currentCameraOffset = locomotion->defaultCameraOffset;
     locomotion->baseJumpImpulse = physics->jumpImpulse;
     useEm->AddComponent<LocomotionStateMachine>(playerEntity, locomotion);
+    std::cout << "[Simulation] Added LocomotionStateMachine component" << std::endl;
 
     auto targetLock = std::make_shared<TargetLock>();
     targetLock->targetEntityId = 0;  // No target initially
@@ -755,11 +784,21 @@ void Simulation::Init(EntityManager* externalEm) {
     targetLock->followDistance = 15.0;
     targetLock->followHeight = 5.0;
     useEm->AddComponent<TargetLock>(playerEntity, targetLock);
+    std::cout << "[Simulation] Added TargetLock component (unlocked)" << std::endl;
 
     auto dockingStatus = std::make_shared<DockingStatus>();
     dockingStatus->isDocked = false;
     dockingStatus->alignmentScore = 0.0;
     useEm->AddComponent<DockingStatus>(playerEntity, dockingStatus);
+    std::cout << "[Simulation] Added DockingStatus component" << std::endl;
+
+    // Add ViewportID so rendering loop can find this entity
+    auto viewportID = std::make_shared<ViewportID>();
+    viewportID->viewportId = 0;  // Main viewport
+    useEm->AddComponent<ViewportID>(playerEntity, viewportID);
+    std::cout << "[Simulation] Added ViewportID component (viewport 0)" << std::endl;
+   
+    std::cout << "[Simulation] ===== Player entity creation complete! Entity ID: " << playerEntity << " =====" << std::endl;
 
     inputRight = false;
     inputForward = false;
@@ -775,7 +814,7 @@ void Simulation::Init(EntityManager* externalEm) {
     inputBoost = false;
     prevJumpHeld = false;
 
-    std::cout << "Simulation: created player entity id=" << playerEntity << std::endl;
+    // Removed redundant debug message - detailed logging above
 
     if (useSchedulerV2_) {
         EnsureSchedulerV2Configured(*useEm);
@@ -790,6 +829,41 @@ void Simulation::Update(double dt) {
     }
 
     EntityManager* useEm = activeEm ? activeEm : &em;
+
+    // Debug: Check player position every 2 seconds
+    static double posDebugTimer = 0.0;
+    posDebugTimer += dt;
+    if (posDebugTimer > 2.0) {
+        if (auto* pos = useEm->GetComponent<Position>(playerEntity)) {
+            std::cout << "[Simulation] Player position: (" << pos->x << ", " << pos->y << ", " << pos->z << ")" << std::endl;
+        } else {
+            std::cout << "[Simulation] WARNING: Player entity has no Position component!" << std::endl;
+        }
+        posDebugTimer = 0.0;
+    }
+
+    // Auto-add DrawComponent to any entity with Position but no DrawComponent
+    // This makes all entities visible with fallback cube rendering
+    static int autoDrawCounter = 0;
+    if (++autoDrawCounter % 60 == 0) {  // Check every second at 60 FPS
+        useEm->ForEach<Position>([useEm, this](Entity e, Position& pos) {
+            // Skip player entity - it has custom cyan cube
+            if (e == playerEntity) return;
+            
+            if (!useEm->GetComponent<DrawComponent>(e)) {
+                auto draw = std::make_shared<DrawComponent>();
+                draw->mode = DrawComponent::RenderMode::Mesh3D;
+                draw->visible = true;
+                draw->meshHandle = 0;  // 0 = use fallback cube
+                draw->meshScale = 1.0f;
+                draw->tintR = 0.8f;
+                draw->tintG = 0.8f;
+                draw->tintB = 0.8f;  // Gray color for generic entities
+                useEm->AddComponent<DrawComponent>(e, draw);
+                // Silently add DrawComponent - no spam
+            }
+        });
+    }
 
     if (replayPlayer_.IsPlaying()) {
         if (const ReplayFrame* frame = replayPlayer_.ConsumeNextFrame()) {
@@ -838,13 +912,29 @@ void Simulation::Update(double dt) {
 
     if (useSchedulerV2_) {
         EnsureSchedulerV2Configured(*useEm);
+        static int sysDebugCounter = 0;
+        if (++sysDebugCounter % 120 == 0) {
+            std::cout << "[Simulation] Using SchedulerV2 - updating systems" << std::endl;
+        }
         schedulerV2_.UpdateAll(useEm->GetArchetypeManager(), dt);
     } else {
-        systemManager.UpdateAll(*useEm, dt);
+        static int sysDebugCounter = 0;
+        if (++sysDebugCounter % 120 == 0) {
+            std::cout << "[Simulation] Using direct system calls (SystemManager broken)" << std::endl;
+        }
+        // WORKAROUND: SystemManager doesn't execute UnifiedSystems (no factory), call directly
+        useEm->EnableArchetypeFacade();  // Migrate to archetype storage for systems
+        if (playerControlSystem) playerControlSystem->Update(*useEm, dt);
+        if (movementSystem) movementSystem->Update(*useEm, dt);
+        if (locomotionSystem) locomotionSystem->Update(*useEm, dt);
     }
 
     if (auto* p = useEm->GetComponent<Position>(playerEntity)) {
         position = p->x;
+        static int posDebugCounter = 0;
+        if (++posDebugCounter % 120 == 0) {
+            std::cout << "[Simulation] Player position after systems: (" << p->x << ", " << p->y << ", " << p->z << ")" << std::endl;
+        }
     }
 
     prevJumpHeld = inputUp;

@@ -612,8 +612,18 @@ void UnifiedSystem::UpdatePhysicsSystem(EntityManager& entityManager, double dt)
 void UnifiedSystem::UpdateMovementSystem(EntityManager& entityManager, double dt) {
     if (dt <= 0.0) return;
 
-    // Basic movement integration for all entities with Position + Velocity
+    static int debugCounter = 0;
+    static bool firstRun = true;
+    int posVelCount = 0;
+    
+    if (firstRun) {
+        std::cout << "[MovementSystem] FIRST RUN" << std::endl;
+        firstRun = false;
+    }
+
+    // After migration to archetype storage, multi-component ForEach works
     entityManager.ForEach<Position, Velocity>([&](Entity entity, Position& position, Velocity& velocity) {
+        posVelCount++;
         // Update position with velocity (basic integration)
         position.x += velocity.vx * dt;
         position.y += velocity.vy * dt;
@@ -629,6 +639,7 @@ void UnifiedSystem::UpdateMovementSystem(EntityManager& entityManager, double dt
 
     // Player physics logic
     entityManager.ForEach<Position, Velocity, PlayerPhysics>([&](Entity entity, Position& position, Velocity& velocity, PlayerPhysics& physics) {
+        (void)position;  // Position not used in this system
         physics.isGrounded = false;
 
         if (auto* rigidBody = entityManager.GetComponent<RigidBody>(entity)) {
@@ -645,6 +656,7 @@ void UnifiedSystem::UpdateMovementSystem(EntityManager& entityManager, double dt
 
     // Movement bounds clamping
     entityManager.ForEach<Position, Velocity, MovementBounds>([&](Entity entity, Position& position, Velocity& velocity, MovementBounds& bounds) {
+        (void)entity;  // Entity ID not used
         // Bounds checking logic (simplified)
         if (bounds.clampX) {
             if (position.x < bounds.minX) {
@@ -657,12 +669,27 @@ void UnifiedSystem::UpdateMovementSystem(EntityManager& entityManager, double dt
         }
         // Similar for Y and Z bounds
     });
+    
+    if (++debugCounter % 120 == 0) {
+        std::cout << "[MovementSystem] Processed " << posVelCount << " entities with Position+Velocity" << std::endl;
+    }
 }
 
 void UnifiedSystem::UpdatePlayerControlSystem(EntityManager& entityManager, double dt) {
     if (dt <= 0.0) return;
 
+    static int debugCounter = 0;
+    static bool firstRun = true;
+    int entityCount = 0;
+    
+    if (firstRun) {
+        std::cout << "[PlayerControlSystem] FIRST RUN" << std::endl;
+        firstRun = false;
+    }
+
+    // After migration to archetype storage, multi-component ForEach works
     entityManager.ForEach<PlayerController, Velocity>([&](Entity entity, PlayerController& controller, Velocity& velocity) {
+        entityCount++;
         const MovementParameters* movement = entityManager.GetComponent<MovementParameters>(entity);
 
         // Movement parameter defaults
@@ -732,6 +759,10 @@ void UnifiedSystem::UpdatePlayerControlSystem(EntityManager& entityManager, doub
             velocity.vz *= (1.0 - friction * dt);
         }
     });
+    
+    if (++debugCounter % 120 == 0) {
+        std::cout << "[PlayerControlSystem] Processed " << entityCount << " entities with PlayerController+Velocity" << std::endl;
+    }
 }
 
 void UnifiedSystem::UpdateBehaviorTreeSystem(EntityManager& entityManager, double dt) {

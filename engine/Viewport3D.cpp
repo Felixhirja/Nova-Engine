@@ -2323,10 +2323,10 @@ void Viewport3D::RenderViewContent(const ViewportView& view,
 #if defined(USE_GLFW) || defined(USE_SDL)
     if (IsUsingGLBackend()) {
         // Render entities with DrawComponent (try legacy first, then V2)
-        if (legacyEntityManager && actorRenderer_) {
-            actorRenderer_->RenderLegacy(*legacyEntityManager, camera);
-        } else if (entityManager && actorRenderer_) {
-            actorRenderer_->Render(*entityManager, camera);
+        if (legacyEntityManager && entityRenderer_) {
+            entityRenderer_->RenderLegacy(*legacyEntityManager, camera);
+        } else if (entityManager && entityRenderer_) {
+            entityRenderer_->Render(*entityManager, camera);
         }
         
         if (view.role == ViewRole::Minimap) {
@@ -2523,16 +2523,16 @@ void Viewport3D::Init() {
         instancedRenderer_.reset();
     }
 
-    // Initialize ActorRenderer for ECS-based actor rendering
+    // Initialize EntityRenderer for ECS-based actor rendering
     try {
-        actorRenderer_ = std::make_unique<ActorRenderer>();
-        if (!actorRenderer_->Initialize()) {
-            if (debugLogging_) std::cerr << "Viewport3D: ActorRenderer::Initialize failed (GLFW path)" << std::endl;
-            actorRenderer_.reset();
+        entityRenderer_ = std::make_unique<EntityRenderer>();
+        if (!entityRenderer_->Initialize()) {
+            if (debugLogging_) std::cerr << "Viewport3D: EntityRenderer::Initialize failed (GLFW path)" << std::endl;
+            entityRenderer_.reset();
         }
     } catch (const std::exception& e) {
-        std::cerr << "Viewport3D: Exception in ActorRenderer::Initialize: " << e.what() << std::endl;
-        actorRenderer_.reset();
+        std::cerr << "Viewport3D: Exception in EntityRenderer::Initialize: " << e.what() << std::endl;
+        entityRenderer_.reset();
     }
 
     SetBackend(RenderBackend::GLFW_GL);
@@ -2700,16 +2700,16 @@ void Viewport3D::Init() {
                             uiBatcher_.reset();
                         }
 
-                        // Initialize ActorRenderer for ECS-based actor rendering
+                        // Initialize EntityRenderer for ECS-based actor rendering
                         try {
-                            actorRenderer_ = std::make_unique<ActorRenderer>();
-                            if (!actorRenderer_->Initialize()) {
-                                if (debugLogging_) std::cerr << "Viewport3D: ActorRenderer::Initialize failed (SDL_GL path)" << std::endl;
-                                actorRenderer_.reset();
+                            entityRenderer_ = std::make_unique<EntityRenderer>();
+                            if (!entityRenderer_->Initialize()) {
+                                if (debugLogging_) std::cerr << "Viewport3D: EntityRenderer::Initialize failed (SDL_GL path)" << std::endl;
+                                entityRenderer_.reset();
                             }
                         } catch (const std::exception& e) {
-                            std::cerr << "Viewport3D: Exception in ActorRenderer::Initialize: " << e.what() << std::endl;
-                            actorRenderer_.reset();
+                            std::cerr << "Viewport3D: Exception in EntityRenderer::Initialize: " << e.what() << std::endl;
+                            entityRenderer_.reset();
                         }
 
                         SetBackend(RenderBackend::SDL_GL);

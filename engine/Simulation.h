@@ -94,6 +94,12 @@ private:
     ecs::SystemSchedulerV2 schedulerV2_;
     bool useSchedulerV2_ = false;
     bool schedulerConfigured_ = false;
+    
+    // Direct system references (workaround for broken SystemManager)
+    UnifiedSystem* playerControlSystem = nullptr;
+    UnifiedSystem* movementSystem = nullptr;
+    UnifiedSystem* locomotionSystem = nullptr;
+    
     MovementParameters movementConfig;
     MovementBounds movementBoundsConfig;
     std::string movementParametersConfigPath;

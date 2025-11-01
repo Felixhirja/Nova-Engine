@@ -548,13 +548,27 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         bool up = Input::IsKeyHeld(' ');
         bool down = Input::IsKeyHeld('c') || Input::IsKeyHeld('C');
 
+        // Check if we're controlling any entity (any entity with CameraComponent AND movement components)
+        bool controllingEntity = false;
+        if (entityManager) {
+            // Check all entities for camera + movement capabilities
+            entityManager->ForEach<CameraComponent, Velocity, PlayerPhysics>(
+                [&](Entity /*entity*/, CameraComponent& cam, Velocity& /*vel*/, PlayerPhysics& /*physics*/) {
+                    if (cam.isActive) {
+                        controllingEntity = true;
+                    }
+                }
+            );
+        }
+
+        // Camera controls: arrow keys always work, WASD only when NOT controlling entity
 #ifdef USE_GLFW
-        bool cameraForward = Input::IsArrowKeyHeld(GLFW_KEY_UP) || forward;
-        bool cameraBackward = Input::IsArrowKeyHeld(GLFW_KEY_DOWN) || backward;
-        bool cameraLeft = Input::IsArrowKeyHeld(GLFW_KEY_LEFT) || strafeLeft;
-        bool cameraRight = Input::IsArrowKeyHeld(GLFW_KEY_RIGHT) || strafeRight;
-        bool cameraUp = (Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_UP)) || up;
-        bool cameraDown = (Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_DOWN)) || down;
+        bool cameraForward = Input::IsArrowKeyHeld(GLFW_KEY_UP) || (!controllingEntity && forward);
+        bool cameraBackward = Input::IsArrowKeyHeld(GLFW_KEY_DOWN) || (!controllingEntity && backward);
+        bool cameraLeft = Input::IsArrowKeyHeld(GLFW_KEY_LEFT) || (!controllingEntity && strafeLeft);
+        bool cameraRight = Input::IsArrowKeyHeld(GLFW_KEY_RIGHT) || (!controllingEntity && strafeRight);
+        bool cameraUp = (Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_UP)) || (!controllingEntity && up);
+        bool cameraDown = (Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_DOWN)) || (!controllingEntity && down);
 #else
         bool cameraForward = false;
         bool cameraBackward = false;
@@ -721,11 +735,17 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             if (entityManager) {
                 // Find the highest priority entity with CameraComponent
                 entityManager->ForEach<Position, CameraComponent>(
-                    [&](Entity e, Position& /*pos*/, CameraComponent& cam) {
+                    [&](Entity e, Position& pos, CameraComponent& cam) {
                         if (cam.isActive && cam.priority > highestPriority) {
                             cameraTargetEntity = e;
                             highestPriority = cam.priority;
                             foundCameraTarget = true;
+                            static int debugCounter = 0;
+                            if (debugCounter++ % 120 == 0) {
+                                std::cout << "[Camera] Following entity " << e 
+                                          << " at (" << pos.x << ", " << pos.y << ", " << pos.z 
+                                          << ") priority=" << cam.priority << std::endl;
+                            }
                         }
                     }
                 );
@@ -733,13 +753,20 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
             CameraViewState cameraAnchor;
             if (foundCameraTarget && entityManager) {
-                // When we have a camera entity, use the camera's current position
-                // as the anchor so it doesn't get pulled toward the entity position.
-                // This allows free camera movement.
-                cameraAnchor.worldX = camera->x();
-                cameraAnchor.worldY = camera->y();
-                cameraAnchor.worldZ = camera->z();
-                cameraAnchor.isTargetLocked = false;
+                // Follow the entity with CameraComponent
+                auto pos = entityManager->GetComponent<Position>(cameraTargetEntity);
+                if (pos) {
+                    cameraAnchor.worldX = pos->x;
+                    cameraAnchor.worldY = pos->y;
+                    cameraAnchor.worldZ = pos->z;
+                    cameraAnchor.isTargetLocked = false;
+                } else {
+                    // Fallback to camera's current position
+                    cameraAnchor.worldX = camera->x();
+                    cameraAnchor.worldY = camera->y();
+                    cameraAnchor.worldZ = camera->z();
+                    cameraAnchor.isTargetLocked = false;
+                }
             } else {
                 // Free camera mode - use camera's current position
                 cameraAnchor.worldX = camera->x();
@@ -828,15 +855,35 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
         // Render all entities with ViewportID component (fallback to cube if no model)
         if (entityManager) {
-            entityManager->ForEach<Position, ViewportID>([&](Entity e, Position& pos, ViewportID& vp) {
-                if (e != playerEntity && vp.viewportId == 0) {  // Skip player, render entities in viewport 0
-                    Transform entityTransform;
-                    entityTransform.x = pos.x;
-                    entityTransform.y = pos.y;
-                    entityTransform.z = pos.z;
-                    viewport->DrawEntity(e, entityTransform);  // Will use cube as fallback
+            static int renderDebugCounter = 0;
+            int entityCount = 0;
+            
+            // Debug: Check if player entity has required components
+            if (renderDebugCounter == 0) {
+                bool hasPos = entityManager->GetComponent<Position>(playerEntity) != nullptr;
+                bool hasVp = entityManager->GetComponent<ViewportID>(playerEntity) != nullptr;
+                std::cout << "[MainLoop] Player entity " << playerEntity << " has Position: " << hasPos 
+                          << ", ViewportID: " << hasVp << std::endl;
+            }
+            
+            // WORKAROUND: Legacy EntityManager's ForEach<T1, T2> doesn't work with mixed storage
+            // Use single-component ForEach instead
+            entityManager->ForEach<ViewportID>([&](Entity e, ViewportID& vp) {
+                if (auto* pos = entityManager->GetComponent<Position>(e)) {
+                    entityCount++;
+                    if (e != playerEntity && vp.viewportId == 0) {  // Skip player, render entities in viewport 0
+                        Transform entityTransform;
+                        entityTransform.x = pos->x;
+                        entityTransform.y = pos->y;
+                        entityTransform.z = pos->z;
+                        viewport->DrawEntity(e, entityTransform);  // Will use cube as fallback
+                    }
                 }
             });
+            
+            if (++renderDebugCounter % 120 == 0) {  // Log every 2 seconds
+                std::cout << "[MainLoop] Rendering " << entityCount << " entities with Position+ViewportID" << std::endl;
+            }
         }
 
         if (camera) {

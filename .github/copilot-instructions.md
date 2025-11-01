@@ -8,21 +8,39 @@ Nova Engine is a 3D C++17 game engine focused on space simulation with physicall
 ### Core Systems
 - **Engine Core** (`engine/`): MainLoop, Viewport3D, Input, Simulation - handles game loop, rendering, and input
 - **ECS System** (`engine/ecs/`): Dual ECS implementation (legacy EntityManager + modern EntityManagerV2 with archetypes)
-- **Entity System** (`entities/`): Game objects (Spaceship, NPC, Station, Projectile) with automatic registration
-- **Graphics Pipeline** (`engine/graphics/`): OpenGL rendering with multiple modes (Mesh3D, Billboard, Sprite2D, Particles)
+  - Modern V2 uses contiguous arrays for 10-50x faster iteration with 70% less memory
+  - Legacy system uses map-based storage with shared_ptr components (compatibility layer)
+- **Actor System** (`entities/`): Game objects (Spaceship, NPC, Station, Projectile) via `IActor` interface
+  - **CRITICAL:** All actors use `ActorContext` to bridge entity and ECS manager
+  - Include order matters: `EntityManager.h` MUST come before `ActorContext.h`
+- **Graphics Pipeline** (`engine/graphics/`): Multiple renderer implementations
+  - `EntityRenderer` and `ActorRenderer` both exist (legacy migration in progress)
+  - Support for Mesh3D, Billboard, Sprite2D, Particles render modes
 - **Physics** (`engine/physics/`): Movement, collision, and physics simulation systems
 
 ### Key Design Patterns
 
-#### Actor Registration
-Entities use automatic registration via build system. Add new entity headers to `entities/` directory - the build system auto-generates `engine/Entities.h`:
+#### Actor Registration & Include Order
+Actors use automatic registration via build system. Add new entity headers to `entities/` directory - the build system auto-generates `engine/Entities.h`:
 
 ```cpp
 // In entities/YourNewEntity.h
+#include "../engine/EntityCommon.h"  // CRITICAL: Gets correct include order
+
 class YourNewActor : public IActor {
-    // ... implementation
+    // IActor interface
+    void Initialize() override {
+        // Access ECS through context_
+        if (auto* em = context_.GetEntityManager()) {
+            em->AddComponent<DrawComponent>(context_.GetEntity(), draw);
+        }
+    }
+    void Update(double deltaTime) override { /* ... */ }
+    std::string GetName() const override { return "YourActor"; }
 };
 ```
+
+**Include order is critical:** `engine/EntityCommon.h` ensures `EntityManager.h` comes before `ActorContext.h` to avoid incomplete type errors. Always use this pattern for actor headers.
 
 #### Component-Based Architecture
 Use ECS components for data, systems for logic. Prefer modern EntityManagerV2 for new code:
@@ -57,6 +75,18 @@ make test              # Build all test executables
 make clean             # Remove all build artifacts
 ```
 
+**Windows (PowerShell):**
+```powershell
+mingw32-make            # Build engine
+mingw32-make test       # Build tests
+make run                # Build and launch
+```
+
+**Incremental rebuilds:** To force recompilation of specific files:
+```powershell
+Remove-Item engine/MainLoop.o -ErrorAction SilentlyContinue; mingw32-make nova-engine
+```
+
 ### Testing
 Tests are comprehensive and cover all major systems. Run specific tests:
 ```bash
@@ -73,6 +103,14 @@ Use PowerShell scripts for DLL management:
 .\scripts\check_dlls.ps1        # Copy required DLLs from MSYS2
 ```
 
+**Required DLLs for runtime** (auto-copied by script):
+- `glfw3.dll` - GLFW windowing
+- `libfreeglut.dll` - OpenGL utilities
+- `libgcc_s_seh-1.dll`, `libstdc++-6.dll`, `libwinpthread-1.dll` - MinGW runtime
+- `xinput1_4.dll` - Optional gamepad support
+
+**If build fails with missing DLLs:** Set `$env:MSYS2_MINGW64_BIN` to your MSYS2 bin path (default: `C:\msys64\mingw64\bin`).
+
 ### Cross-Platform Considerations
 - **Linux**: Uses pkg-config for GLFW/FreeType detection
 - **Windows**: MSYS2/MinGW with bundled DLLs in `lib/`
@@ -83,13 +121,23 @@ Use PowerShell scripts for DLL management:
 ### Automatic Actor Registration
 The build system automatically generates `engine/Entities.h` from all headers in `entities/` directory using pure Makefile commands:
 - Add new entity `.h` files to `entities/` 
-- Run `make` - the Makefile generates `engine/Actors.h` automatically with:
+- Run `make` - the Makefile generates `engine/Entities.h` automatically with:
   - Timestamp of generation
   - Total actor count
   - Proper include statements
   - Completion marker
 - No external scripts needed - uses built-in shell commands
 - Cross-platform compatible (Windows/Unix)
+
+**How it works (Windows PowerShell):**
+```makefile
+engine/Entities.h: $(ACTOR_HEADERS)
+    @echo #pragma once > $@
+    @echo // Auto-generated - includes all entity headers for registration >> $@
+    @for %%f in (entities\*.h) do @echo #include "../entities/%%~nxf" >> $@
+```
+
+**Important:** Delete `engine/Entities.h` and rebuild if actor registration errors occur.
 
 ### Dependency Detection
 - GLFW/FreeType detection via pkg-config (Linux/macOS) or fallback paths (Windows)
@@ -195,22 +243,42 @@ Actors become visible by attaching DrawComponent:
 
 ```cpp
 DrawComponent draw;
-draw.renderMode = RenderMode::Mesh3D;    // Mesh3D, Billboard, Sprite2D, Particles
+draw.mode = DrawComponent::RenderMode::Mesh3D;  // Mesh3D, Billboard, Sprite2D, Particles
 draw.visible = true;
-draw.renderLayer = 1;                    // Drawing order
+draw.renderLayer = 1;                           // Drawing order
 draw.meshHandle = modelId;
 draw.materialHandle = materialId;
+draw.SetTint(r, g, b);                          // Optional color tinting
 entityManager->AddComponent<DrawComponent>(entity, draw);
 ```
 
-### ActorRenderer Usage
+**RenderMode Options:**
+- `Mesh3D` - Full 3D mesh rendering (currently fallback: colored cube)
+- `Billboard` - Always faces camera (for particles, projectiles)
+- `Sprite2D` - 2D sprite in screen space
+- `Particles` - Particle system rendering
+- `Wireframe` - Debug wireframe view
+- `Custom` - User-defined `customRenderCallback`
+
+### EntityRenderer vs ActorRenderer
+**Current state:** Both exist during migration
+- `EntityRenderer` - New implementation (header-only, inline methods)
+- `ActorRenderer` - Legacy implementation (similar API)
+- Both use `ForEach<DrawComponent, Position>` pattern for rendering
+
 ```cpp
-#include "graphics/ActorRenderer.h"
+// Modern approach (V2 ECS)
+EntityRenderer renderer;
+renderer.Initialize();
+renderer.Render(entityManagerV2, camera);
+
+// Legacy approach
 ActorRenderer renderer;
 renderer.Initialize();
-// In render loop:
-renderer.Render(entityManager, camera);
+renderer.RenderLegacy(entityManager, camera);
 ```
+
+**Implementation note:** Both renderers currently use OpenGL immediate mode (legacy) as a fallback when no mesh is loaded. Modern shader-based rendering is TODO.
 
 ## Testing Guidelines
 
@@ -275,10 +343,13 @@ Press `I` in-game to open ECS inspector. Use `[`/`]` to cycle filters, `0` to cl
 ## Common Pitfalls
 
 1. **Entity Registration**: Always add new entity headers to `entities/` directory - build system auto-generates includes
-2. **ECS Component Access**: Check `IsAlive(entity)` before accessing components
-3. **OpenGL Context**: Ensure valid context before rendering operations
-4. **Cross-Platform Paths**: Use forward slashes in code, let build system handle conversion
-5. **Memory Ownership**: Understand shared ownership semantics in ECS
+2. **Include Order for Actors**: Use `#include "../engine/EntityCommon.h"` as the first include in actor headers to avoid incomplete type errors with `ActorContext`
+3. **ECS Component Access**: Check `IsAlive(entity)` before accessing components
+4. **OpenGL Context**: Ensure valid context before rendering operations
+5. **Cross-Platform Paths**: Use forward slashes in code, let build system handle conversion
+6. **Memory Ownership**: Understand shared ownership semantics in legacy ECS (shared_ptr), value semantics in V2
+7. **Incremental Compilation**: When rebuild fails, delete specific `.o` files to force recompilation (especially `MainLoop.o`, `Viewport3D.o`, `Simulation.o`)
+8. **Renderer Selection**: Use `EntityRenderer` for V2 ECS, `ActorRenderer` for legacy. Both have `Render()` and `RenderLegacy()` methods
 
 ## Getting Started
 

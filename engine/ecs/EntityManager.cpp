@@ -84,6 +84,8 @@ void EntityManager::EnableArchetypeFacade() {
         return;
     }
 
+    std::cout << "[EntityManager] EnableArchetypeFacade called - migrating " << aliveEntities.size() << " entities to archetype storage" << std::endl;
+
     std::unordered_map<Entity, ecs::EntityHandle> newLegacyToModern;
     std::unordered_map<uint32_t, Entity> newModernToLegacy;
     std::unordered_set<std::type_index> unsupported;
@@ -97,6 +99,7 @@ void EntityManager::EnableArchetypeFacade() {
     AliasMigratedComponents();
 
     usingArchetypes_ = true;
+    std::cout << "[EntityManager] Migration complete - " << legacyToModern_.size() << " entities migrated" << std::endl;
 }
 
 void EntityManager::MigrateToArchetypeManager(ecs::EntityManagerV2& target,
