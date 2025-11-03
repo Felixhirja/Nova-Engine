@@ -14,10 +14,16 @@ Nova Engine is a 3D C++17 game engine focused on space simulation with physicall
 - **Actor System** (`entities/`): Game objects (Spaceship, NPC, Station, Projectile) via `IActor` interface
   - **CRITICAL:** All actors use `ActorContext` to bridge entity and ECS manager
   - Include order matters: `EntityManager.h` MUST come before `ActorContext.h`
+  - Actor registration is automatic via `engine/Entities.h` generation from `entities/*.h` files
 - **Graphics Pipeline** (`engine/graphics/`): Multiple renderer implementations
   - `EntityRenderer` and `ActorRenderer` both exist (legacy migration in progress)
   - Support for Mesh3D, Billboard, Sprite2D, Particles render modes
 - **Physics** (`engine/physics/`): Movement, collision, and physics simulation systems
+- **Content & Configuration** (`engine/content/`, `engine/config/`, `assets/`): Data-driven architecture
+  - JSON-based actor, ship, and component configurations with schema validation
+  - `ConfigSystem` with hot-reloading, type-safe access, and real-time validation
+  - `ActorFactorySystem` for automatic registration, creation metrics, and template instantiation
+  - Asset pipeline with streaming, hot-reload, versioning, and compression
 
 ### Key Design Patterns
 
@@ -88,21 +94,113 @@ auto spaceship = SpaceshipSpawnBundles::CreateSpaceshipEntity(
 );
 ```
 
+## Data-Driven Architecture
+
+### JSON Configuration System
+Nova Engine uses a comprehensive JSON-based configuration system with schema validation:
+
+**ConfigSystem** (`engine/ConfigSystem.h/cpp`):
+```cpp
+// Load config with schema validation
+auto& configSystem = ConfigSystem::GetInstance();
+auto config = configSystem.LoadConfig("ship", "assets/config/ships/fighter.json");
+double speed = config->Get<double>("maxSpeed", 100.0);
+
+// Hot-reload support (watches for file changes)
+configSystem.EnableHotReload();
+```
+
+**Schema Registry** (`engine/JsonSchema.h/cpp`):
+- Define schemas programmatically or load from JSON files
+- Type validation (string, number, boolean, array, object)
+- Constraints (min/max, required fields, enums, string length)
+- Nested object and array validation
+- Custom validation functions
+
+**Actor Configuration** (`entities/ActorConfig.h`):
+```cpp
+// Load actor config with validation
+auto result = ActorConfig::LoadFromFileWithValidation(
+    "assets/actors/station.json", 
+    "station_config"  // schema ID
+);
+if (result.success) {
+    double health = ActorConfig::GetValue(*result.config, "health", 100.0);
+}
+```
+
+### Content Management
+**ActorFactorySystem** (`engine/ActorFactorySystem.h/cpp`):
+- Automatic actor registration via `REGISTER_ACTOR` macro
+- Factory validation and dependency tracking
+- Performance metrics (creation time, usage statistics)
+- Template instantiation with parameters
+- Category organization (combat, world, default)
+
+**Asset Pipeline** (`engine/AssetPipeline.h`, `engine/AssetStreamer.h`):
+- Asset streaming with priority queues
+- Hot-reload during development
+- Versioning and compatibility checks
+- Compression (LZ4, Zstandard)
+- Asset database with metadata tracking (`assets/asset_database.json`)
+
+**Bootstrap Configuration** (`assets/bootstrap.json`):
+- Framework loading (input, audio, rendering)
+- Deployment mode configuration
+- Runtime feature flags
+
+### Schema Validation Workflow
+```cpp
+// 1. Register schema (do once at startup)
+schema::SchemaRegistry::Instance().LoadSchemaFromFile(
+    "actor_config", 
+    "assets/schemas/actor_config.schema.json"
+);
+
+// 2. Validate configuration
+auto validation = schema::SchemaRegistry::Instance().ValidateFile(
+    "actor_config",
+    "assets/actors/my_actor.json"
+);
+
+// 3. Check validation results
+if (!validation.success) {
+    for (const auto& error : validation.errors) {
+        std::cerr << error.path << ": " << error.message << "\n";
+    }
+}
+```
+
+**Schema directories:**
+- `assets/schemas/` - JSON schema definitions
+- `assets/actors/` - Actor configurations
+- `assets/config/` - System configurations
+- `assets/content/` - Game content definitions
+
 ## Development Workflow
 
 ### Building
-```bash
-make                    # Build main executable
-make test              # Build all test executables
-make clean             # Remove all build artifacts
+**Primary build modes** (use PowerShell scripts for fastest results on Windows):
+```powershell
+.\build_fast_dev.ps1     # Fast dev builds (O1 optimization, 4-6x faster than release)
+.\build_unity.ps1        # Unity builds (combines sources, 10x faster for clean builds)
+.\build_debug.ps1        # Debug builds with symbols (g, O0)
+mingw32-make             # Standard release build (O3 optimization)
 ```
 
-**Windows (PowerShell):**
-```powershell
-mingw32-make            # Build engine
-mingw32-make test       # Build tests
-mingw32-make run        # Build and launch
+**Direct Make commands:**
+```bash
+mingw32-make -j8 BUILD_MODE=fast    # Fast mode (-O1)
+mingw32-make -j8 UNITY_BUILD=1      # Unity build
+mingw32-make -j8 BUILD_MODE=debug   # Debug mode
+mingw32-make test                   # Build all test executables
+mingw32-make clean                  # Remove all build artifacts
 ```
+
+**VS Code tasks available:**
+- `Make: fast` - Fast incremental builds
+- `Make: fast-run` - Fast build + launch
+- `Make: run` - Standard build + launch
 
 **Incremental rebuilds:** To force recompilation of specific files:
 ```powershell
@@ -113,6 +211,7 @@ Remove-Item engine/MainLoop.o -ErrorAction SilentlyContinue; mingw32-make nova-e
 - Use `mingw32-make` instead of `make` 
 - Ensure MSYS2 bin directory is in PATH: `C:\msys64\mingw64\bin`
 - Run `scripts\check_dlls.ps1` to copy required DLLs before building
+- If actor registration fails, delete `engine/Entities.h` and rebuild
 
 ### Testing
 Tests are comprehensive and cover all major systems. Run specific tests:
@@ -380,6 +479,10 @@ Press `I` in-game to open ECS inspector. Use `[`/`]` to cycle filters, `0` to cl
 9. **Windows Build Environment**: Always use `mingw32-make` instead of `make` on Windows; ensure MSYS2 bin is in PATH
 10. **DLL Dependencies**: Run `scripts\check_dlls.ps1` before building to copy required runtime DLLs
 11. **Query Performance**: Use `QueryBuilder` for complex entity queries instead of nested `ForEach` loops
+12. **JSON Configuration**: Always validate configs against schemas before loading; check `validation.success`
+13. **Asset Loading**: Use `AssetDatabase` for tracking; avoid direct file I/O in gameplay code
+14. **Schema Registration**: Register schemas at startup before loading any configs that use them
+15. **Hot-Reload**: Enable `ConfigSystem::EnableHotReload()` only in development builds - has performance cost
 
 ## Getting Started
 
@@ -406,18 +509,41 @@ The engine is migrating from legacy ECS to modern archetype-based system:
 - `Makefile`: Cross-platform build system with auto-detection for GLFW/FreeType
 - `engine/Entities.h`: Auto-generated from `entities/*.h` files - DO NOT edit manually
 - `scripts/check_dlls.ps1`: Windows DLL dependency checker and copier
+- `build_fast_dev.ps1`: Fast development builds (O1 optimization)
+- `build_unity.ps1`: Unity builds for faster clean compilation
+- `build_debug.ps1`: Debug builds with full symbols
 
 ### ECS Core Files
 - `engine/ecs/EntityManager.h`: Legacy and V2 ECS implementations
 - `engine/ecs/QueryBuilder.h`: Advanced query system with parallel execution
 - `engine/ecs/ComponentTraits.h`: Type system for components
+- `engine/ecs/SystemSchedulerV2.h`: Modern parallel system scheduler
 
 ### Actor System
 - `entities/*.h`: Actor implementations (auto-registered)
 - `engine/EntityCommon.h`: Required first include for actors
 - `engine/ActorContext.h`: Bridge between actors and ECS
+- `engine/ActorFactorySystem.h`: Factory registration and metrics
+
+### Configuration & Content
+- `engine/ConfigSystem.h`: Core configuration loading with hot-reload
+- `engine/JsonSchema.h`: JSON schema validation system
+- `engine/content/ContentFramework.h`: Unified content management
+- `entities/ActorConfig.h`: Actor configuration with validation
+- `assets/bootstrap.json`: Framework loading configuration
+- `assets/schemas/`: JSON schema definitions
+- `assets/actors/`: Actor configuration files
+
+### Asset Pipeline
+- `engine/AssetPipeline.h`: Asset processing and versioning
+- `engine/AssetStreamer.h`: Asynchronous asset loading
+- `engine/AssetDatabase.h`: Asset metadata tracking
+- `assets/asset_database.json`: Asset registry and metadata
 
 ### Documentation
 - `docs/ECS_QUERY_SYSTEM.md`: Complete query system guide
 - `docs/engine_overview.md`: Framework architecture overview
-- `ECS_QUERY_IMPLEMENTATION.md`: Implementation status tracking
+- `docs/CONFIG_ARCHITECTURE.md`: Configuration system design
+- `docs/CONTENT_ARCHITECTURE.md`: Content management system
+- `docs/actor_factory_system.md`: Actor factory documentation
+- `BUILD_SPEED_GUIDE.md`: Build optimization strategies
