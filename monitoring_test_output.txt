@@ -1,0 +1,13 @@
+=== Lifecycle Monitoring Test ===
+[LifecycleMonitor] Real-time monitoring initialized
+[LifecycleConsole] Monitoring commands available:
+  lifecycle.status - Show real-time status
+  lifecycle.dashboard - Print monitoring dashboard
+  lifecycle.export - Export monitoring data to JSON
+  lifecycle.analytics - Show analytics report
+[LifecycleMonitoring] Complete monitoring system initialized
+[Lifecycle] Complete lifecycle system initialized
+
+--- Testing Real-time Monitoring ---
+[Lifecycle] Actor 'NormalActor_0' created
+[Lifecycle] Actor 'NormalActor_0' created

@@ -8,20 +8,28 @@
 enum class SystemType {
     Animation,
     BehaviorTree,
+    DayNightCycle,
+    EnvironmentalHazard,
     ECSInspector,
+    EVA,
     GameplayEvent,
     Locomotion,
+    Mining,
     MissionScript,
     Movement,
     Navigation,
     Physics,
+    PlanetaryLanding,
     PlayerControl,
+    ResourceScanning,
     Shield,
     ShipAssembly,
     ShipLogistics,
     SpaceshipPhysics,
+    SurfaceVehicle,
     Targeting,
     Weapon,
+    Weather,
     // Add more system types as needed
 };
 

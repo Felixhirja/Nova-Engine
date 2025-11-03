@@ -1,0 +1,256 @@
+{
+  "presets": {
+    "Fighter": {
+      "name": "Fighter Preset",
+      "hullId": "hull_viper_mk1",
+      "components": {
+        "engine_slot": "engine_basic_ion",
+        "weapon_slot_1": "weapon_pulse_laser_mk1",
+        "weapon_slot_2": "weapon_pulse_laser_mk1",
+        "shield_slot": "shield_basic",
+        "thruster_slot": "thruster_rcs_basic",
+        "sensor_slot": "sensor_basic"
+      },
+      "paintJob": {
+        "primaryR": 0.8,
+        "primaryG": 0.2,
+        "primaryB": 0.2,
+        "secondaryR": 0.3,
+        "secondaryG": 0.3,
+        "secondaryB": 0.3
+      }
+    },
+    "HeavyFighter": {
+      "name": "Heavy Fighter Preset",
+      "hullId": "hull_heavy_fighter",
+      "components": {
+        "engine_slot": "engine_advanced_ion",
+        "weapon_slot_1": "weapon_pulse_laser_mk2",
+        "weapon_slot_2": "weapon_pulse_laser_mk2",
+        "weapon_slot_3": "weapon_pulse_laser_mk1",
+        "shield_slot": "shield_reinforced",
+        "powerplant_slot": "powerplant_fusion_small",
+        "thruster_slot": "thruster_rcs_advanced",
+        "sensor_slot": "sensor_advanced"
+      },
+      "paintJob": {
+        "primaryR": 0.6,
+        "primaryG": 0.1,
+        "primaryB": 0.1,
+        "secondaryR": 0.2,
+        "secondaryG": 0.2,
+        "secondaryB": 0.2
+      }
+    },
+    "Interceptor": {
+      "name": "Interceptor Preset",
+      "hullId": "hull_interceptor_mk2",
+      "components": {
+        "engine_slot": "engine_advanced_ion",
+        "weapon_slot_1": "weapon_pulse_laser_mk1",
+        "weapon_slot_2": "weapon_pulse_laser_mk1",
+        "shield_slot": "shield_basic",
+        "thruster_slot_1": "thruster_rcs_basic",
+        "thruster_slot_2": "thruster_rcs_basic"
+      },
+      "paintJob": {
+        "primaryR": 0.9,
+        "primaryG": 0.7,
+        "primaryB": 0.2,
+        "secondaryR": 0.3,
+        "secondaryG": 0.3,
+        "secondaryB": 0.3
+      }
+    },
+    "Trader": {
+      "name": "Trader Preset",
+      "hullId": "hull_falcon_trader",
+      "components": {
+        "engine_slot": "engine_basic_ion",
+        "weapon_slot_1": "weapon_pulse_laser_mk1",
+        "weapon_slot_2": "weapon_pulse_laser_mk1",
+        "shield_slot": "shield_reinforced",
+        "cargo_slot_1": "cargo_standard",
+        "cargo_slot_2": "cargo_standard",
+        "sensor_slot": "sensor_basic",
+        "computer_slot": "computer_basic"
+      },
+      "paintJob": {
+        "primaryR": 0.2,
+        "primaryG": 0.6,
+        "primaryB": 0.8,
+        "secondaryR": 0.9,
+        "secondaryG": 0.9,
+        "secondaryB": 0.9
+      }
+    },
+    "Freighter": {
+      "name": "Freighter Preset",
+      "hullId": "hull_falcon_trader",
+      "components": {
+        "engine_slot": "engine_advanced_ion",
+        "weapon_slot_1": "weapon_pulse_laser_mk1",
+        "weapon_slot_2": "weapon_pulse_laser_mk1",
+        "shield_slot": "shield_basic",
+        "cargo_slot_1": "cargo_reinforced",
+        "cargo_slot_2": "cargo_reinforced",
+        "sensor_slot": "sensor_basic",
+        "computer_slot": "computer_advanced"
+      },
+      "paintJob": {
+        "primaryR": 0.4,
+        "primaryG": 0.4,
+        "primaryB": 0.4,
+        "secondaryR": 0.8,
+        "secondaryG": 0.6,
+        "secondaryB": 0.2
+      }
+    },
+    "Explorer": {
+      "name": "Explorer Preset",
+      "hullId": "hull_explorer_scout",
+      "components": {
+        "engine_slot": "engine_advanced_ion",
+        "weapon_slot": "weapon_pulse_laser_mk1",
+        "shield_slot": "shield_reinforced",
+        "sensor_slot": "sensor_advanced",
+        "powerplant_slot": "powerplant_fusion_small",
+        "computer_slot": "computer_advanced",
+        "cargo_slot": "cargo_standard"
+      },
+      "paintJob": {
+        "primaryR": 0.2,
+        "primaryG": 0.8,
+        "primaryB": 0.4,
+        "secondaryR": 0.9,
+        "secondaryG": 0.9,
+        "secondaryB": 0.9
+      }
+    },
+    "Scout": {
+      "name": "Scout Preset",
+      "hullId": "hull_explorer_scout",
+      "components": {
+        "engine_slot": "engine_plasma_drive",
+        "weapon_slot": "weapon_pulse_laser_mk2",
+        "shield_slot": "shield_basic",
+        "sensor_slot": "sensor_advanced",
+        "powerplant_slot": "powerplant_fusion_small",
+        "computer_slot": "computer_advanced",
+        "cargo_slot": "cargo_standard"
+      },
+      "paintJob": {
+        "primaryR": 0.1,
+        "primaryG": 0.5,
+        "primaryB": 0.9,
+        "secondaryR": 0.3,
+        "secondaryG": 0.3,
+        "secondaryB": 0.3
+      }
+    },
+    "Miner": {
+      "name": "Miner Preset",
+      "hullId": "hull_prospector_miner",
+      "components": {
+        "engine_slot": "engine_basic_ion",
+        "mining_slot_1": "mining_laser_basic",
+        "mining_slot_2": "mining_laser_basic",
+        "shield_slot": "shield_reinforced",
+        "cargo_slot_1": "cargo_reinforced",
+        "cargo_slot_2": "cargo_standard",
+        "sensor_slot": "sensor_advanced",
+        "powerplant_slot": "powerplant_fusion_small"
+      },
+      "paintJob": {
+        "primaryR": 0.9,
+        "primaryG": 0.6,
+        "primaryB": 0.2,
+        "secondaryR": 0.3,
+        "secondaryG": 0.3,
+        "secondaryB": 0.3
+      }
+    },
+    "Salvager": {
+      "name": "Salvager Preset",
+      "hullId": "hull_prospector_miner",
+      "components": {
+        "engine_slot": "engine_advanced_ion",
+        "shield_slot": "shield_basic",
+        "cargo_slot_1": "cargo_reinforced",
+        "cargo_slot_2": "cargo_reinforced",
+        "sensor_slot": "sensor_advanced",
+        "powerplant_slot": "powerplant_fusion_small"
+      },
+      "paintJob": {
+        "primaryR": 0.6,
+        "primaryG": 0.6,
+        "primaryB": 0.2,
+        "secondaryR": 0.2,
+        "secondaryG": 0.2,
+        "secondaryB": 0.2
+      }
+    },
+    "Support": {
+      "name": "Support Preset",
+      "hullId": "hull_falcon_trader",
+      "components": {
+        "engine_slot": "engine_advanced_ion",
+        "shield_slot": "shield_reinforced",
+        "cargo_slot_1": "cargo_standard",
+        "cargo_slot_2": "cargo_standard",
+        "sensor_slot": "sensor_advanced",
+        "computer_slot": "computer_advanced"
+      },
+      "paintJob": {
+        "primaryR": 0.9,
+        "primaryG": 0.9,
+        "primaryB": 0.9,
+        "secondaryR": 0.2,
+        "secondaryG": 0.8,
+        "secondaryB": 0.2
+      }
+    },
+    "Patrol": {
+      "name": "Patrol Preset",
+      "hullId": "hull_viper_mk1",
+      "components": {
+        "engine_slot": "engine_advanced_ion",
+        "weapon_slot_1": "weapon_pulse_laser_mk2",
+        "weapon_slot_2": "weapon_pulse_laser_mk2",
+        "shield_slot": "shield_reinforced",
+        "thruster_slot": "thruster_rcs_advanced",
+        "sensor_slot": "sensor_advanced"
+      },
+      "paintJob": {
+        "primaryR": 0.1,
+        "primaryG": 0.3,
+        "primaryB": 0.8,
+        "secondaryR": 0.9,
+        "secondaryG": 0.9,
+        "secondaryB": 0.9
+      }
+    },
+    "Bomber": {
+      "name": "Bomber Preset",
+      "hullId": "hull_heavy_fighter",
+      "components": {
+        "engine_slot": "engine_advanced_ion",
+        "weapon_slot_1": "weapon_plasma_cannon",
+        "weapon_slot_2": "weapon_plasma_cannon",
+        "weapon_slot_3": "weapon_pulse_laser_mk2",
+        "shield_slot": "shield_military",
+        "powerplant_slot": "powerplant_fusion_medium",
+        "thruster_slot": "thruster_rcs_basic",
+        "sensor_slot": "sensor_advanced"
+      },
+      "paintJob": {
+        "primaryR": 0.2,
+        "primaryG": 0.2,
+        "primaryB": 0.2,
+        "secondaryR": 0.8,
+        "secondaryG": 0.2,
+        "secondaryB": 0.2
+      }
+    }
+  }
+}

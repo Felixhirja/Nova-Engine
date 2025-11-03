@@ -1,14 +1,23 @@
 {
-    "name": "Trader NPC",
+    "name": "Merchant Hauler",
     "type": "Trader",
     "speed": 80.0,
     "health": 600,
     "shield": 200,
     "model": "trader_ship",
-    "faction": "neutral",
+    "faction": "traders_guild",
+    "cargoCapacity": 150,
+    "credits": 10000,
+    "canCarryContraband": false,
+    "specialization": [
+        "ore_iron",
+        "fuel_hydrogen",
+        "food_basic"
+    ],
+    "tradePreference": "low_risk_high_volume",
     "ai": {
         "behavior": "trade",
         "tradeRadius": 500,
-        "cargoCapacity": 1000
+        "cargoCapacity": 150
     }
 }

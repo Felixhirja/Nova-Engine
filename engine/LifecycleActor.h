@@ -3,6 +3,9 @@
 #include "ecs/EntityManager.h"  // Include EntityManager first
 #include "IActor.h"
 #include "ActorLifecycleManager.h"
+#include "LifecycleAnalytics.h"
+#include "LifecycleMonitoring.h"
+#include "LifecycleDataPersistence.h"
 #include <memory>
 
 /**
@@ -260,6 +263,19 @@ namespace lifecycle_utils {
         hookRegistry.RegisterPerformanceHooks();
         hookRegistry.RegisterAnalyticsHooks();
         
+        // Initialize centralized lifecycle analytics
+        // (class defined in LifecycleAnalytics.h)
+        // Note: Include is added at top when this file is compiled as part of build
+        // to avoid header ordering issues.
+        // Call the analytics initializer in the lifecycle namespace
+        lifecycle::__InitializeLifecycleAnalytics();
+        
+        // Initialize real-time monitoring system
+        lifecycle::monitoring_utils::InitializeMonitoringSystem();
+        
+        // Initialize data persistence system
+        lifecycle::persistence_utils::InitializePersistenceSystem();
+        
         // Configure lifecycle manager
         lifecycle::ActorLifecycleManager::Config config;
         config.enableValidation = true;
@@ -270,17 +286,28 @@ namespace lifecycle_utils {
         
         lifecycle::ActorLifecycleManager::Instance().SetConfig(config);
         
-        std::cout << "[Lifecycle] Lifecycle system initialized" << std::endl;
-    }
-    
-    /**
+        std::cout << "[Lifecycle] Complete lifecycle system initialized" << std::endl;
+    }    /**
      * Shutdown and report lifecycle analytics
      */
     inline void ShutdownLifecycleSystem() {
+        // Print final analytics and monitoring reports
         LifecycleHookRegistry::Instance().PrintAnalytics();
         lifecycle::ActorLifecycleManager::Instance().PrintDebugInfo();
+        
+        // Generate final monitoring report
+        lifecycle::monitoring_utils::PrintQuickHealthCheck();
+        
+        // Shutdown data persistence system
+        lifecycle::persistence_utils::ShutdownPersistenceSystem();
+        
+        // Shutdown monitoring system
+        lifecycle::monitoring_utils::ShutdownMonitoringSystem();
+        
+        // Destroy all actors and clean up
         lifecycle::ActorLifecycleManager::Instance().DestroyAllActors();
-        std::cout << "[Lifecycle] Lifecycle system shutdown complete" << std::endl;
+        
+        std::cout << "[Lifecycle] Complete lifecycle system shutdown" << std::endl;
     }
     
     /**

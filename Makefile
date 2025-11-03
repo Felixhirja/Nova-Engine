@@ -1,10 +1,48 @@
+# Compiler cache support for faster rebuilds
+CCACHE := $(shell which ccache 2>/dev/null)
+ifneq ($(CCACHE),)
+    CXX := ccache $(CXX)
+    CC := ccache $(CC)
+$(info Using ccache for faster rebuilds)
+endif
+
 CXX = g++
 CC = gcc
-# Optimization: -O3 for maximum performance, -march=native for CPU-specific optimizations
-# Fast-math for aggressive floating point optimizations (safe for game logic)
-CXXFLAGS = -std=c++17 -O3 -march=native -ffast-math -Wall -Wextra -D_USE_MATH_DEFINES -DNDEBUG
-CFLAGS = -O3 -march=native -ffast-math -Wall -Wextra
-LDFLAGS = -s
+# Parallel compilation: Use all available CPU cores
+MAKEFLAGS += -j$(shell nproc 2>/dev/null || echo 4)
+# Build modes
+BUILD_MODE ?= release
+ifeq ($(BUILD_MODE),debug)
+    CXXFLAGS = -std=c++17 -g -O0 -Wall -Wextra -D_USE_MATH_DEFINES
+    CFLAGS = -g -O0 -Wall -Wextra
+    LDFLAGS = 
+else ifeq ($(BUILD_MODE),fast)
+    # Fast development build: minimal optimization but faster compilation
+    CXXFLAGS = -std=c++17 -O1 -march=native -Wall -D_USE_MATH_DEFINES -DNDEBUG
+    CFLAGS = -O1 -march=native -Wall
+    LDFLAGS = -s
+else
+    # Release build (default)
+    CXXFLAGS = -std=c++17 -O3 -march=native -ffast-math -Wall -Wextra -D_USE_MATH_DEFINES -DNDEBUG
+    CFLAGS = -O3 -march=native -ffast-math -Wall -Wextra
+    LDFLAGS = -s
+endif
+
+# Dependency tracking for incremental builds
+DEPDIR := .deps
+# Flatten dependency file names to avoid path issues
+DEPFLAGS = -MMD -MP -MF $(DEPDIR)/$(notdir $*).d
+
+# Add dependency flags to compilation
+CXXFLAGS += $(DEPFLAGS)
+CFLAGS += $(DEPFLAGS)
+
+# Create dependency directory - Windows compatible
+ifeq ($(OS),Windows_NT)
+    $(shell if not exist "$(DEPDIR)" mkdir "$(DEPDIR)" 2>nul)
+else
+    $(shell mkdir -p $(DEPDIR) 2>/dev/null)
+endif
 
 TARGET := nova-engine
 
@@ -14,12 +52,37 @@ else
 SHELL := /usr/bin/bash
 endif
 
+# Precompiled header support
+PCH_HEADER := engine/pch.h
+PCH_OUTPUT := engine/pch.h.gch
+
+# Add PCH flags when the precompiled header exists
+ifneq ($(wildcard $(PCH_OUTPUT)),)
+	CXXFLAGS += -include $(PCH_HEADER) -Winvalid-pch
+	CFLAGS += -include $(PCH_HEADER) -Winvalid-pch
+$(info Using precompiled headers for faster compilation)
+endif
+
 # GLAD include path (must come BEFORE system includes)
 GLAD_INCLUDE := -Ilib/glad/include
+
+# ImGui include path and source detection
+IMGUI_INCLUDE := -Ilib/imgui/include
+IMGUI_SRC_DIR := lib/imgui/src
+IMGUI_MAIN_HEADER := lib/imgui/include/imgui.h
 
 # Always expose the GLAD headers, even when GLFW is unavailable.
 CXXFLAGS += $(GLAD_INCLUDE)
 CFLAGS += $(GLAD_INCLUDE)
+
+# Add ImGui support if main header is available
+ifneq ($(wildcard $(IMGUI_MAIN_HEADER)),)
+	CXXFLAGS += $(IMGUI_INCLUDE) -DUSE_IMGUI
+	CFLAGS += $(IMGUI_INCLUDE) -DUSE_IMGUI
+$(info ImGui detected: building with ImGui support)
+else
+$(info ImGui not found; building without ImGui UI support)
+endif
 
 # Expose actor facades outside the engine directory
 CXXFLAGS += -Ientities
@@ -74,14 +137,29 @@ $(info FreeType not found; SVG text rendering will be disabled)
 endif
 endif
 
-# Include graphics subsystem and GLAD loader
-SRC := $(wildcard engine/*.cpp) $(wildcard entities/*.cpp) \
-       $(wildcard engine/ecs/*.cpp) $(wildcard engine/physics/*.cpp) \
-       $(wildcard engine/ai/*.cpp) $(wildcard engine/navigation/*.cpp) \
-       $(wildcard engine/gameplay/*.cpp) $(wildcard engine/editor/*.cpp) \
-       $(wildcard engine/loop/*.cpp) $(wildcard engine/config/*.cpp)
+# Unity build option for faster compilation
+UNITY_BUILD ?= 0
+ifeq ($(UNITY_BUILD),1)
+    SRC := unity_build.cpp
+    CXXFLAGS += -DUNITY_BUILD
+$(info Unity build enabled - faster compilation but longer linking)
+else
+    # Include graphics subsystem and GLAD loader
+    SRC := $(wildcard engine/*.cpp) $(wildcard entities/*.cpp) \
+           $(wildcard engine/ecs/*.cpp) $(wildcard engine/physics/*.cpp) \
+           $(wildcard engine/ai/*.cpp) $(wildcard engine/navigation/*.cpp) \
+           $(wildcard engine/gameplay/*.cpp) $(wildcard engine/editor/*.cpp) \
+           $(wildcard engine/loop/*.cpp) $(wildcard engine/config/*.cpp) \
+           $(wildcard engine/content/*.cpp)
+endif
 GLAD_SRC :=
 GLAD_OBJ :=
+
+# ImGui source files and objects
+# Exclude imgui_impl_opengl3.cpp since we use imgui_impl_opengl3_glad.cpp
+IMGUI_SRC := $(filter-out $(IMGUI_SRC_DIR)/imgui_impl_opengl3.cpp, $(wildcard $(IMGUI_SRC_DIR)/*.cpp))
+IMGUI_OBJ := $(patsubst %.cpp,%.o,$(IMGUI_SRC))
+IMGUI_LIB := lib/imgui/libimgui.a
 
 # Auto-include all actor headers for registration (headers only, exclude .cpp files)
 # This ensures only .h files are processed for actor type registration
@@ -115,8 +193,12 @@ endif
 ifeq ($(GLFW_LIBS),)
 SRC := $(filter-out engine/PostProcessPipeline.cpp engine/TextRenderer.cpp,$(SRC))
 SRC := $(filter-out engine/MainLoop.cpp engine/Viewport3D.cpp,$(SRC))
+# Temporarily exclude problematic content files during ImGui integration
+SRC := $(filter-out engine/content/ContentCompositor.cpp engine/content/ContentDependencyGraph.cpp engine/content/ContentExample.cpp engine/content/ContentFramework.cpp engine/content/ContentSchema.cpp engine/content/ContentValidator.cpp engine/content/ShipContentSystem.cpp,$(SRC))
 else
 SRC += $(wildcard engine/graphics/*.cpp)
+# Temporarily exclude problematic content files during ImGui integration  
+SRC := $(filter-out engine/content/ContentCompositor.cpp engine/content/ContentDependencyGraph.cpp engine/content/ContentExample.cpp engine/content/ContentFramework.cpp engine/content/ContentSchema.cpp engine/content/ContentValidator.cpp engine/content/ShipContentSystem.cpp,$(SRC))
 GLAD_SRC := lib/glad/src/glad.c
 GLAD_OBJ := $(patsubst %.c,%.o,$(GLAD_SRC))
 endif
@@ -139,28 +221,58 @@ TEST_BINS := tests/test_simulation \
         tests/test_cargo_container \
         tests/test_system_manager tests/test_system_integration \
         tests/test_ecs_transition_fuzz tests/bench_ecs_hot_paths \
-        tests/test_player_actor test_actor_rendering_full tests/test_camera_comprehensive
+        tests/test_player_actor test_actor_rendering_full tests/test_camera_comprehensive \
+        tests/test_asset_pipeline tests/test_asset_streaming tests/test_asset_streaming_simple tests/test_asset_hotreload tests/test_asset_versioning \
+        tests/test_config_editor tests/test_config_editor_simple
 
 # Files and binaries that should be removed by "make clean" on every platform.
-CLEAN_TARGETS := $(OBJ) $(GLAD_OBJ) $(TARGET) $(TARGET).exe $(TEST_BINS) \
-        $(addsuffix .exe,$(TEST_BINS)) test_memory_optimization test_memory_optimization.exe
+CLEAN_TARGETS := $(OBJ) $(GLAD_OBJ) $(IMGUI_OBJ) $(IMGUI_LIB) $(TARGET) $(TARGET).exe $(TEST_BINS) \
+        $(addsuffix .exe,$(TEST_BINS)) test_memory_optimization test_memory_optimization.exe \
+        $(PCH_OUTPUT) unity_build.o $(DEPDIR)
 
 # Pre-quote the file list for the Windows command prompt so each path is removed
 # safely, even when it contains forward slashes.
 WINDOWS_CLEAN_TARGETS := $(foreach path,$(CLEAN_TARGETS),"$(subst /,\,$(path))")
 
-all: $(TARGET)
+# Precompiled header target
+$(PCH_OUTPUT): $(PCH_HEADER)
+	@echo "Building precompiled header: $@"
+	$(CXX) $(CXXFLAGS) -x c++-header $< -o $@
+
+# Main target depends on PCH
+all: $(PCH_OUTPUT) $(TARGET)
 
 # Compile GLAD first (C code)
 ifneq ($(GLAD_OBJ),)
 $(GLAD_OBJ): $(GLAD_SRC)
+ifeq ($(OS),Windows_NT)
+	@if not exist "$(DEPDIR)" mkdir "$(DEPDIR)"
+else
+	@mkdir -p $(DEPDIR)
+endif
 	$(CC) $(CFLAGS) -c $< -o $@
 endif
 
-# Link with GLAD object file
-$(TARGET): $(GLAD_OBJ) $(OBJ)
+# Compile ImGui (C++ code)
+ifneq ($(IMGUI_OBJ),)
+$(IMGUI_OBJ): lib/imgui/src/%.o: lib/imgui/src/%.cpp
+ifeq ($(OS),Windows_NT)
+	@if not exist "$(DEPDIR)" mkdir "$(DEPDIR)"
+else
+	@mkdir -p $(DEPDIR)
+endif
+	$(CXX) $(CXXFLAGS) $(GLAD_INCLUDE) -DIMGUI_IMPL_OPENGL_LOADER_CUSTOM -c $< -o $@
+endif
+
+# Create ImGui static library from all object files
+$(IMGUI_LIB): $(IMGUI_OBJ)
+	@echo "Creating ImGui static library: $@"
+	ar rcs $@ $(IMGUI_OBJ)
+
+# Link with GLAD and ImGui static library
+$(TARGET): $(GLAD_OBJ) $(IMGUI_LIB) $(OBJ)
 	@echo "LDLIBS: $(LDLIBS)"
-	$(CXX) $(CXXFLAGS) -o $@ $(GLAD_OBJ) $(OBJ) $(LDFLAGS) $(LDLIBS)
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJ) $(GLAD_OBJ) $(IMGUI_LIB) $(LDFLAGS) $(LDLIBS)
 
 run: $(TARGET)
 ifeq ($(OS),Windows_NT)
@@ -169,68 +281,96 @@ else
 	./$(TARGET)
 endif
 
-%.o: %.cpp
+# Fast development target: builds with BUILD_MODE=fast (faster compiles, less optimization)
+.PHONY: fast fast-run
+fast:
+	@echo "Building fast development build (BUILD_MODE=fast)..."
+	$(MAKE) BUILD_MODE=fast all
+
+fast-run: fast
+	@echo "Running fast build..."
+	$(MAKE) BUILD_MODE=fast run
+
+# Include dependency files
+DEPFILES := $(patsubst %.cpp,$(DEPDIR)/%.d,$(notdir $(SRC)))
+-include $(DEPFILES)
+
+%.o: %.cpp | $(PCH_OUTPUT)
+ifeq ($(OS),Windows_NT)
+	@if not exist "$(DEPDIR)" mkdir "$(DEPDIR)"
+else
+	@mkdir -p $(DEPDIR)
+endif
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 test: tests/test_simulation tests/test_camera_comprehensive tests/test_ship_assembly tests/test_shield_energy tests/test_feedback_systems tests/test_text_rendering tests/test_ecs_v2 tests/test_physics tests/test_solar_system tests/test_animation_system tests/test_weapon_targeting tests/test_ship_battle_benchmark tests/test_ship_assembly_validation tests/test_subsystem_damage_stress tests/test_frame_pacing_controller tests/test_system_manager tests/test_system_integration tests/test_player_actor tests/test_spaceship_actor
 
-tests/test_simulation: tests/test_simulation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_simulation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_simulation: tests/test_simulation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_simulation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_camera_comprehensive: tests/test_camera_comprehensive.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_camera_comprehensive.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_camera_comprehensive: tests/test_camera_comprehensive.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_camera_comprehensive.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_ship_assembly: tests/test_ship_assembly.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ship_assembly.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_ship_assembly: tests/test_ship_assembly.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ship_assembly.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_shield_energy: tests/test_shield_energy.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_shield_energy.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_shield_energy: tests/test_shield_energy.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_shield_energy.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_feedback_systems: tests/test_feedback_systems.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_feedback_systems.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_feedback_systems: tests/test_feedback_systems.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_feedback_systems.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_text_rendering: tests/test_text_rendering.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_text_rendering.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_text_rendering: tests/test_text_rendering.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_text_rendering.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_ecs_v2: tests/test_ecs_v2.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ecs_v2.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_ecs_v2: tests/test_ecs_v2.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ecs_v2.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_ecs_transition_fuzz: tests/test_ecs_transition_fuzz.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ecs_transition_fuzz.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_ecs_transition_fuzz: tests/test_ecs_transition_fuzz.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ecs_transition_fuzz.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_physics: tests/test_physics.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_physics.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_physics: tests/test_physics.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_physics.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
 tests/test_solar_system: tests/test_solar_system.cpp engine/SolarSystem.cpp engine/Transform.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp engine/ecs/TransitionPlan.cpp engine/Mesh.cpp tests/gl_stub.cpp
 	$(CXX) $(CXXFLAGS) -Ilib/glad/include -I./engine -o $@ tests/test_solar_system.cpp engine/SolarSystem.cpp engine/Transform.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp engine/ecs/TransitionPlan.cpp engine/Mesh.cpp tests/gl_stub.cpp $(LDLIBS)
 
 
-tests/test_animation_system: tests/test_animation_system.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_animation_system.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_animation_system: tests/test_animation_system.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_animation_system.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_weapon_targeting: tests/test_weapon_targeting.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_weapon_targeting.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_weapon_targeting: tests/test_weapon_targeting.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_weapon_targeting.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_ship_battle_benchmark: tests/test_ship_battle_benchmark.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ship_battle_benchmark.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_ship_battle_benchmark: tests/test_ship_battle_benchmark.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ship_battle_benchmark.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/bench_ecs_hot_paths: tests/bench_ecs_hot_paths.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/bench_ecs_hot_paths.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/bench_ecs_hot_paths: tests/bench_ecs_hot_paths.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/bench_ecs_hot_paths.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_ship_assembly_validation: tests/test_ship_assembly_validation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ship_assembly_validation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_ship_assembly_validation: tests/test_ship_assembly_validation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_ship_assembly_validation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_subsystem_damage_stress: tests/test_subsystem_damage_stress.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_subsystem_damage_stress.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_subsystem_damage_stress: tests/test_subsystem_damage_stress.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_subsystem_damage_stress.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
 tests/test_frame_pacing_controller: tests/test_frame_pacing_controller.cpp engine/FramePacingController.cpp
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_frame_pacing_controller.cpp engine/FramePacingController.cpp $(LDLIBS)
 
-tests/test_primitive_mesh: tests/test_primitive_mesh.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_primitive_mesh.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_primitive_mesh: tests/test_primitive_mesh.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_primitive_mesh.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-tests/test_lifecycle_performance: tests/test_lifecycle_performance.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_lifecycle_performance.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_lifecycle_performance: tests/test_lifecycle_performance.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_lifecycle_performance.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
+
+tests/test_lifecycle_analytics: tests/test_lifecycle_analytics.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_lifecycle_analytics.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
+
+tests/test_lifecycle_monitoring: tests/test_lifecycle_monitoring.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_lifecycle_monitoring.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
+
+tests/test_lifecycle_analytics_simple: tests/test_lifecycle_analytics_simple.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_lifecycle_analytics_simple.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
 # A lightweight standalone build for the PrimitiveMesh unit test that avoids linking
 # the entire engine (safer for quick headless runs during development).
@@ -240,8 +380,23 @@ tests/test_primitive_mesh_standalone:
 tests/test_mesh_submission_standalone:
 	$(CXX) $(CXXFLAGS) -DPRIMITIVEMESH_FORCE_NO_GL -I./engine -o $@ tests/test_mesh_submission.cpp engine/graphics/MeshSubmission.cpp engine/graphics/PrimitiveMesh.cpp engine/Mesh.cpp
 
-tests/test_viewport_headless: tests/test_viewport_headless.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_viewport_headless.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_asset_pipeline: tests/test_asset_pipeline.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_asset_pipeline.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
+
+tests/test_asset_streaming: tests/test_asset_streaming.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_asset_streaming.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
+
+tests/test_asset_streaming_simple: tests/test_asset_streaming_simple.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_asset_streaming_simple.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
+
+tests/test_asset_hotreload: tests/test_asset_hotreload.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_asset_hotreload.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
+
+tests/test_asset_versioning: tests/test_asset_versioning.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_asset_versioning.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
+
+tests/test_viewport_headless: tests/test_viewport_headless.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_viewport_headless.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
 tests/test_system_manager: tests/test_system_manager.cpp engine/ecs/System.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp engine/ecs/TransitionPlan.cpp
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_system_manager.cpp engine/ecs/System.cpp engine/ecs/EntityManager.cpp engine/ecs/ArchetypeManager.cpp engine/ecs/TransitionPlan.cpp $(LDLIBS)
@@ -270,11 +425,14 @@ tests/test_spaceship_actor: test_spaceship_actor.cpp entities/Spaceship.o engine
 test_include: test_include.cpp engine/Entities.h
 	$(CXX) $(CXXFLAGS) -o $@ test_include.cpp
 
-tests/test_cargo_container: tests/test_cargo_container.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_cargo_container.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_cargo_container: tests/test_cargo_container.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_cargo_container.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
-test_memory_optimization: test_memory_optimization.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
-	$(CXX) $(CXXFLAGS) -I./engine -o $@ test_memory_optimization.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+tests/test_config_editor_simple: tests/test_config_editor_simple.cpp engine/ConfigEditor.o engine/ConfigEditorImGuiUI.o engine/JsonSchema.o engine/SimpleJson.o $(GLAD_OBJ) $(IMGUI_LIB)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_config_editor_simple.cpp engine/ConfigEditor.o engine/ConfigEditorImGuiUI.o engine/JsonSchema.o engine/SimpleJson.o $(GLAD_OBJ) $(IMGUI_LIB) $(LDLIBS)
+
+test_memory_optimization: test_memory_optimization.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ test_memory_optimization.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(IMGUI_OBJ) $(LDLIBS)
 
 ifeq ($(OS),Windows_NT)
 clean:

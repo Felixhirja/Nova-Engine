@@ -1,6 +1,6 @@
-# Nova-Engine Development Roadmap – Next Steps
+# Star Frontier Development Roadmap – Next Steps
 
-*** STAR CITIZEN-STYLE SPACESHIP GAME PROJECT ***
+*** POWERED BY NOVA-ENGINE ***
 
 ---
 

@@ -15,6 +15,7 @@
 #include "EnergyManagementSystem.h"
 #include "MainMenu.h"
 #include "ActorContext.h"
+#include "LifecycleActor.h"
 
 // Forward declarations
 class Viewport3D;

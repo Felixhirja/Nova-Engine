@@ -79,6 +79,8 @@
 #include "MainLoop.h"
 #include "Viewport3D.h"
 #include "Input.h"
+// Config editor integration (input forwarding)
+#include "ConfigEditorIntegration.h"
 #include "Simulation.h"
 #include "ResourceManager.h"
 #include "Spaceship.h"
@@ -107,6 +109,12 @@
 #include <utility>
 #include <cstdlib>
 #include <cstdio>
+
+#ifdef USE_IMGUI
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+#endif
 
 // Simple replacement for Player::CameraViewState
 // CameraViewState is defined in Player.h
@@ -412,6 +420,9 @@ void MainLoop::Init() {
     // playerActor_->Initialize();
     ConfigureEnergyTelemetry();
 
+    // Initialize lifecycle management system with analytics
+    lifecycle_utils::InitializeLifecycleSystem();
+
     stateMachine.TransitionTo(EngineState::Running);
     {
         std::ofstream log2("sdl_diag.log", std::ios::app);
@@ -433,9 +444,9 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     // [ ] Profiler Integration: Deep integration with profiling tools
     // [ ] Loop Optimization: Continuous optimization of loop performance
     
-    // std::cout << "MainLoopFunc started" << std::endl;
+    std::cout << "[MainLoop] Starting main loop" << std::endl;
     if (!running) {
-        // std::cout << "Engine not initialized!" << std::endl;
+        std::cout << "[MainLoop] Error: Engine not initialized!" << std::endl;
         return;
     }
 
@@ -497,8 +508,11 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
 #ifdef USE_GLFW
         // Poll GLFW events to process window input (mouse clicks, key presses, etc.)
-        if (viewport && viewport->GetGLFWWindow()) {
-            glfwPollEvents();
+        if (viewport) {
+            GLFWwindow* win = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
+            if (win && !glfwWindowShouldClose(win)) {
+                glfwPollEvents();
+            }
         }
 #endif
 
@@ -1014,10 +1028,49 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             gameEditor->Render(*viewport);
         }
 
+#ifdef USE_IMGUI
+        // Start ImGui frame so UI code can emit draw commands
+        bool imgui_frame_started = false;
+        GLFWwindow* _imgui_window = nullptr;
+        if (viewport) _imgui_window = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
+        if (_imgui_window) {
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+            imgui_frame_started = true;
+
+            // Render the config editor UI (if visible)
+            try {
+                auto &cfg = nova::GetConfigEditorIntegration();
+                if (cfg.IsEditorVisible()) {
+                    cfg.GetEditor().RenderUI();
+                }
+            } catch (...) {
+                // If config editor isn't available yet, ignore
+            }
+        }
+#endif
+
         const char* cap = std::getenv("STAR_CAPTURE");
         if (cap && std::string(cap) == "1") {
             viewport->CaptureToBMP("/workspaces/Nova-Engine/renderer_capture.bmp");
         }
+
+        // If ImGui was used this frame, render its draw data before swapping buffers
+#ifdef USE_IMGUI
+        if (imgui_frame_started) {
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+#ifdef IMGUI_HAS_VIEWPORT
+            // Handle platform windows when multi-viewport is enabled
+            if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+                ImGui::UpdatePlatformWindows();
+                ImGui::RenderPlatformWindowsDefault();
+            }
+#endif
+        }
+#endif
 
         viewport->FinishFrame();
         viewport->Present();
@@ -1077,7 +1130,9 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         }
     };
 
+    std::cout << "[MainLoop] Running game loop..." << std::endl;
     scheduler.Run(callbacks);
+    std::cout << "[MainLoop] Game loop ended" << std::endl;
 
     Input::Shutdown();
 }
@@ -1461,6 +1516,17 @@ void MainLoop::HandleKeyEvent(int key, int /*scancode*/, int action, int mods) {
         return;
     }
 
+    // Forward input to Config Editor Integration (if present)
+    // This allows the config editor to handle hotkeys like F12, Ctrl+S, etc.
+    try {
+        auto &cfg = nova::GetConfigEditorIntegration();
+        cfg.HandleKeyPress(key, /*scancode*/0, action, mods);
+        // If the editor is visible and handled the input, it may consume it.
+        if (cfg.IsEditorVisible()) return;
+    } catch (...) {
+        // If config editor integration cannot be initialized, ignore and continue
+    }
+
     // Runtime debug toggles (GLFW path)
     if (viewport) {
         if (key == GLFW_KEY_F11 && action == GLFW_PRESS) {
@@ -1611,6 +1677,9 @@ void MainLoop::Shutdown() {
     }
 
     running = false;
+
+    // Shutdown lifecycle management system and report analytics
+    lifecycle_utils::ShutdownLifecycleSystem();
 
 #ifdef USE_GLFW
     // Clear GLFW callbacks only once while the window is still alive.

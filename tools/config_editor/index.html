@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Engine - Configuration Editor</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid h-100">
+        <div class="row h-100">
+            <!-- Left Sidebar - Schema Selection & Navigation -->
+            <div class="col-md-3 bg-dark text-light p-0">
+                <div class="sidebar">
+                    <div class="sidebar-header p-3 border-bottom border-secondary">
+                        <h5 class="mb-0">
+                            <i class="bi bi-gear-fill me-2"></i>
+                            Config Editor
+                        </h5>
+                    </div>
+                    
+                    <!-- Schema Selection -->
+                    <div class="p-3 border-bottom border-secondary">
+                        <label class="form-label small text-muted">CONFIGURATION TYPE</label>
+                        <select id="schemaSelect" class="form-select form-select-sm bg-dark text-light border-secondary">
+                            <option value="">Select Schema...</option>
+                            <option value="actor_config">Actor Configuration</option>
+                            <option value="ship_config">Ship Configuration</option>
+                            <option value="station_config">Station Configuration</option>
+                            <option value="simple_station_config">Simple Station</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Recent Files -->
+                    <div class="p-3 border-bottom border-secondary">
+                        <label class="form-label small text-muted">RECENT FILES</label>
+                        <div id="recentFiles" class="recent-files">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <!-- Templates -->
+                    <div class="p-3">
+                        <label class="form-label small text-muted">TEMPLATES</label>
+                        <div id="templateList" class="template-list">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main Content Area -->
+            <div class="col-md-9 p-0">
+                <div class="main-content h-100 d-flex flex-column">
+                    <!-- Toolbar -->
+                    <div class="toolbar bg-light border-bottom p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="toolbar-left">
+                                <button id="newConfig" class="btn btn-sm btn-primary me-2">
+                                    <i class="bi bi-plus-lg"></i> New
+                                </button>
+                                <button id="loadConfig" class="btn btn-sm btn-outline-primary me-2">
+                                    <i class="bi bi-folder-open"></i> Load
+                                </button>
+                                <button id="saveConfig" class="btn btn-sm btn-success me-2" disabled>
+                                    <i class="bi bi-floppy"></i> Save
+                                </button>
+                                <button id="validateConfig" class="btn btn-sm btn-info me-2">
+                                    <i class="bi bi-check-circle"></i> Validate
+                                </button>
+                            </div>
+                            <div class="toolbar-right">
+                                <span id="validationStatus" class="badge bg-secondary me-2">
+                                    <i class="bi bi-question-circle"></i> Not Validated
+                                </span>
+                                <span id="configStatus" class="text-muted small">No file loaded</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Editor Tabs -->
+                    <div class="editor-tabs bg-light border-bottom">
+                        <ul class="nav nav-tabs border-0" id="editorTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="visual-tab" data-bs-toggle="tab" data-bs-target="#visual-panel" type="button" role="tab">
+                                    <i class="bi bi-eye"></i> Visual Editor
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="json-tab" data-bs-toggle="tab" data-bs-target="#json-panel" type="button" role="tab">
+                                    <i class="bi bi-code"></i> JSON Editor
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="preview-tab" data-bs-toggle="tab" data-bs-target="#preview-panel" type="button" role="tab">
+                                    <i class="bi bi-display"></i> Preview
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Tab Content -->
+                    <div class="tab-content flex-grow-1" id="editorTabContent">
+                        <!-- Visual Editor Panel -->
+                        <div class="tab-pane fade show active h-100" id="visual-panel" role="tabpanel">
+                            <div class="row h-100">
+                                <div class="col-md-8 h-100">
+                                    <div class="visual-editor p-3 h-100 overflow-auto">
+                                        <div id="formContainer">
+                                            <div class="text-center text-muted py-5">
+                                                <i class="bi bi-file-earmark-plus display-1"></i>
+                                                <h5 class="mt-3">Select a schema to begin</h5>
+                                                <p>Choose a configuration type from the sidebar to start editing</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 border-start">
+                                    <div class="validation-panel p-3 h-100">
+                                        <h6 class="mb-3">
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                            Validation Results
+                                        </h6>
+                                        <div id="validationResults" class="validation-results">
+                                            <div class="text-muted small">
+                                                No validation performed yet
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- JSON Editor Panel -->
+                        <div class="tab-pane fade h-100" id="json-panel" role="tabpanel">
+                            <div class="row h-100">
+                                <div class="col-md-8 h-100">
+                                    <div class="json-editor-container h-100 position-relative">
+                                        <textarea id="jsonEditor" class="form-control h-100 font-monospace" 
+                                                placeholder="JSON configuration will appear here..."></textarea>
+                                        <div class="position-absolute top-0 end-0 p-2">
+                                            <button id="formatJson" class="btn btn-sm btn-outline-secondary" title="Format JSON">
+                                                <i class="bi bi-braces"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 border-start">
+                                    <div class="json-validation p-3 h-100">
+                                        <h6 class="mb-3">
+                                            <i class="bi bi-code-square"></i>
+                                            JSON Validation
+                                        </h6>
+                                        <div id="jsonValidationResults">
+                                            <div class="text-muted small">
+                                                Start typing to see validation results
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Preview Panel -->
+                        <div class="tab-pane fade h-100" id="preview-panel" role="tabpanel">
+                            <div class="preview-container p-3 h-100">
+                                <div class="row h-100">
+                                    <div class="col-md-8">
+                                        <div class="card h-100">
+                                            <div class="card-header">
+                                                <h6 class="mb-0">
+                                                    <i class="bi bi-display"></i>
+                                                    Configuration Preview
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="previewContent">
+                                                    <div class="text-center text-muted py-5">
+                                                        <i class="bi bi-eye-slash display-1"></i>
+                                                        <h5 class="mt-3">No preview available</h5>
+                                                        <p>Create or load a configuration to see preview</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card h-100">
+                                            <div class="card-header">
+                                                <h6 class="mb-0">
+                                                    <i class="bi bi-info-circle"></i>
+                                                    Properties
+                                                </h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="previewProperties">
+                                                    <div class="text-muted small">
+                                                        Properties will appear here
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- File Input (hidden) -->
+    <input type="file" id="fileInput" accept=".json" style="display: none;">
+    
+    <!-- Bootstrap Modal for Validation Details -->
+    <div class="modal fade" id="validationModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-exclamation-triangle text-warning"></i>
+                        Validation Report
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="validationModalContent">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ajv/8.12.0/ajv7.min.js"></script>
+    <script src="config-editor.js"></script>
+</body>
+</html>

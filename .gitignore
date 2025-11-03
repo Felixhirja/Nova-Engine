@@ -22,11 +22,15 @@ rad.json
 TestResults.xml
 # Build artifacts
 *.o
+*.gch
+*.pch
+*.exe
 /tests/test_simulation
 /tests/test_camera
 star-engine
 nova-engine
 build/
+.deps/
 
 # Generated at runtime; rasterized SVG caches
 assets/ui/cache/

@@ -1,0 +1,65 @@
+{
+  "version": "1.0",
+  "assets": [
+    {
+      "id": "test_audio_wav_desktop_medium",
+      "name": "test_audio.wav",
+      "originalPath": "test_assets/test_audio.wav",
+      "processedPath": "test_output/desktop/medium/test_audio.wav",
+      "type": "Audio",
+      "format": "WAV",
+      "status": "Completed",
+      "originalSize": 1068,
+      "processedSize": 1068,
+      "checksum": "4fc7c51f0041db4a"
+    },
+    {
+      "id": "test_config_json_desktop_medium",
+      "name": "test_config.json",
+      "originalPath": "test_assets/test_config.json",
+      "processedPath": "test_output/desktop/medium/test_config.json",
+      "type": "Config",
+      "format": "JSON",
+      "status": "Completed",
+      "originalSize": 118,
+      "processedSize": 118,
+      "checksum": "0"
+    },
+    {
+      "id": "test_shader_glsl_desktop_medium",
+      "name": "test_shader.glsl",
+      "originalPath": "test_assets/test_shader.glsl",
+      "processedPath": "test_output/desktop/medium/test_shader.glsl",
+      "type": "Shader",
+      "format": "GLSL",
+      "status": "Completed",
+      "originalSize": 137,
+      "processedSize": 161,
+      "checksum": "0"
+    },
+    {
+      "id": "test_model_obj_desktop_medium",
+      "name": "test_model.obj",
+      "originalPath": "test_assets/test_model.obj",
+      "processedPath": "test_output/desktop/medium/test_model.obj",
+      "type": "Model",
+      "format": "OBJ",
+      "status": "Completed",
+      "originalSize": 78,
+      "processedSize": 78,
+      "checksum": "0"
+    },
+    {
+      "id": "test_texture_png_desktop_medium",
+      "name": "test_texture.png",
+      "originalPath": "test_assets/test_texture.png",
+      "processedPath": "test_output/desktop/medium/test_texture.png",
+      "type": "Texture",
+      "format": "PNG",
+      "status": "Completed",
+      "originalSize": 29,
+      "processedSize": 29,
+      "checksum": "0"
+    }
+  ]
+}

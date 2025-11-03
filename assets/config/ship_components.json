@@ -1,0 +1,421 @@
+{
+  "components": [
+    {
+      "id": "engine_basic_ion",
+      "name": "Basic Ion Engine",
+      "description": "Standard ion propulsion system for small to medium ships",
+      "type": "Engine",
+      "size": "Medium",
+      "powerDraw": 5.0,
+      "coolingRequired": 3.0,
+      "mass": 10.0,
+      "volume": 15.0,
+      "compatibilityFlags": 1,
+      "stats": {
+        "thrust": 50000.0,
+        "efficiency": 0.85
+      },
+      "cost": 15000.0,
+      "techLevel": 1,
+      "manufacturer": "Orion Dynamics",
+      "upgradesTo": ["engine_advanced_ion"],
+      "upgradesFrom": ""
+    },
+    {
+      "id": "engine_advanced_ion",
+      "name": "Advanced Ion Engine",
+      "description": "High-efficiency ion engine with improved thrust-to-weight ratio",
+      "type": "Engine",
+      "size": "Medium",
+      "powerDraw": 6.5,
+      "coolingRequired": 4.0,
+      "mass": 12.0,
+      "volume": 15.0,
+      "compatibilityFlags": 1,
+      "stats": {
+        "thrust": 75000.0,
+        "efficiency": 0.92
+      },
+      "cost": 28000.0,
+      "techLevel": 2,
+      "manufacturer": "Orion Dynamics",
+      "upgradesTo": ["engine_plasma_drive"],
+      "upgradesFrom": "engine_basic_ion"
+    },
+    {
+      "id": "engine_plasma_drive",
+      "name": "Plasma Drive",
+      "description": "Cutting-edge plasma propulsion with exceptional performance",
+      "type": "Engine",
+      "size": "Large",
+      "powerDraw": 12.0,
+      "coolingRequired": 8.0,
+      "mass": 18.0,
+      "volume": 25.0,
+      "compatibilityFlags": 1,
+      "stats": {
+        "thrust": 150000.0,
+        "efficiency": 0.95
+      },
+      "cost": 65000.0,
+      "techLevel": 3,
+      "manufacturer": "Helix Industries",
+      "upgradesTo": [],
+      "upgradesFrom": "engine_advanced_ion"
+    },
+    {
+      "id": "weapon_pulse_laser_mk1",
+      "name": "Pulse Laser Mk1",
+      "description": "Basic energy weapon with rapid fire capability",
+      "type": "Weapon",
+      "size": "Small",
+      "powerDraw": 2.5,
+      "coolingRequired": 2.0,
+      "mass": 3.0,
+      "volume": 5.0,
+      "compatibilityFlags": 0,
+      "stats": {
+        "dps": 25.0,
+        "range": 2000.0,
+        "projectile_speed": 1500.0
+      },
+      "cost": 8000.0,
+      "techLevel": 1,
+      "manufacturer": "Stellar Arms",
+      "upgradesTo": ["weapon_pulse_laser_mk2"],
+      "upgradesFrom": ""
+    },
+    {
+      "id": "weapon_pulse_laser_mk2",
+      "name": "Pulse Laser Mk2",
+      "description": "Improved pulse laser with enhanced damage output",
+      "type": "Weapon",
+      "size": "Small",
+      "powerDraw": 3.5,
+      "coolingRequired": 3.0,
+      "mass": 3.5,
+      "volume": 5.0,
+      "compatibilityFlags": 0,
+      "stats": {
+        "dps": 40.0,
+        "range": 2500.0,
+        "projectile_speed": 1500.0
+      },
+      "cost": 14000.0,
+      "techLevel": 2,
+      "manufacturer": "Stellar Arms",
+      "upgradesTo": ["weapon_plasma_cannon"],
+      "upgradesFrom": "weapon_pulse_laser_mk1"
+    },
+    {
+      "id": "weapon_plasma_cannon",
+      "name": "Plasma Cannon",
+      "description": "Heavy energy weapon dealing devastating damage",
+      "type": "Weapon",
+      "size": "Medium",
+      "powerDraw": 8.0,
+      "coolingRequired": 6.0,
+      "mass": 8.0,
+      "volume": 12.0,
+      "compatibilityFlags": 4,
+      "stats": {
+        "dps": 85.0,
+        "range": 3000.0,
+        "projectile_speed": 1200.0
+      },
+      "cost": 35000.0,
+      "techLevel": 3,
+      "manufacturer": "Helix Industries",
+      "upgradesTo": [],
+      "upgradesFrom": "weapon_pulse_laser_mk2"
+    },
+    {
+      "id": "shield_basic",
+      "name": "Basic Shield Generator",
+      "description": "Standard energy shield providing moderate protection",
+      "type": "Shield",
+      "size": "Small",
+      "powerDraw": 4.0,
+      "coolingRequired": 2.5,
+      "mass": 5.0,
+      "volume": 8.0,
+      "compatibilityFlags": 1,
+      "stats": {
+        "strength": 500.0,
+        "regen_rate": 10.0
+      },
+      "cost": 12000.0,
+      "techLevel": 1,
+      "manufacturer": "Aegis Defense",
+      "upgradesTo": ["shield_reinforced"],
+      "upgradesFrom": ""
+    },
+    {
+      "id": "shield_reinforced",
+      "name": "Reinforced Shield Generator",
+      "description": "Enhanced shield with improved capacity and regeneration",
+      "type": "Shield",
+      "size": "Medium",
+      "powerDraw": 6.5,
+      "coolingRequired": 4.0,
+      "mass": 7.0,
+      "volume": 10.0,
+      "compatibilityFlags": 1,
+      "stats": {
+        "strength": 1000.0,
+        "regen_rate": 20.0
+      },
+      "cost": 25000.0,
+      "techLevel": 2,
+      "manufacturer": "Aegis Defense",
+      "upgradesTo": ["shield_military"],
+      "upgradesFrom": "shield_basic"
+    },
+    {
+      "id": "shield_military",
+      "name": "Military-Grade Shield",
+      "description": "Top-tier shield system with exceptional protection",
+      "type": "Shield",
+      "size": "Large",
+      "powerDraw": 12.0,
+      "coolingRequired": 8.0,
+      "mass": 12.0,
+      "volume": 18.0,
+      "compatibilityFlags": 33,
+      "stats": {
+        "strength": 2500.0,
+        "regen_rate": 50.0
+      },
+      "cost": 75000.0,
+      "techLevel": 3,
+      "manufacturer": "Aegis Defense",
+      "upgradesTo": [],
+      "upgradesFrom": "shield_reinforced"
+    },
+    {
+      "id": "powerplant_fusion_small",
+      "name": "Compact Fusion Reactor",
+      "description": "Small-scale fusion power generation",
+      "type": "PowerPlant",
+      "size": "Small",
+      "powerDraw": -15.0,
+      "coolingRequired": 5.0,
+      "mass": 20.0,
+      "volume": 25.0,
+      "compatibilityFlags": 0,
+      "stats": {
+        "power_output": 15.0
+      },
+      "cost": 40000.0,
+      "techLevel": 2,
+      "manufacturer": "Orion Dynamics",
+      "upgradesTo": ["powerplant_fusion_medium"],
+      "upgradesFrom": ""
+    },
+    {
+      "id": "powerplant_fusion_medium",
+      "name": "Standard Fusion Reactor",
+      "description": "Medium-scale fusion reactor for power-hungry ships",
+      "type": "PowerPlant",
+      "size": "Medium",
+      "powerDraw": -30.0,
+      "coolingRequired": 10.0,
+      "mass": 35.0,
+      "volume": 40.0,
+      "compatibilityFlags": 0,
+      "stats": {
+        "power_output": 30.0
+      },
+      "cost": 85000.0,
+      "techLevel": 3,
+      "manufacturer": "Orion Dynamics",
+      "upgradesTo": [],
+      "upgradesFrom": "powerplant_fusion_small"
+    },
+    {
+      "id": "sensor_basic",
+      "name": "Basic Sensor Array",
+      "description": "Standard sensor package for navigation and detection",
+      "type": "Sensor",
+      "size": "Small",
+      "powerDraw": 1.5,
+      "coolingRequired": 0.5,
+      "mass": 2.0,
+      "volume": 3.0,
+      "compatibilityFlags": 0,
+      "stats": {
+        "range": 5000.0,
+        "resolution": 100.0
+      },
+      "cost": 5000.0,
+      "techLevel": 1,
+      "manufacturer": "Nova Systems",
+      "upgradesTo": ["sensor_advanced"],
+      "upgradesFrom": ""
+    },
+    {
+      "id": "sensor_advanced",
+      "name": "Advanced Sensor Suite",
+      "description": "High-resolution sensors with extended range",
+      "type": "Sensor",
+      "size": "Medium",
+      "powerDraw": 3.0,
+      "coolingRequired": 1.0,
+      "mass": 4.0,
+      "volume": 6.0,
+      "compatibilityFlags": 4,
+      "stats": {
+        "range": 15000.0,
+        "resolution": 250.0
+      },
+      "cost": 18000.0,
+      "techLevel": 3,
+      "manufacturer": "Nova Systems",
+      "upgradesTo": [],
+      "upgradesFrom": "sensor_basic"
+    },
+    {
+      "id": "cargo_standard",
+      "name": "Standard Cargo Module",
+      "description": "Basic cargo storage expansion",
+      "type": "CargoHold",
+      "size": "Medium",
+      "powerDraw": 0.5,
+      "coolingRequired": 0.0,
+      "mass": 5.0,
+      "volume": 100.0,
+      "compatibilityFlags": 0,
+      "stats": {
+        "capacity": 100.0
+      },
+      "cost": 8000.0,
+      "techLevel": 1,
+      "manufacturer": "Atlas Logistics",
+      "upgradesTo": ["cargo_reinforced"],
+      "upgradesFrom": ""
+    },
+    {
+      "id": "cargo_reinforced",
+      "name": "Reinforced Cargo Module",
+      "description": "Armored cargo storage for valuable goods",
+      "type": "CargoHold",
+      "size": "Large",
+      "powerDraw": 0.5,
+      "coolingRequired": 0.0,
+      "mass": 8.0,
+      "volume": 150.0,
+      "compatibilityFlags": 0,
+      "stats": {
+        "capacity": 150.0,
+        "armor": 50.0
+      },
+      "cost": 18000.0,
+      "techLevel": 2,
+      "manufacturer": "Atlas Logistics",
+      "upgradesTo": [],
+      "upgradesFrom": "cargo_standard"
+    },
+    {
+      "id": "thruster_rcs_basic",
+      "name": "Basic RCS Thrusters",
+      "description": "Reaction control system for ship maneuverability",
+      "type": "Thruster",
+      "size": "Small",
+      "powerDraw": 2.0,
+      "coolingRequired": 1.0,
+      "mass": 3.0,
+      "volume": 4.0,
+      "compatibilityFlags": 0,
+      "stats": {
+        "maneuver_power": 500.0
+      },
+      "cost": 6000.0,
+      "techLevel": 1,
+      "manufacturer": "Orion Dynamics",
+      "upgradesTo": ["thruster_rcs_advanced"],
+      "upgradesFrom": ""
+    },
+    {
+      "id": "thruster_rcs_advanced",
+      "name": "Advanced RCS Thrusters",
+      "description": "High-performance reaction control for agile maneuvering",
+      "type": "Thruster",
+      "size": "Medium",
+      "powerDraw": 3.5,
+      "coolingRequired": 2.0,
+      "mass": 4.5,
+      "volume": 6.0,
+      "compatibilityFlags": 0,
+      "stats": {
+        "maneuver_power": 1200.0
+      },
+      "cost": 15000.0,
+      "techLevel": 2,
+      "manufacturer": "Orion Dynamics",
+      "upgradesTo": [],
+      "upgradesFrom": "thruster_rcs_basic"
+    },
+    {
+      "id": "mining_laser_basic",
+      "name": "Mining Laser",
+      "description": "Basic mining equipment for asteroid extraction",
+      "type": "Mining",
+      "size": "Medium",
+      "powerDraw": 5.0,
+      "coolingRequired": 4.0,
+      "mass": 8.0,
+      "volume": 12.0,
+      "compatibilityFlags": 64,
+      "stats": {
+        "mining_rate": 10.0,
+        "range": 500.0
+      },
+      "cost": 25000.0,
+      "techLevel": 2,
+      "manufacturer": "Frontier Mining Corp",
+      "upgradesTo": [],
+      "upgradesFrom": ""
+    },
+    {
+      "id": "computer_basic",
+      "name": "Flight Computer",
+      "description": "Basic ship computer for navigation and systems management",
+      "type": "Computer",
+      "size": "Small",
+      "powerDraw": 1.0,
+      "coolingRequired": 0.5,
+      "mass": 1.0,
+      "volume": 2.0,
+      "compatibilityFlags": 0,
+      "stats": {
+        "processing_power": 100.0
+      },
+      "cost": 5000.0,
+      "techLevel": 1,
+      "manufacturer": "Nova Systems",
+      "upgradesTo": ["computer_advanced"],
+      "upgradesFrom": ""
+    },
+    {
+      "id": "computer_advanced",
+      "name": "Advanced Flight Computer",
+      "description": "High-performance computer with AI assistance",
+      "type": "Computer",
+      "size": "Medium",
+      "powerDraw": 2.5,
+      "coolingRequired": 1.5,
+      "mass": 2.0,
+      "volume": 4.0,
+      "compatibilityFlags": 0,
+      "stats": {
+        "processing_power": 500.0,
+        "ai_level": 2
+      },
+      "cost": 22000.0,
+      "techLevel": 3,
+      "manufacturer": "Nova Systems",
+      "upgradesTo": [],
+      "upgradesFrom": "computer_basic"
+    }
+  ]
+}

@@ -1,0 +1,450 @@
+{
+  "hulls": [
+    {
+      "id": "hull_viper_mk1",
+      "name": "Viper Mk1",
+      "className": "Fighter",
+      "baseMass": 25.0,
+      "baseArmor": 150.0,
+      "basePower": 20.0,
+      "baseCooling": 15.0,
+      "cargoCapacity": 10.0,
+      "fuelCapacity": 100.0,
+      "hardpoints": [
+        {
+          "id": "engine_slot",
+          "type": "Engine",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": -5.0,
+          "z": 0.0
+        },
+        {
+          "id": "weapon_slot_1",
+          "type": "Weapon",
+          "maxSize": "Small",
+          "x": -2.0,
+          "y": 0.0,
+          "z": 1.0
+        },
+        {
+          "id": "weapon_slot_2",
+          "type": "Weapon",
+          "maxSize": "Small",
+          "x": 2.0,
+          "y": 0.0,
+          "z": 1.0
+        },
+        {
+          "id": "shield_slot",
+          "type": "Internal",
+          "maxSize": "Small",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        {
+          "id": "thruster_slot",
+          "type": "Engine",
+          "maxSize": "Small",
+          "x": 0.0,
+          "y": 0.0,
+          "z": -1.0
+        },
+        {
+          "id": "sensor_slot",
+          "type": "Internal",
+          "maxSize": "Small",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 2.0
+        }
+      ],
+      "modelPath": "assets/models/viper_mk1.obj",
+      "iconPath": "assets/icons/viper_mk1.png",
+      "cost": 50000.0,
+      "techLevel": 1
+    },
+    {
+      "id": "hull_falcon_trader",
+      "name": "Falcon Trader",
+      "className": "Trader",
+      "baseMass": 80.0,
+      "baseArmor": 200.0,
+      "basePower": 25.0,
+      "baseCooling": 20.0,
+      "cargoCapacity": 200.0,
+      "fuelCapacity": 300.0,
+      "hardpoints": [
+        {
+          "id": "engine_slot",
+          "type": "Engine",
+          "maxSize": "Large",
+          "x": 0.0,
+          "y": -8.0,
+          "z": 0.0
+        },
+        {
+          "id": "weapon_slot_1",
+          "type": "Weapon",
+          "maxSize": "Small",
+          "x": -3.0,
+          "y": 0.0,
+          "z": 1.0
+        },
+        {
+          "id": "weapon_slot_2",
+          "type": "Weapon",
+          "maxSize": "Small",
+          "x": 3.0,
+          "y": 0.0,
+          "z": 1.0
+        },
+        {
+          "id": "shield_slot",
+          "type": "Internal",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        {
+          "id": "cargo_slot_1",
+          "type": "External",
+          "maxSize": "Large",
+          "x": -2.0,
+          "y": -3.0,
+          "z": 0.0
+        },
+        {
+          "id": "cargo_slot_2",
+          "type": "External",
+          "maxSize": "Large",
+          "x": 2.0,
+          "y": -3.0,
+          "z": 0.0
+        },
+        {
+          "id": "sensor_slot",
+          "type": "Internal",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 3.0
+        },
+        {
+          "id": "computer_slot",
+          "type": "Internal",
+          "maxSize": "Small",
+          "x": 0.0,
+          "y": 1.0,
+          "z": 0.0
+        }
+      ],
+      "modelPath": "assets/models/falcon_trader.obj",
+      "iconPath": "assets/icons/falcon_trader.png",
+      "cost": 120000.0,
+      "techLevel": 2
+    },
+    {
+      "id": "hull_explorer_scout",
+      "name": "Explorer Scout",
+      "className": "Explorer",
+      "baseMass": 50.0,
+      "baseArmor": 180.0,
+      "basePower": 30.0,
+      "baseCooling": 25.0,
+      "cargoCapacity": 50.0,
+      "fuelCapacity": 500.0,
+      "hardpoints": [
+        {
+          "id": "engine_slot",
+          "type": "Engine",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": -6.0,
+          "z": 0.0
+        },
+        {
+          "id": "weapon_slot",
+          "type": "Weapon",
+          "maxSize": "Small",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 2.0
+        },
+        {
+          "id": "shield_slot",
+          "type": "Internal",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        {
+          "id": "sensor_slot",
+          "type": "Internal",
+          "maxSize": "Large",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 3.0
+        },
+        {
+          "id": "powerplant_slot",
+          "type": "Internal",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": -2.0,
+          "z": 0.0
+        },
+        {
+          "id": "computer_slot",
+          "type": "Internal",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": 1.0,
+          "z": 0.0
+        },
+        {
+          "id": "cargo_slot",
+          "type": "External",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": -3.0,
+          "z": 0.0
+        }
+      ],
+      "modelPath": "assets/models/explorer_scout.obj",
+      "iconPath": "assets/icons/explorer_scout.png",
+      "cost": 95000.0,
+      "techLevel": 2
+    },
+    {
+      "id": "hull_prospector_miner",
+      "name": "Prospector Miner",
+      "className": "Miner",
+      "baseMass": 70.0,
+      "baseArmor": 250.0,
+      "basePower": 35.0,
+      "baseCooling": 30.0,
+      "cargoCapacity": 150.0,
+      "fuelCapacity": 250.0,
+      "hardpoints": [
+        {
+          "id": "engine_slot",
+          "type": "Engine",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": -7.0,
+          "z": 0.0
+        },
+        {
+          "id": "mining_slot_1",
+          "type": "Utility",
+          "maxSize": "Medium",
+          "x": -2.5,
+          "y": 0.0,
+          "z": 1.5
+        },
+        {
+          "id": "mining_slot_2",
+          "type": "Utility",
+          "maxSize": "Medium",
+          "x": 2.5,
+          "y": 0.0,
+          "z": 1.5
+        },
+        {
+          "id": "shield_slot",
+          "type": "Internal",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        {
+          "id": "cargo_slot_1",
+          "type": "External",
+          "maxSize": "Large",
+          "x": -2.0,
+          "y": -4.0,
+          "z": 0.0
+        },
+        {
+          "id": "cargo_slot_2",
+          "type": "External",
+          "maxSize": "Large",
+          "x": 2.0,
+          "y": -4.0,
+          "z": 0.0
+        },
+        {
+          "id": "sensor_slot",
+          "type": "Internal",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 2.0
+        },
+        {
+          "id": "powerplant_slot",
+          "type": "Internal",
+          "maxSize": "Small",
+          "x": 0.0,
+          "y": -2.0,
+          "z": 0.0
+        }
+      ],
+      "modelPath": "assets/models/prospector_miner.obj",
+      "iconPath": "assets/icons/prospector_miner.png",
+      "cost": 110000.0,
+      "techLevel": 2
+    },
+    {
+      "id": "hull_interceptor_mk2",
+      "name": "Interceptor Mk2",
+      "className": "Interceptor",
+      "baseMass": 20.0,
+      "baseArmor": 120.0,
+      "basePower": 18.0,
+      "baseCooling": 12.0,
+      "cargoCapacity": 5.0,
+      "fuelCapacity": 80.0,
+      "hardpoints": [
+        {
+          "id": "engine_slot",
+          "type": "Engine",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": -4.0,
+          "z": 0.0
+        },
+        {
+          "id": "weapon_slot_1",
+          "type": "Weapon",
+          "maxSize": "Small",
+          "x": -1.5,
+          "y": 0.0,
+          "z": 1.0
+        },
+        {
+          "id": "weapon_slot_2",
+          "type": "Weapon",
+          "maxSize": "Small",
+          "x": 1.5,
+          "y": 0.0,
+          "z": 1.0
+        },
+        {
+          "id": "shield_slot",
+          "type": "Internal",
+          "maxSize": "Small",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        {
+          "id": "thruster_slot_1",
+          "type": "Engine",
+          "maxSize": "Small",
+          "x": -1.0,
+          "y": 0.0,
+          "z": -1.0
+        },
+        {
+          "id": "thruster_slot_2",
+          "type": "Engine",
+          "maxSize": "Small",
+          "x": 1.0,
+          "y": 0.0,
+          "z": -1.0
+        }
+      ],
+      "modelPath": "assets/models/interceptor_mk2.obj",
+      "iconPath": "assets/icons/interceptor_mk2.png",
+      "cost": 65000.0,
+      "techLevel": 2
+    },
+    {
+      "id": "hull_heavy_fighter",
+      "name": "Anvil Heavy Fighter",
+      "className": "Heavy Fighter",
+      "baseMass": 45.0,
+      "baseArmor": 300.0,
+      "basePower": 28.0,
+      "baseCooling": 22.0,
+      "cargoCapacity": 20.0,
+      "fuelCapacity": 150.0,
+      "hardpoints": [
+        {
+          "id": "engine_slot",
+          "type": "Engine",
+          "maxSize": "Large",
+          "x": 0.0,
+          "y": -6.0,
+          "z": 0.0
+        },
+        {
+          "id": "weapon_slot_1",
+          "type": "Weapon",
+          "maxSize": "Medium",
+          "x": -2.5,
+          "y": 0.0,
+          "z": 1.0
+        },
+        {
+          "id": "weapon_slot_2",
+          "type": "Weapon",
+          "maxSize": "Medium",
+          "x": 2.5,
+          "y": 0.0,
+          "z": 1.0
+        },
+        {
+          "id": "weapon_slot_3",
+          "type": "Weapon",
+          "maxSize": "Small",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 2.0
+        },
+        {
+          "id": "shield_slot",
+          "type": "Internal",
+          "maxSize": "Large",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        {
+          "id": "powerplant_slot",
+          "type": "Internal",
+          "maxSize": "Small",
+          "x": 0.0,
+          "y": -2.0,
+          "z": 0.0
+        },
+        {
+          "id": "thruster_slot",
+          "type": "Engine",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": 0.0,
+          "z": -1.5
+        },
+        {
+          "id": "sensor_slot",
+          "type": "Internal",
+          "maxSize": "Medium",
+          "x": 0.0,
+          "y": 0.0,
+          "z": 2.5
+        }
+      ],
+      "modelPath": "assets/models/anvil_heavy.obj",
+      "iconPath": "assets/icons/anvil_heavy.png",
+      "cost": 145000.0,
+      "techLevel": 3
+    }
+  ]
+}
