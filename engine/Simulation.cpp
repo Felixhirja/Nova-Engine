@@ -1,10 +1,90 @@
+// TODO: Simulation System Enhancement Roadmap
+// 
+// ═══════════════════════════════════════════════════════════════════════════════════
+// SIMULATION SYSTEM - COMPREHENSIVE IMPROVEMENT PLAN
+// ═══════════════════════════════════════════════════════════════════════════════════
+//
+// 🌍 PHYSICS & SIMULATION
+// [ ] Advanced Physics: Multi-threaded physics simulation with spatial partitioning
+// [ ] Collision Detection: Optimized broad-phase and narrow-phase collision detection
+// [ ] Fluid Dynamics: Realistic fluid simulation for space and atmospheric environments
+// [ ] Gravitational Fields: N-body gravitational simulation for realistic orbital mechanics
+// [ ] Atmospheric Simulation: Realistic atmospheric effects and aerodynamics
+// [ ] Temperature Simulation: Heat transfer and thermal management systems
+// [ ] Electromagnetic Fields: EM field simulation for shield and weapon interactions
+// [ ] Particle Systems: Advanced particle simulation for debris and effects
+// [ ] Soft Body Physics: Deformable objects and materials simulation
+// [ ] Constraint Systems: Advanced constraint-based physics for complex mechanisms
+//
+// 🚀 ENTITY & MOVEMENT SYSTEMS
+// [ ] Entity Pooling: Object pooling for frequently created/destroyed entities
+// [ ] Movement Prediction: Client-side prediction for smooth networked movement
+// [ ] Locomotion AI: Intelligent locomotion system with pathfinding integration
+// [ ] Movement Profiles: Configurable movement profiles for different entity types
+// [ ] Surface Adaptation: Dynamic adaptation to different surface types and conditions
+// [ ] Movement Validation: Server-side validation of all movement commands
+// [ ] Movement Recording: Record and replay movement for debugging and analysis
+// [ ] Kinematic Chains: Support for complex kinematic structures (mechs, robots)
+// [ ] Movement Smoothing: Advanced interpolation and extrapolation for smooth movement
+// [ ] Movement Constraints: Physical and gameplay constraints on entity movement
+//
+// ⚡ PERFORMANCE OPTIMIZATIONS
+// [ ] Spatial Indexing: Efficient spatial data structures for fast proximity queries
+// [ ] Level of Detail: LOD system for physics simulation based on distance/importance
+// [ ] Update Scheduling: Intelligent scheduling of entity updates based on importance
+// [ ] Simulation Culling: Cull simulation updates for entities outside view/interaction
+// [ ] Batch Processing: Batch similar operations for better cache performance
+// [ ] Memory Management: Optimize memory layout and reduce allocations
+// [ ] SIMD Operations: Use SIMD instructions for vector and matrix operations
+// [ ] GPU Acceleration: Offload appropriate calculations to GPU compute shaders
+// [ ] Temporal Coherence: Leverage frame-to-frame coherence for optimization
+// [ ] Adaptive Timesteps: Dynamic timestep adjustment based on simulation complexity
+//
+// 🎮 GAMEPLAY SYSTEMS
+// [ ] Event System: Comprehensive event system for gameplay interactions
+// [ ] State Management: Advanced state management for complex game states
+// [ ] Save/Load System: Complete save/load functionality for simulation state
+// [ ] Replay System: Record and replay entire simulation sessions
+// [ ] Scripting Integration: Lua/Python scripting support for gameplay logic
+// [ ] Mission System: Dynamic mission generation and management
+// [ ] Faction System: Complex faction relationships and interactions
+// [ ] Economy System: Dynamic economy simulation with supply and demand
+// [ ] Procedural Generation: Procedural content generation for entities and environments
+// [ ] Balancing System: Automatic gameplay balancing based on player performance
+//
+// 🔗 NETWORKING & MULTIPLAYER
+// [ ] Network Synchronization: Deterministic simulation for multiplayer support
+// [ ] State Compression: Efficient compression of simulation state for networking
+// [ ] Client Prediction: Client-side prediction with server reconciliation
+// [ ] Interest Management: Network interest management for large-scale simulations
+// [ ] Delta Compression: Delta compression for efficient state updates
+// [ ] Network Security: Anti-cheat measures and input validation
+// [ ] Lag Compensation: Lag compensation techniques for smooth multiplayer
+// [ ] Network Diagnostics: Comprehensive network performance monitoring
+// [ ] Rollback Networking: Rollback netcode for competitive multiplayer
+// [ ] P2P Support: Peer-to-peer networking for distributed simulations
+//
+// 🔧 DEBUGGING & TOOLS
+// [ ] Simulation Profiler: Detailed profiling of simulation performance
+// [ ] Debug Visualization: Visual debugging tools for physics and AI
+// [ ] Simulation Inspector: Runtime inspection of simulation state
+// [ ] Performance Metrics: Real-time performance metrics and analysis
+// [ ] Memory Profiling: Track memory usage and detect leaks
+// [ ] Error Recovery: Graceful handling of simulation errors and edge cases
+// [ ] Unit Testing: Comprehensive unit tests for all simulation components
+// [ ] Integration Testing: Automated integration testing of simulation systems
+// [ ] Stress Testing: Stress testing with large numbers of entities
+// [ ] Regression Testing: Automated regression testing for simulation accuracy
+
 #include "Simulation.h"
 #include "ecs/LegacySystemAdapter.h"
 #include "ecs/System.h"  // For UnifiedSystem
+#include "EntityFactory.h"  // Auto-loading entity creation
 #include "gameplay/GameplayEventSystem.h"
 #include "gameplay/MissionScriptSystem.h"
 #include "TargetingSystem.h"
 #include "CameraSystem.h"
+#include "Entities.h"  // Auto-generated includes for all entity classes
 
 #include <algorithm>
 #include <cctype>
@@ -566,6 +646,19 @@ Simulation::Simulation()
       movementBoundsProfile("default"),
       useMovementBoundsFile(true),
       elapsedTimeSeconds_(0.0) {
+    
+    // TODO: Enhanced Simulation constructor
+    // [ ] Configuration Loading: Load simulation settings from configuration files
+    // [ ] Physics Engine Selection: Runtime selection of physics engine based on requirements
+    // [ ] Memory Budgeting: Set up memory budgets for different simulation components
+    // [ ] System Registration: Automatic registration of simulation systems
+    // [ ] Resource Pre-allocation: Pre-allocate frequently used simulation resources
+    // [ ] Profiler Integration: Set up profiling for simulation performance analysis
+    // [ ] Event System Setup: Initialize comprehensive event system for simulation
+    // [ ] Error Handler Setup: Set up error handling and recovery mechanisms
+    // [ ] Threading Configuration: Configure threading model for simulation systems
+    // [ ] Platform Optimization: Platform-specific optimizations during construction
+    
     activeEm = &em;
     randomManager_.SetGlobalSeed(0u);
     replayRecorder_.StopRecording();
@@ -588,6 +681,18 @@ void Simulation::SetUseSchedulerV2(bool enabled) {
 }
 
 void Simulation::Init(EntityManager* externalEm) {
+    // TODO: Enhanced initialization system
+    // [ ] Parallel Initialization: Initialize independent systems concurrently
+    // [ ] Dependency Resolution: Proper dependency-based initialization order
+    // [ ] Error Recovery: Graceful handling of initialization failures
+    // [ ] Resource Validation: Validate all required resources are available
+    // [ ] System Health Checks: Verify all systems are properly initialized
+    // [ ] Performance Profiling: Profile initialization performance
+    // [ ] Memory Management: Optimize memory allocation during initialization
+    // [ ] Configuration Validation: Validate all configuration settings
+    // [ ] Plugin Loading: Load and initialize simulation plugins
+    // [ ] State Restoration: Restore previous simulation state if needed
+    
     position = 0.0;
     std::cout << "Simulation initialized. position=" << position << std::endl;
 
@@ -632,101 +737,33 @@ void Simulation::Init(EntityManager* externalEm) {
         systemManager.RegisterUnifiedSystem(SystemType::MissionScript);
     }
 
-    // Create player entity in ECS
+    // ================================
+    // PLAYER SETUP - Designer-Friendly Configuration
+    // ================================
+    
+#ifndef NDEBUG
     std::cout << "[Simulation] Creating player entity..." << std::endl;
-    std::cout.flush();
+#endif
+    // Step 1: Create the core entity
     playerEntity = useEm->CreateEntity();
-    std::cout << "[Simulation] Player entity ID: " << playerEntity << std::endl;
     std::cout.flush();
     
-    auto pos = std::make_shared<Position>();
-    pos->x = 0.0;
-    pos->y = 0.0;
-    useEm->AddComponent<Position>(playerEntity, pos);
-    std::cout << "[Simulation] Added Position component (0, 0, 0)" << std::endl;
-    std::cout.flush();
+    // Step 2: Initialize Player actor (handles all component setup automatically)
+    auto player = std::make_unique<Player>();
+    ActorContext context{*useEm, playerEntity};
+    player->AttachContext(context);
+    player->Initialize();  // Player handles all its own component initialization
+    
+    std::cout << "[Simulation] Player actor initialized with all components" << std::endl;
 
-    auto vel = std::make_shared<Velocity>();
-    vel->vx = 0.0;
-    vel->vy = 0.0;
-    useEm->AddComponent<Velocity>(playerEntity, vel);
-    std::cout << "[Simulation] Added Velocity component" << std::endl;
+    // Get PlayerPhysics component added by Player class (from designer configuration)
+    if (auto* physics = useEm->GetComponent<PlayerPhysics>(playerEntity)) {
+        CreatePlayerPhysicsComponents(*useEm, *physics);
+    } else {
+        std::cout << "[Simulation] Warning: No PlayerPhysics component found for RigidBody setup" << std::endl;
+    }
 
-    auto acc = std::make_shared<Acceleration>();
-    acc->ax = 0.0;
-    acc->ay = 0.0;
-    acc->az = 0.0;
-    useEm->AddComponent<Acceleration>(playerEntity, acc);
-    std::cout << "[Simulation] Added Acceleration component" << std::endl;
-
-    auto controller = std::make_shared<PlayerController>();
-    controller->moveLeft = false;
-    controller->moveRight = false;
-    controller->moveForward = false;
-    controller->moveBackward = false;
-    controller->moveUp = false;
-    controller->moveDown = false;
-    controller->strafeLeft = false;
-    controller->strafeRight = false;
-    controller->sprint = false;
-    controller->crouch = false;
-    controller->slide = false;
-    controller->boost = false;
-    controller->cameraYaw = Camera::kDefaultYawRadians;
-    useEm->AddComponent<PlayerController>(playerEntity, controller);
-    std::cout << "[Simulation] Added PlayerController component" << std::endl;
-
-    auto physics = std::make_shared<PlayerPhysics>();
-    physics->thrustMode = useThrustMode;
-    physics->enableGravity = true;
-    physics->isGrounded = true;
-    useEm->AddComponent<PlayerPhysics>(playerEntity, physics);
-    std::cout << "[Simulation] Added PlayerPhysics component (thrustMode:" << useThrustMode << ", gravity:enabled)" << std::endl;
-
-    auto vitals = std::make_shared<PlayerVitals>();
-    vitals->health = vitals->maxHealth;
-    vitals->shields = 50.0;
-    vitals->maxShields = 50.0;
-    useEm->AddComponent<PlayerVitals>(playerEntity, vitals);
-    std::cout << "[Simulation] Added PlayerVitals component (health:" << vitals->health << ", shields:" << vitals->shields << ")" << std::endl;
-
-    // Add DrawComponent for visual rendering (fallback cube)
-    auto draw = std::make_shared<DrawComponent>();
-    draw->mode = DrawComponent::RenderMode::Mesh3D;
-    draw->visible = true;
-    draw->meshHandle = 0;  // 0 = use fallback cube
-    draw->meshScale = 1.0f;
-    draw->tintR = 0.2f;
-    draw->tintG = 0.8f;
-    draw->tintB = 1.0f;  // Cyan color for player
-    useEm->AddComponent<DrawComponent>(playerEntity, draw);
-    std::cout << "[Simulation] Added DrawComponent (Mesh3D, cyan tint, scale:" << draw->meshScale << ")" << std::endl;
-
-    auto inventory = std::make_shared<PlayerInventory>();
-    inventory->items.push_back(PlayerInventory::ItemSlot{
-        "starter_rations", "Frontier Survival Rations", 0.02, 0.005, 5, false, true
-    });
-    useEm->AddComponent<PlayerInventory>(playerEntity, inventory);
-    std::cout << "[Simulation] Added PlayerInventory component" << std::endl;
-
-    auto progression = std::make_shared<PlayerProgression>();
-    progression->level = 1;
-    progression->skillPoints = 1;
-    progression->reputationByFaction["helios_dominion"] = 0;
-    progression->reputationByFaction["aurora_spacers_guild"] = 5;
-    progression->blueprintCredits = 0;
-    useEm->AddComponent<PlayerProgression>(playerEntity, progression);
-    std::cout << "[Simulation] Added PlayerProgression component (level:" << progression->level << ")" << std::endl;
-
-    CreatePlayerPhysicsComponents(*useEm, *physics);
-
-   
-
-    // Note: Physics system is now handled by UnifiedSystem
-    // if (physicsSystem) {
-    //     physicsSystem->SetGravity(0.0, 0.0, physics->gravity);
-    // }
-
+    // Configure movement parameters and bounds for the game
     MovementBounds resolvedBounds = movementBoundsConfig;
     if (useMovementBoundsFile) {
         resolvedBounds = ResolveMovementBounds(movementBoundsConfig, movementBoundsConfigPath, movementBoundsProfile);
@@ -740,65 +777,43 @@ void Simulation::Init(EntityManager* externalEm) {
         resolvedParams = ResolveMovementParameters(movementConfig, movementParametersConfigPath, movementParametersProfile);
     }
     movementConfig = resolvedParams;
-
-    auto movementParams = std::make_shared<MovementParameters>(movementConfig);
-    useEm->AddComponent<MovementParameters>(playerEntity, movementParams);
-
-    if (auto* existingBounds = useEm->GetComponent<MovementBounds>(playerEntity)) {
-        *existingBounds = movementBoundsConfig;
-    } else {
-        auto movementBounds = std::make_shared<MovementBounds>(movementBoundsConfig);
-        useEm->AddComponent<MovementBounds>(playerEntity, movementBounds);
-    }
-
-    auto locomotion = std::make_shared<LocomotionStateMachine>();
-    locomotion->wasGrounded = physics->isGrounded;
-    const double forwardMax = std::max(0.0, movementConfig.forwardMaxSpeed);
-    const double backwardMax = std::max(0.0, movementConfig.backwardMaxSpeed);
-    const double strafeMax = std::max(0.0, movementConfig.strafeMaxSpeed);
-    const double baseSpeed = std::max(forwardMax, std::max(backwardMax, strafeMax));
-    if (baseSpeed > 0.0) {
-        locomotion->idleSpeedThreshold = std::max(0.1, baseSpeed * 0.1);
-        locomotion->walkSpeedThreshold = std::max(locomotion->idleSpeedThreshold + 0.1, baseSpeed * 0.4);
-        locomotion->sprintSpeedThreshold = std::max(locomotion->walkSpeedThreshold + 0.1, baseSpeed * 0.85);
-        locomotion->slideSpeedThreshold = std::max(locomotion->walkSpeedThreshold, baseSpeed * 0.65);
-    }
-    locomotion->stamina = locomotion->maxStamina;
-    locomotion->heat = 0.0;
-    locomotion->activeSurfaceType = locomotion->defaultSurfaceType;
-    if (locomotion->surfaceProfiles.count(locomotion->defaultSurfaceType)) {
-        locomotion->activeSurfaceProfile = locomotion->surfaceProfiles.at(locomotion->defaultSurfaceType);
-    }
-    locomotion->activeHazardModifier = locomotion->hazardBaseline;
-    locomotion->currentCameraOffset = locomotion->defaultCameraOffset;
-    locomotion->baseJumpImpulse = physics->jumpImpulse;
-    useEm->AddComponent<LocomotionStateMachine>(playerEntity, locomotion);
-    std::cout << "[Simulation] Added LocomotionStateMachine component" << std::endl;
-
-    auto targetLock = std::make_shared<TargetLock>();
-    targetLock->targetEntityId = 0;  // No target initially
-    targetLock->isLocked = false;    // Start unlocked
-    targetLock->offsetX = 0.0;
-    targetLock->offsetY = 5.0;
-    targetLock->offsetZ = 10.0;
-    targetLock->followDistance = 15.0;
-    targetLock->followHeight = 5.0;
-    useEm->AddComponent<TargetLock>(playerEntity, targetLock);
-    std::cout << "[Simulation] Added TargetLock component (unlocked)" << std::endl;
-
-    auto dockingStatus = std::make_shared<DockingStatus>();
-    dockingStatus->isDocked = false;
-    dockingStatus->alignmentScore = 0.0;
-    useEm->AddComponent<DockingStatus>(playerEntity, dockingStatus);
-    std::cout << "[Simulation] Added DockingStatus component" << std::endl;
-
-    // Add ViewportID so rendering loop can find this entity
-    auto viewportID = std::make_shared<ViewportID>();
-    viewportID->viewportId = 0;  // Main viewport
-    useEm->AddComponent<ViewportID>(playerEntity, viewportID);
-    std::cout << "[Simulation] Added ViewportID component (viewport 0)" << std::endl;
    
     std::cout << "[Simulation] ===== Player entity creation complete! Entity ID: " << playerEntity << " =====" << std::endl;
+
+    // DEMONSTRATION: Auto-loading entity configuration system (disabled for faster startup)
+    // Enable with environment variable: NOVA_DEMO_ENTITIES=1
+    const char* demoEntitiesEnv = std::getenv("NOVA_DEMO_ENTITIES");
+    if (demoEntitiesEnv && std::string(demoEntitiesEnv) == "1") {
+        std::cout << "[Simulation] === EntityFactory Demonstration ===" << std::endl;
+        EntityFactory factory(*useEm);
+        
+        // Show available entity types
+        auto availableTypes = factory.GetAvailableTypes();
+        std::cout << "[Simulation] Available entity types: ";
+        for (size_t i = 0; i < availableTypes.size(); ++i) {
+            std::cout << availableTypes[i];
+            if (i < availableTypes.size() - 1) std::cout << ", ";
+        }
+        std::cout << std::endl;
+        
+        // Create a few example entities with auto-loaded configurations
+        auto stationResult = factory.CreateStation("station", 100.0, 0.0, 50.0);
+        if (stationResult.success) {
+            std::cout << "[Simulation] Created station entity " << stationResult.entity << " with auto-loaded config" << std::endl;
+        }
+        
+        auto traderResult = factory.CreateNPC("trader", -50.0, 0.0, 25.0);
+        if (traderResult.success) {
+            std::cout << "[Simulation] Created trader NPC entity " << traderResult.entity << " with auto-loaded config" << std::endl;
+        }
+        
+        auto pirateResult = factory.CreateNPC("pirate", 75.0, 0.0, -30.0);
+        if (pirateResult.success) {
+            std::cout << "[Simulation] Created pirate NPC entity " << pirateResult.entity << " with auto-loaded config" << std::endl;
+        }
+        
+        std::cout << "[Simulation] === End EntityFactory Demonstration ===" << std::endl;
+    }
 
     inputRight = false;
     inputForward = false;
@@ -824,28 +839,40 @@ void Simulation::Init(EntityManager* externalEm) {
 }
 
 void Simulation::Update(double dt) {
+    // TODO: Advanced simulation update system
+    // [ ] Update Scheduling: Intelligent scheduling of system updates based on priority
+    // [ ] Load Balancing: Dynamic load balancing between different simulation systems
+    // [ ] Performance Monitoring: Real-time monitoring of update performance
+    // [ ] Adaptive Timesteps: Dynamic timestep adjustment based on simulation complexity
+    // [ ] System Dependencies: Handle complex dependencies between system updates
+    // [ ] Error Recovery: Graceful handling of errors during simulation updates
+    // [ ] Memory Management: Efficient memory management during simulation updates
+    // [ ] Threading Support: Multi-threaded simulation updates for better performance
+    // [ ] State Validation: Validate simulation state consistency after updates
+    // [ ] Profiler Integration: Deep integration with profiling tools for optimization
+    
     if (dt <= 0.0) {
         return;
     }
 
     EntityManager* useEm = activeEm ? activeEm : &em;
 
-    // Debug: Check player position every 2 seconds
-    static double posDebugTimer = 0.0;
-    posDebugTimer += dt;
-    if (posDebugTimer > 2.0) {
-        if (auto* pos = useEm->GetComponent<Position>(playerEntity)) {
-            std::cout << "[Simulation] Player position: (" << pos->x << ", " << pos->y << ", " << pos->z << ")" << std::endl;
-        } else {
-            std::cout << "[Simulation] WARNING: Player entity has no Position component!" << std::endl;
-        }
-        posDebugTimer = 0.0;
-    }
+    // Debug: Check player position every 2 seconds (DISABLED FOR PERFORMANCE)
+    // static double posDebugTimer = 0.0;
+    // posDebugTimer += dt;
+    // if (posDebugTimer > 2.0) {
+    //     if (auto* pos = useEm->GetComponent<Position>(playerEntity)) {
+    //         std::cout << "[Simulation] Player position: (" << pos->x << ", " << pos->y << ", " << pos->z << ")" << std::endl;
+    //     } else {
+    //         std::cout << "[Simulation] WARNING: Player entity has no Position component!" << std::endl;
+    //     }
+    //     posDebugTimer = 0.0;
+    // }
 
+    // PERFORMANCE: Reduced auto-draw check frequency for better FPS
     // Auto-add DrawComponent to any entity with Position but no DrawComponent
-    // This makes all entities visible with fallback cube rendering
     static int autoDrawCounter = 0;
-    if (++autoDrawCounter % 60 == 0) {  // Check every second at 60 FPS
+    if (++autoDrawCounter % 360 == 0) {  // Check every 6 seconds instead of every second
         useEm->ForEach<Position>([useEm, this](Entity e, Position& pos) {
             // Skip player entity - it has custom cyan cube
             if (e == playerEntity) return;
@@ -854,13 +881,12 @@ void Simulation::Update(double dt) {
                 auto draw = std::make_shared<DrawComponent>();
                 draw->mode = DrawComponent::RenderMode::Mesh3D;
                 draw->visible = true;
-                draw->meshHandle = 0;  // 0 = use fallback cube
+                draw->meshHandle = 0;
                 draw->meshScale = 1.0f;
                 draw->tintR = 0.8f;
                 draw->tintG = 0.8f;
-                draw->tintB = 0.8f;  // Gray color for generic entities
+                draw->tintB = 0.8f;
                 useEm->AddComponent<DrawComponent>(e, draw);
-                // Silently add DrawComponent - no spam
             }
         });
     }
@@ -889,6 +915,9 @@ void Simulation::Update(double dt) {
 
     if (auto* controller = useEm->GetComponent<PlayerController>(playerEntity)) {
         bool jumpJustPressed = inputUp && !prevJumpHeld;
+        
+        // PERFORMANCE: Removed input debug logging from hot path
+        
         controller->moveLeft = inputLeft;
         controller->moveRight = inputRight;
         controller->moveForward = inputForward;
@@ -910,31 +939,21 @@ void Simulation::Update(double dt) {
         physics->thrustMode = useThrustMode;
     }
 
+    // PERFORMANCE: Removed debug logging from hot path for better FPS
     if (useSchedulerV2_) {
         EnsureSchedulerV2Configured(*useEm);
-        static int sysDebugCounter = 0;
-        if (++sysDebugCounter % 120 == 0) {
-            std::cout << "[Simulation] Using SchedulerV2 - updating systems" << std::endl;
-        }
         schedulerV2_.UpdateAll(useEm->GetArchetypeManager(), dt);
     } else {
-        static int sysDebugCounter = 0;
-        if (++sysDebugCounter % 120 == 0) {
-            std::cout << "[Simulation] Using direct system calls (SystemManager broken)" << std::endl;
-        }
-        // WORKAROUND: SystemManager doesn't execute UnifiedSystems (no factory), call directly
-        useEm->EnableArchetypeFacade();  // Migrate to archetype storage for systems
+        // Direct system calls for optimal performance
+        useEm->EnableArchetypeFacade();
         if (playerControlSystem) playerControlSystem->Update(*useEm, dt);
         if (movementSystem) movementSystem->Update(*useEm, dt);
         if (locomotionSystem) locomotionSystem->Update(*useEm, dt);
     }
 
+    // PERFORMANCE: Removed position debug logging
     if (auto* p = useEm->GetComponent<Position>(playerEntity)) {
         position = p->x;
-        static int posDebugCounter = 0;
-        if (++posDebugCounter % 120 == 0) {
-            std::cout << "[Simulation] Player position after systems: (" << p->x << ", " << p->y << ", " << p->z << ")" << std::endl;
-        }
     }
 
     prevJumpHeld = inputUp;
@@ -1010,6 +1029,18 @@ std::shared_ptr<physics::IPhysicsEngine> Simulation::GetActivePhysicsEngine() co
 
 void Simulation::SetPlayerInput(bool forward, bool backward, bool up, bool down, bool strafeLeft, bool strafeRight, double cameraYaw,
                                bool sprint, bool crouch, bool slide, bool boost) {
+    // TODO: Enhanced input processing system
+    // [ ] Input Validation: Validate all input parameters for security and sanity
+    // [ ] Input Buffering: Buffer input commands to prevent loss during frame drops
+    // [ ] Input Smoothing: Smooth input transitions for better player experience
+    // [ ] Input Recording: Record input sequences for replay and analysis
+    // [ ] Input Prediction: Client-side prediction for networked gameplay
+    // [ ] Input Remapping: Support for custom input remapping and profiles
+    // [ ] Input Events: Event-driven input system for better modularity
+    // [ ] Input Analytics: Collect analytics on input usage patterns
+    // [ ] Input Security: Anti-cheat measures for input validation
+    // [ ] Input Accessibility: Enhanced accessibility features for input handling
+    
     inputForward = forward;
     inputBackward = backward;
     inputUp = up;
@@ -1060,6 +1091,18 @@ void Simulation::SetMovementParametersProfile(const std::string& profile) {
 }
 
 void Simulation::ConfigureMovementBounds(const MovementBounds& bounds) {
+    // TODO: Advanced movement bounds system
+    // [ ] Dynamic Bounds: Support for dynamically changing movement bounds
+    // [ ] Bounds Validation: Validate movement bounds for consistency and safety
+    // [ ] Bounds Events: Event system for movement bounds changes
+    // [ ] Bounds Visualization: Debug visualization of movement bounds
+    // [ ] Bounds Optimization: Optimize bounds checking for performance
+    // [ ] Bounds Networking: Network synchronization of movement bounds
+    // [ ] Bounds Scripting: Script-based movement bounds configuration
+    // [ ] Bounds Analytics: Collect analytics on movement patterns within bounds
+    // [ ] Bounds Security: Server-side validation of movement bounds
+    // [ ] Bounds Accessibility: Accessibility features for movement bounds
+    
     movementBoundsConfig = bounds;
     useMovementBoundsFile = false;
 
@@ -1088,6 +1131,18 @@ void Simulation::SetMovementBoundsProfile(const std::string& profile) {
 }
 
 void Simulation::StartReplayRecording(uint64_t seed) {
+    // TODO: Advanced replay system
+    // [ ] Compression: Compress replay data for storage efficiency
+    // [ ] Streaming: Stream replay data for large simulations
+    // [ ] Validation: Validate replay data integrity and consistency
+    // [ ] Metadata: Rich metadata for replay files (timestamp, version, etc.)
+    // [ ] Incremental Recording: Record only changes for efficiency
+    // [ ] Multiple Tracks: Support for multiple replay tracks (input, state, events)
+    // [ ] Replay Analysis: Tools for analyzing recorded replay data
+    // [ ] Replay Editing: Edit and modify recorded replay sequences
+    // [ ] Replay Sharing: Share replay files between users
+    // [ ] Replay Security: Secure replay data against tampering
+    
     if (seed != randomManager_.GetGlobalSeed()) {
         randomManager_.SetGlobalSeed(seed);
     }
@@ -1222,6 +1277,18 @@ void Simulation::EnsureSchedulerV2Configured(EntityManager& entityManager) {
 }
 
 void Simulation::ConfigureSchedulerV2(EntityManager& entityManager) {
+    // TODO: Advanced scheduler configuration system
+    // [ ] Dynamic Scheduling: Runtime modification of system scheduling
+    // [ ] Priority Management: Priority-based system scheduling
+    // [ ] Load Balancing: Automatic load balancing across available CPU cores
+    // [ ] Dependency Management: Complex dependency handling between systems
+    // [ ] Performance Monitoring: Real-time monitoring of scheduler performance
+    // [ ] Scheduler Optimization: Automatic optimization of scheduling order
+    // [ ] System Isolation: Sandboxed system execution for stability
+    // [ ] Error Recovery: Graceful handling of system failures in scheduler
+    // [ ] Scheduler Profiling: Detailed profiling of system execution times
+    // [ ] Scheduler Debugging: Enhanced debugging tools for scheduler analysis
+    
     entityManager.EnableArchetypeFacade();
     schedulerV2_.Clear();
 

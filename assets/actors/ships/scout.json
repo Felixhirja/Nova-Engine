@@ -1,0 +1,28 @@
+{
+    "name": "Scout Vessel",
+    "type": "Scout",
+    "speed": 220.0,
+    "health": 400,
+    "shield": 200,
+    "model": "scout_ship",
+    "faction": "exploration",
+    "ai": {
+        "behavior": "evasive",
+        "scanRange": 2000,
+        "responseTime": 1.5
+    },
+    "sensors": {
+        "range": 3000,
+        "resolution": "high",
+        "stealthDetection": true
+    },
+    "engine": {
+        "thrust": 300.0,
+        "maneuverability": 9.8,
+        "fuelCapacity": 600
+    },
+    "stealth": {
+        "cloakDuration": 30.0,
+        "energyCost": 50.0
+    }
+}

@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <vector>
+#include "ecs/Components.h"  // For Point3D definition
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

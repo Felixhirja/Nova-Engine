@@ -1,0 +1,90 @@
+{
+  "template": {
+    "id": "ship_template",
+    "name": "Basic Ship Template",
+    "version": 1,
+    "description": "Standard template for creating ships",
+    "category": "ship",
+    "author": "Nova Engine Team",
+    "variables": [
+      {
+        "name": "ship_name",
+        "type": "string",
+        "default": "New Ship",
+        "description": "Display name of the ship",
+        "required": true
+      },
+      {
+        "name": "max_speed",
+        "type": "number",
+        "default": "200",
+        "description": "Maximum speed in units/second",
+        "required": true,
+        "range": [50, 500]
+      },
+      {
+        "name": "max_health",
+        "type": "number",
+        "default": "100",
+        "description": "Maximum hull points",
+        "required": true,
+        "range": [50, 1000]
+      },
+      {
+        "name": "ship_class",
+        "type": "string",
+        "default": "fighter",
+        "description": "Ship class type",
+        "required": true,
+        "options": ["fighter", "interceptor", "bomber", "freighter", "capital"]
+      },
+      {
+        "name": "hull_type",
+        "type": "reference",
+        "default": "light_hull",
+        "description": "Hull configuration",
+        "required": true,
+        "contentType": "hull_module"
+      },
+      {
+        "name": "weapon_loadout",
+        "type": "reference",
+        "default": "dual_lasers",
+        "description": "Weapon configuration",
+        "required": true,
+        "contentType": "weapon_loadout"
+      }
+    ]
+  },
+  "content": {
+    "id": "${ship_id}",
+    "type": "ship",
+    "name": "${ship_name}",
+    "class": "${ship_class}",
+    "stats": {
+      "maxSpeed": ${max_speed},
+      "maxHealth": ${max_health},
+      "acceleration": 50,
+      "turnRate": 45,
+      "mass": 10
+    },
+    "components": {
+      "hull": "${hull_type}",
+      "weapons": "${weapon_loadout}",
+      "engine": "standard_engine",
+      "shield": "basic_shield"
+    },
+    "appearance": {
+      "model": "ships/${ship_class}_base.obj",
+      "texture": "ships/${ship_class}_default.png",
+      "scale": [1.0, 1.0, 1.0],
+      "color": [1.0, 1.0, 1.0, 1.0]
+    },
+    "metadata": {
+      "created": "${timestamp}",
+      "author": "${author}",
+      "version": 1,
+      "tags": ["ship", "${ship_class}"]
+    }
+  }
+}

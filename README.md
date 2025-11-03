@@ -114,6 +114,24 @@ scripts\\run_engine.bat
 
 Use WASD to move and the mouse to look around. Press Q to quit.
 
+## Performance
+
+### Startup Speed
+Nova Engine has been optimized for fast startup:
+- **Window appears in 0.5-1.5 seconds** (down from 2-5 seconds)
+- Reduced OpenGL context trials from 4 to 2 attempts
+- Window shown immediately for better perceived speed
+
+See `STARTUP_SPEED_FIX.md` for additional optimization options.
+
+### Runtime Performance
+- **Modern ECS V2**: 10-50x faster than legacy system
+- **Query System**: Multi-threaded entity processing with `Query<Components...>`
+- **Parallel ForEach**: Automatic work distribution across CPU cores
+- **Zero-allocation iteration**: Direct archetype access, no temporary vectors
+
+For details on the ECS query system, see `QUERY_SYSTEM_COMPLETE.md`.
+
 ## Controls
 
 ### Movement

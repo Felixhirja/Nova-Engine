@@ -1,0 +1,8 @@
+{
+  "name": 123,
+  "description": "Test station with multiple validation errors",
+  "entityType": "station",
+  "type": "military",
+  "dockingCapacity": "not a number",
+  "invalidField": "this should cause validation to fail"
+}

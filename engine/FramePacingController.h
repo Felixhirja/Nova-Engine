@@ -6,7 +6,7 @@
 
 struct FramePacingSettings {
     bool vsyncEnabled = false;
-    double targetFPS = 144.0;
+    double targetFPS = 400.0;  // Target 400 FPS for maximum performance
 };
 
 class FramePacingController {

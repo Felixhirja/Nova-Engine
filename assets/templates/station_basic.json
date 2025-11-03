@@ -1,0 +1,33 @@
+{
+    "_template": {
+        "name": "BasicStation",
+        "version": "1.0",
+        "description": "Basic space station template",
+        "category": "Stations",
+        "author": "Nova Engine"
+    },
+    "name": "${STATION_NAME:Trading Post}",
+    "type": "${STATION_TYPE:trading}",
+    "health": "${HEALTH:5000}",
+    "shield": "${SHIELD:2000}",
+    "model": "station_medium",
+    "faction": "${FACTION:neutral}",
+    "dockingCapacity": "${DOCKING_CAPACITY:4}",
+    "services": "${SERVICES:[\"trade\", \"repair\", \"refuel\"]}",
+    "defenses": {
+        "turrets": "${TURRET_COUNT:4}",
+        "shields": "standard",
+        "armor": "medium"
+    },
+    "economics": {
+        "economy": "${ECONOMY_TYPE:mixed}",
+        "priceModifier": "${PRICE_MODIFIER:1.0}",
+        "inventory": {
+            "weapons": true,
+            "components": true,
+            "commodities": true
+        }
+    },
+    "population": "${POPULATION:500}",
+    "size": "${SIZE:medium}"
+}

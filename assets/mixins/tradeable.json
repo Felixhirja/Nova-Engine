@@ -1,0 +1,6 @@
+{
+  "$mixin": true,
+  "description": "Mixin for tradeable entities",
+  "cargo": { "capacity": 100 },
+  "tags": ["tradeable"]
+}

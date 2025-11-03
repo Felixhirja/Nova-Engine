@@ -1,21 +1,50 @@
 #pragma once
 
 #include "../engine/SimpleJson.h"
+#include "../engine/JsonSchema.h"
 #include <string>
 #include <memory>
 #include <fstream>
 #include <iostream>
 
 /**
- * ActorConfig: JSON-driven configuration system for actors
- * Allows designers to configure actor properties via JSON files
+ * ActorConfig: JSON-driven configuration system for actors with schema validation
+ * Allows designers to configure actor properties via JSON files with validation
  */
 class ActorConfig {
 public:
     /**
-     * Load actor configuration from JSON file
+     * Configuration load result with validation info
+     */
+    struct LoadResult {
+        std::unique_ptr<simplejson::JsonObject> config;
+        schema::ValidationResult validation;
+        bool success = false;
+        
+        LoadResult() = default;
+        LoadResult(std::unique_ptr<simplejson::JsonObject> cfg, schema::ValidationResult val)
+            : config(std::move(cfg)), validation(std::move(val)), success(validation.success && config != nullptr) {}
+    };
+    
+    /**
+     * Load actor configuration from JSON file (legacy - no validation)
      */
     static std::unique_ptr<simplejson::JsonObject> LoadFromFile(const std::string& filename);
+    
+    /**
+     * Load actor configuration from JSON file with schema validation
+     */
+    static LoadResult LoadFromFileWithValidation(const std::string& filename, const std::string& schemaId = "actor_config");
+    
+    /**
+     * Validate a configuration object against a schema
+     */
+    static schema::ValidationResult ValidateConfig(const simplejson::JsonObject& config, const std::string& schemaId);
+    
+    /**
+     * Initialize schema registry with built-in schemas
+     */
+    static void InitializeSchemas();
 
     /**
      * Get configuration value with default
@@ -47,9 +76,14 @@ struct StationConfig {
     std::string faction;
 
     /**
-     * Create StationConfig from JSON object
+     * Create StationConfig from JSON object (legacy - no validation)
      */
     static StationConfig FromJSON(const simplejson::JsonObject& json);
+    
+    /**
+     * Create StationConfig from JSON file with validation
+     */
+    static StationConfig FromFile(const std::string& filename, bool validateSchema = true);
 };
 
 // Template implementations
@@ -90,6 +124,85 @@ inline std::unique_ptr<simplejson::JsonObject> ActorConfig::LoadFromFile(const s
     }
 
     return std::make_unique<simplejson::JsonObject>(result.value.AsObject());
+}
+
+inline ActorConfig::LoadResult ActorConfig::LoadFromFileWithValidation(const std::string& filename, const std::string& schemaId) {
+    LoadResult result;
+    
+    // Load JSON file
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        result.validation.AddError("", "Failed to open config file: " + filename);
+        return result;
+    }
+
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+
+    auto parseResult = simplejson::Parse(content);
+    
+    if (!parseResult.success) {
+        result.validation.AddError("", "Failed to parse JSON: " + parseResult.errorMessage);
+        return result;
+    }
+
+    if (!parseResult.value.IsObject()) {
+        result.validation.AddError("", "JSON root is not an object");
+        return result;
+    }
+
+    result.config = std::make_unique<simplejson::JsonObject>(parseResult.value.AsObject());
+    
+    // Validate against schema if available
+    auto* schema = schema::SchemaRegistry::Instance().GetSchema(schemaId);
+    if (schema) {
+        result.validation = schema->ValidateObject(*result.config);
+        
+        if (!result.validation.success) {
+            std::cerr << "[ActorConfig] Validation failed for " << filename << ":\n" 
+                      << result.validation.GetErrorReport() << std::endl;
+        }
+    } else {
+        std::cout << "[ActorConfig] Warning: Schema '" << schemaId << "' not found, skipping validation for " << filename << std::endl;
+        // Still consider it successful if we can't find the schema
+        result.validation.success = true;
+    }
+    
+    result.success = result.validation.success && result.config != nullptr;
+    return result;
+}
+
+inline schema::ValidationResult ActorConfig::ValidateConfig(const simplejson::JsonObject& config, const std::string& schemaId) {
+    auto* schema = schema::SchemaRegistry::Instance().GetSchema(schemaId);
+    if (!schema) {
+        schema::ValidationResult result;
+        result.AddError("", "Schema '" + schemaId + "' not found in registry");
+        return result;
+    }
+    
+    return schema->ValidateObject(config);
+}
+
+inline void ActorConfig::InitializeSchemas() {
+    static bool initialized = false;
+    if (initialized) return;
+    
+    auto& registry = schema::SchemaRegistry::Instance();
+    
+    // Load built-in schemas
+    registry.LoadSchemaFromFile("actor_config", "assets/schemas/actor_config.schema.json");
+    registry.LoadSchemaFromFile("ship_config", "assets/schemas/ship_config.schema.json");
+    registry.LoadSchemaFromFile("station_config", "assets/schemas/station_config.schema.json");
+    
+    std::cout << "[ActorConfig] Schema registry initialized with schemas: ";
+    auto schemaIds = registry.GetSchemaIds();
+    for (size_t i = 0; i < schemaIds.size(); ++i) {
+        std::cout << schemaIds[i];
+        if (i < schemaIds.size() - 1) std::cout << ", ";
+    }
+    std::cout << std::endl;
+    
+    initialized = true;
 }
 
 // Specialized implementations
@@ -144,5 +257,28 @@ inline StationConfig StationConfig::FromJSON(const simplejson::JsonObject& json)
         }
     }
 
+    return config;
+}
+
+inline StationConfig StationConfig::FromFile(const std::string& filename, bool validateSchema) {
+    StationConfig config;
+    
+    if (validateSchema) {
+        auto loadResult = ActorConfig::LoadFromFileWithValidation(filename, "station_config");
+        if (loadResult.success && loadResult.config) {
+            config = FromJSON(*loadResult.config);
+        } else {
+            std::cerr << "[StationConfig] Failed to load and validate " << filename << std::endl;
+            if (!loadResult.validation.success) {
+                std::cerr << loadResult.validation.GetErrorReport() << std::endl;
+            }
+        }
+    } else {
+        auto configObj = ActorConfig::LoadFromFile(filename);
+        if (configObj) {
+            config = FromJSON(*configObj);
+        }
+    }
+    
     return config;
 }

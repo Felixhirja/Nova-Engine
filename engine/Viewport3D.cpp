@@ -1,5 +1,96 @@
+// TODO: Viewport3D Enhancement Roadmap
+// 
+// ═══════════════════════════════════════════════════════════════════════════════════
+// VIEWPORT3D RENDERING SYSTEM - COMPREHENSIVE IMPROVEMENT PLAN
+// ═══════════════════════════════════════════════════════════════════════════════════
+//
+// 🎨 RENDERING PIPELINE IMPROVEMENTS
+// [ ] Modern OpenGL: Migrate to modern OpenGL (4.3+ Core Profile) with shaders
+// [ ] Vulkan Support: Add Vulkan rendering backend for better performance
+// [ ] DirectX Support: DirectX 11/12 support for Windows platform
+// [ ] Metal Support: Metal rendering backend for macOS/iOS
+// [ ] WebGL Support: WebGL backend for browser deployment
+// [ ] Multi-Threading: Multi-threaded rendering with command buffers
+// [ ] GPU-Driven Rendering: GPU-driven culling and mesh processing
+// [ ] Deferred Rendering: Deferred shading pipeline for complex lighting
+// [ ] Forward+ Rendering: Tiled forward rendering for transparency
+// [ ] Temporal Rendering: Temporal effects and frame accumulation
+//
+// ⚡ PERFORMANCE OPTIMIZATIONS
+// [ ] Culling Systems: Frustum, occlusion, and distance culling
+// [ ] Level of Detail: Automatic LOD system for meshes and textures
+// [ ] Instanced Rendering: GPU instancing for repeated objects
+// [ ] Batch Rendering: Automatic batching of similar draw calls
+// [ ] Texture Streaming: Streaming texture system for large assets
+// [ ] Mesh Compression: Runtime mesh compression and decompression
+// [ ] GPU Profiling: Detailed GPU performance profiling tools
+// [ ] Memory Management: Optimized GPU memory allocation and pooling
+// [ ] Dynamic Resolution: Dynamic resolution scaling for performance
+// [ ] Variable Rate Shading: VRS support for performance optimization
+//
+// 🌟 VISUAL EFFECTS ENHANCEMENTS
+// [ ] Post-Processing: Comprehensive post-processing pipeline
+// [ ] Bloom Enhancement: Advanced bloom with quality settings
+// [ ] Anti-Aliasing: MSAA, FXAA, TAA, and SMAA support
+// [ ] Shadow Mapping: Cascaded shadow maps with soft shadows
+// [ ] Global Illumination: Real-time global illumination techniques
+// [ ] Reflections: Screen-space and cubemap reflections
+// [ ] Ambient Occlusion: SSAO, HBAO, and GTAO implementations
+// [ ] Depth of Field: Realistic depth of field effects
+// [ ] Motion Blur: Per-object and camera motion blur
+// [ ] Volumetric Lighting: Volumetric fog and lighting effects
+//
+// 🖼️ TEXTURE & MATERIAL SYSTEM
+// [ ] Material Editor: Visual material editor with node graphs
+// [ ] PBR Materials: Physically-based rendering material system
+// [ ] Texture Atlas: Automatic texture atlas generation and management
+// [ ] Texture Compression: GPU texture compression (DXT, ASTC, etc.)
+// [ ] Texture Filtering: Advanced texture filtering options
+// [ ] Material Templates: Pre-defined material templates
+// [ ] Dynamic Materials: Runtime material modification
+// [ ] Material Validation: Validate material properties and dependencies
+// [ ] Material Optimization: Automatic material optimization
+// [ ] Texture Debugging: Debug tools for texture usage and performance
+//
+// 🎮 USER INTERFACE IMPROVEMENTS
+// [ ] HUD Modernization: Modern HUD design with scalable UI
+// [ ] UI Animation: Smooth UI animations and transitions
+// [ ] UI Themes: Customizable UI themes and styling
+// [ ] Accessibility: Enhanced accessibility features for UI
+// [ ] Multi-Monitor: Multi-monitor support and management
+// [ ] Touch Support: Touch input support for mobile platforms
+// [ ] UI Scaling: Automatic UI scaling for different screen sizes
+// [ ] UI Localization: Localization support for UI elements
+// [ ] UI Performance: Optimize UI rendering performance
+// [ ] UI Debugging: Debug tools for UI layout and performance
+//
+// 🔧 DEBUG & DEVELOPMENT TOOLS
+// [ ] Visual Debugger: Comprehensive visual debugging tools
+// [ ] Wireframe Mode: Enhanced wireframe rendering with options
+// [ ] Buffer Visualization: Visualize render targets and buffers
+// [ ] Shader Debugging: Real-time shader debugging and editing
+// [ ] Performance Overlay: Real-time performance metrics overlay
+// [ ] Memory Profiler: GPU memory usage profiling and visualization
+// [ ] Render Graph: Visual render graph for debugging pipeline
+// [ ] Screenshot Tools: Enhanced screenshot and video capture
+// [ ] Asset Inspector: Runtime asset inspection and validation
+// [ ] Render Statistics: Detailed rendering statistics and metrics
+//
+// 🌐 PLATFORM ENHANCEMENTS
+// [ ] HDR Support: High dynamic range display support
+// [ ] VR/AR Support: Virtual and augmented reality rendering
+// [ ] Mobile Optimization: Mobile-specific rendering optimizations
+// [ ] Console Support: Console platform rendering optimizations
+// [ ] Cloud Rendering: Cloud-based rendering support
+// [ ] Streaming: Remote rendering and streaming capabilities
+// [ ] Cross-Platform: Enhanced cross-platform compatibility
+// [ ] Hardware Detection: Automatic hardware capability detection
+// [ ] Driver Compatibility: Enhanced graphics driver compatibility
+// [ ] Legacy Support: Support for older graphics hardware
+
 #include "Viewport3D.h"
 #include "TextRenderer.h"
+#include "HudAssetManager.h"
 #include <iostream>
 #include <vector>
 #include <cstdint>
@@ -1107,6 +1198,17 @@ Viewport3D::Viewport3D()
     , playerMeshInitialized_(false)
 #endif
 {
+    // TODO: Enhanced Viewport3D constructor
+    // [ ] Configuration Loading: Load viewport settings from configuration files
+    // [ ] Hardware Detection: Detect graphics hardware capabilities during construction
+    // [ ] Backend Selection: Automatic selection of optimal rendering backend
+    // [ ] Resource Pre-allocation: Pre-allocate frequently used rendering resources
+    // [ ] Profile Selection: Support for different quality/performance profiles
+    // [ ] Memory Budgeting: Set up memory budgets for different rendering systems
+    // [ ] Shader Pre-compilation: Pre-compile essential shaders during construction
+    // [ ] Extension Detection: Detect and enable graphics extensions
+    // [ ] Error Handler Setup: Set up comprehensive error handling for graphics
+    // [ ] Debug Integration: Set up debug layers and validation when available
     // ctor trace
     try {
         std::ofstream f("v3d_ctor.log", std::ios::app);
@@ -1130,6 +1232,18 @@ Viewport3D::~Viewport3D() {
 }
 
 void Viewport3D::EnsurePrimitiveBuffers() {
+    // TODO: Modern primitive buffer management
+    // [ ] GPU Buffer Manager: Centralized GPU buffer allocation and management
+    // [ ] Buffer Pool: Implement buffer pooling for better memory usage
+    // [ ] Dynamic Buffers: Support for dynamic vertex/index buffer updates
+    // [ ] Buffer Validation: Validate buffer state and memory usage
+    // [ ] Buffer Analytics: Track buffer usage patterns and performance
+    // [ ] Multi-frame Buffers: Support for multi-frame buffer strategies
+    // [ ] Buffer Debugging: Enhanced debugging tools for buffer inspection
+    // [ ] Buffer Formats: Support for multiple vertex and index formats
+    // [ ] Buffer Compression: Compress vertex data for memory efficiency
+    // [ ] Buffer Streaming: Stream large buffers efficiently
+    
 #if defined(USE_GLFW) || defined(USE_SDL)
     if (!IsUsingGLBackend()) {
         return;
@@ -1249,6 +1363,18 @@ void Viewport3D::EnsurePrimitiveBuffers() {
 }
 
 void Viewport3D::EnsureCubePrimitive() {
+    // TODO: Advanced geometric primitives
+    // [ ] Primitive Library: Comprehensive library of geometric primitives
+    // [ ] Procedural Generation: Generate primitives procedurally at runtime
+    // [ ] Primitive Optimization: Optimize primitive geometry for rendering
+    // [ ] Primitive Caching: Cache generated primitives for reuse
+    // [ ] Primitive Variants: Support for different primitive variations
+    // [ ] Primitive Instancing: Instance rendering for multiple primitives
+    // [ ] Primitive LOD: Level-of-detail for primitive rendering
+    // [ ] Primitive Animation: Animated and morphing primitive support
+    // [ ] Primitive Physics: Physics-ready primitive mesh generation
+    // [ ] Primitive Materials: Material assignment for primitives
+    
 #if defined(USE_GLFW) || defined(USE_SDL)
     if (!IsUsingGLBackend()) return;
     if (cubePrimitive_ && cubePrimitive_->IsInitialized()) return;
@@ -1746,6 +1872,18 @@ void Viewport3D::ToggleFullscreen() {
 }
 
 void Viewport3D::DrawCubePrimitive(float r, float g, float b) {
+    // TODO: Enhanced primitive rendering
+    // [ ] Modern Shader Pipeline: Use modern shaders instead of fixed pipeline
+    // [ ] Primitive Batching: Batch multiple primitive draws for performance
+    // [ ] Primitive Materials: Support for advanced material properties
+    // [ ] Primitive Lighting: Enhanced lighting calculations for primitives
+    // [ ] Primitive Shadows: Shadow casting and receiving for primitives
+    // [ ] Primitive Culling: Frustum and occlusion culling for primitives
+    // [ ] Primitive Wireframe: Wireframe rendering modes for debugging
+    // [ ] Primitive Texturing: Texture mapping support for primitives
+    // [ ] Primitive Animation: Support for animated primitive properties
+    // [ ] Primitive Metrics: Performance metrics for primitive rendering
+    
 #if defined(USE_GLFW) || defined(USE_SDL)
     if (!IsUsingGLBackend()) {
         return;
@@ -1860,6 +1998,18 @@ bool Viewport3D::IsUsingGLBackend() const {
 }
 
 void Viewport3D::EnsureLayoutConfiguration() {
+    // TODO: Advanced layout management
+    // [ ] Layout Designer: Visual layout designer tool for creating configurations
+    // [ ] Layout Validation: Comprehensive validation of layout configurations
+    // [ ] Layout Templates: Predefined layout templates for common use cases
+    // [ ] Layout Animation: Smooth transitions between different layouts
+    // [ ] Layout Persistence: Save and restore custom layout configurations
+    // [ ] Layout Scripting: Script-based layout configuration and automation
+    // [ ] Layout Constraints: Constraint-based layout system for responsive design
+    // [ ] Layout Performance: Optimize layout calculation and rendering
+    // [ ] Layout Events: Event system for layout changes and interactions
+    // [ ] Layout Accessibility: Accessibility features for layout navigation
+    
     if (layouts_.empty()) {
         layouts_ = CreateDefaultLayouts();
     }
@@ -1878,12 +2028,36 @@ void Viewport3D::EnsureLayoutConfiguration() {
 }
 
 void Viewport3D::ConfigureLayouts(std::vector<ViewportLayout> layouts) {
+    // TODO: Enhanced layout configuration
+    // [ ] Layout Validation: Validate layout structure and consistency
+    // [ ] Layout Migration: Migrate old layout formats to new versions
+    // [ ] Layout Optimization: Optimize layout for rendering performance
+    // [ ] Layout Backup: Backup existing layouts before configuration
+    // [ ] Layout Merging: Merge new layouts with existing configurations
+    // [ ] Layout Versioning: Version control for layout configurations
+    // [ ] Layout Documentation: Generate documentation for layout structure
+    // [ ] Layout Testing: Automated testing of layout configurations
+    // [ ] Layout Analytics: Track layout usage and performance metrics
+    // [ ] Layout Export: Export layouts to external formats
+    
     layouts_ = std::move(layouts);
     activeLayoutIndex_ = 0;
     EnsureLayoutConfiguration();
 }
 
 void Viewport3D::CycleLayout() {
+    // TODO: Enhanced layout cycling
+    // [ ] Layout Preview: Preview layouts before switching
+    // [ ] Layout History: Track layout switching history
+    // [ ] Layout Shortcuts: Keyboard shortcuts for quick layout switching
+    // [ ] Layout Animations: Smooth animations during layout transitions
+    // [ ] Layout Context: Context-aware layout suggestions
+    // [ ] Layout Favorites: Mark frequently used layouts as favorites
+    // [ ] Layout Search: Search and filter available layouts
+    // [ ] Layout Groups: Organize layouts into logical groups
+    // [ ] Layout Persistence: Remember last used layout across sessions
+    // [ ] Layout Events: Events for layout change notifications
+    
     EnsureLayoutConfiguration();
     if (!layouts_.empty()) {
         activeLayoutIndex_ = (activeLayoutIndex_ + 1) % layouts_.size();
@@ -2006,27 +2180,48 @@ void Viewport3D::TickLayoutHotReload() {
 }
 
 bool Viewport3D::LoadLayoutsFromJsonFile(const std::filesystem::path& path) {
+    std::cout << "[Viewport3D] Loading layouts from: " << path.string() << std::endl;
+    
     std::ifstream file(path);
     if (!file) {
         layoutEditorError_ = "Failed to open layout config: " + path.string();
+        std::cerr << "[Viewport3D] Failed to open layout config: " << path.string() << std::endl;
         return false;
     }
 
     std::stringstream buffer;
     buffer << file.rdbuf();
+    std::string jsonContent = buffer.str();
 
-    SimpleJsonParser parser(buffer.str());
+    std::cout << "[Viewport3D] JSON content length: " << jsonContent.length() << " characters" << std::endl;
+    std::cout << "[Viewport3D] First 20 characters: ";
+    for (size_t i = 0; i < std::min(jsonContent.length(), size_t(20)); ++i) {
+        char c = jsonContent[i];
+        if (c >= 32 && c <= 126) {
+            std::cout << c;
+        } else {
+            std::cout << "[0x" << std::hex << (unsigned char)c << std::dec << "]";
+        }
+    }
+    std::cout << std::endl;
+
+    SimpleJsonParser parser(jsonContent);
     SimpleJsonValue root;
     if (!parser.Parse(root)) {
         layoutEditorError_ = "Layout JSON parse error: " + parser.Error();
+        std::cerr << "[Viewport3D] Layout JSON parse error: " << parser.Error() << std::endl;
+        std::cerr << "[Viewport3D] JSON content length: " << buffer.str().length() << " characters" << std::endl;
         return false;
     }
 
+    // Parse the layout data from the JSON
     const SimpleJsonValue* layoutsValue = root.Find("layouts");
     if (!layoutsValue || !layoutsValue->IsArray()) {
         layoutEditorError_ = "Layout JSON missing 'layouts' array";
         return false;
     }
+
+    layoutEditorError_.clear(); // Clear any previous errors on successful parse
 
     std::vector<ViewportLayout> loadedLayouts;
     loadedLayouts.reserve(layoutsValue->array.size());
@@ -2101,6 +2296,9 @@ bool Viewport3D::LoadLayoutsFromJsonFile(const std::filesystem::path& path) {
 void Viewport3D::SetFramePacingHint(bool vsyncEnabled, double fps) {
     vsyncEnabled_ = vsyncEnabled;
     frameRateLimitHint_ = fps;
+    
+    // Actually apply the VSync setting to GLFW/SDL
+    SetVSyncEnabled(vsyncEnabled);
 }
 
 void Viewport3D::SetVSyncEnabled(bool enabled) {
@@ -2367,6 +2565,18 @@ void Viewport3D::RenderViewContent(const ViewportView& view,
 
 
 void Viewport3D::Init() {
+    // TODO: Enhanced initialization system
+    // [ ] Parallel Initialization: Initialize independent systems concurrently
+    // [ ] Initialization Validation: Validate all initialization steps
+    // [ ] Error Recovery: Graceful fallback when initialization fails
+    // [ ] Resource Validation: Verify all required resources are available
+    // [ ] Performance Profiling: Profile initialization performance
+    // [ ] Memory Management: Optimize memory allocation during initialization
+    // [ ] Extension Loading: Load graphics extensions and check capabilities
+    // [ ] Shader Compilation: Compile and validate essential shaders
+    // [ ] Initialization Events: Event system for initialization progress
+    // [ ] Context Validation: Validate graphics context creation and capabilities
+    
     if (debugLogging_) std::cout << "Viewport3D::Init() starting" << std::endl;
     {
         std::ofstream f("glfw_diag.log", std::ios::app);
@@ -2374,40 +2584,34 @@ void Viewport3D::Init() {
     }
     SetBackend(RenderBackend::None);
 #ifdef USE_GLFW
-    if (debugLogging_) std::cout << "USE_GLFW is defined, attempting GLFW initialization" << std::endl;
-    {
-        std::ofstream f("glfw_diag.log", std::ios::app);
-        if (f) f << "Attempting glfwInit" << std::endl;
-    }
-#endif
-#ifndef USE_GLFW
-    if (debugLogging_) std::cout << "USE_GLFW is NOT defined, falling back to SDL or ASCII" << std::endl;
-#endif
-#ifdef USE_GLFW
+    if (debugLogging_) std::cout << "Initializing GLFW" << std::endl;
     if (!glfwInit()) {
         std::cerr << "Viewport3D: GLFW initialization failed" << std::endl;
-        {
-            std::ofstream f("glfw_diag.log", std::ios::app);
-            if (f) f << "glfwInit failed" << std::endl;
-        }
+#ifndef NDEBUG
+        std::ofstream diagLog("glfw_diag.log", std::ios::app);
+        if (diagLog) diagLog << "glfwInit failed" << std::endl;
+#endif
         return;
     }
-    if (debugLogging_) std::cout << "GLFW initialized successfully" << std::endl;
+#ifndef NDEBUG
     {
-        std::ofstream f("glfw_diag.log", std::ios::app);
-        if (f) f << "glfwInit succeeded" << std::endl;
+        std::ofstream diagLog("glfw_diag.log", std::ios::app);
+        if (diagLog) diagLog << "glfwInit succeeded" << std::endl;
     }
-    // Try a few common OpenGL context configurations
+#endif
+    // Try OpenGL contexts - optimized order (most likely to succeed first)
+    // PERFORMANCE: Reduced to 2 attempts for faster startup
     struct Attempt { int major; int minor; bool forwardCompatible; const char* description; };
     const Attempt attempts[] = {
-        {3, 3, true,  "OpenGL 3.3 compat"},
-        {3, 0, true,  "OpenGL 3.0 compat"},
-        {2, 1, false, "OpenGL 2.1 any"},
-        {0, 0, false, "Default profile"}
+        {3, 3, true,  "OpenGL 3.3 compat"},  // Most common modern context
+        {0, 0, false, "Default profile"},    // Fallback to system default
+        // DISABLED FOR SPEED: {3, 0, true,  "OpenGL 3.0 compat"},
+        // DISABLED FOR SPEED: {2, 1, false, "OpenGL 2.1 any"}
     };
     const Attempt* chosenAttempt = nullptr;
     for (const Attempt& attempt : attempts) {
         glfwDefaultWindowHints();
+        glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE); // Show immediately for better perceived speed
         if (attempt.major > 0) {
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, attempt.major);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, attempt.minor);
@@ -2419,26 +2623,23 @@ void Viewport3D::Init() {
         }
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, attempt.forwardCompatible ? GL_TRUE : GL_FALSE);
 
-        if (debugLogging_) std::cout << "Viewport3D: Trying " << attempt.description << " context (windowed)" << std::endl;
-        {
-            std::ofstream f("glfw_diag.log", std::ios::app);
-            if (f) f << "Creating window " << attempt.description << " " << width << "x" << height << std::endl;
-        }
+#ifndef NDEBUG
+        if (debugLogging_) std::cout << "Viewport3D: Trying " << attempt.description << " context" << std::endl;
+        std::ofstream f("glfw_diag.log", std::ios::app);
+        if (f) f << "Creating window " << attempt.description << " " << width << "x" << height << std::endl;
+#endif
         glfwWindow = glfwCreateWindow(width, height, "Nova Engine", nullptr, nullptr);
         if (glfwWindow) {
             chosenAttempt = &attempt;
-            {
-                std::ofstream f("glfw_diag.log", std::ios::app);
-                if (f) f << "Window created" << std::endl;
-            }
+#ifndef NDEBUG
+            std::ofstream f2("glfw_diag.log", std::ios::app);
+            if (f2) f2 << "Window created successfully" << std::endl;
+#endif
             break;
         }
-
-        std::cerr << "Viewport3D: GLFW window creation failed for " << attempt.description << std::endl;
-        {
-            std::ofstream f("glfw_diag.log", std::ios::app);
-            if (f) f << "Window creation failed for attempt" << std::endl;
-        }
+#ifndef NDEBUG
+        if (debugLogging_) std::cerr << "Viewport3D: Failed for " << attempt.description << std::endl;
+#endif
     }
 
     if (!glfwWindow) {
@@ -2447,37 +2648,29 @@ void Viewport3D::Init() {
         return;
     }
 
-    if (debugLogging_) std::cout << "GLFW window created successfully using " << chosenAttempt->description << std::endl;
+    if (debugLogging_) std::cout << "GLFW window created using " << chosenAttempt->description << std::endl;
 
-    // Make sure the window is visible
-    glfwShowWindow(glfwWindow);
-    {
-        std::ofstream f("glfw_diag.log", std::ios::app);
-        if (f) f << "Window shown" << std::endl;
-    }
-
-    // Make the OpenGL context current
+    // Make the OpenGL context current before loading GLAD
     glfwMakeContextCurrent(glfwWindow);
-    {
-        std::ofstream f("glfw_diag.log", std::ios::app);
-        if (f) f << "Made context current, loading GLAD" << std::endl;
-    }
+    
     if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
         std::cerr << "Viewport3D: Failed to initialize GLAD" << std::endl;
-        {
-            std::ofstream f("glfw_diag.log", std::ios::app);
-            if (f) f << "GLAD init failed" << std::endl;
-        }
+#ifndef NDEBUG
+        std::ofstream f("glfw_diag.log", std::ios::app);
+        if (f) f << "GLAD init failed" << std::endl;
+#endif
         glfwDestroyWindow(glfwWindow);
         glfwWindow = nullptr;
         glfwTerminate();
         return;
     }
     InitializeShaderManager();
+#ifndef NDEBUG
     {
         std::ofstream f("glfw_diag.log", std::ios::app);
         if (f) f << "GLAD init succeeded; creating UIBatcher" << std::endl;
     }
+#endif
 
     // Enable OpenGL debug output for GPU validation (debug builds only)
 #ifndef NDEBUG
@@ -2536,10 +2729,10 @@ void Viewport3D::Init() {
     }
 
     SetBackend(RenderBackend::GLFW_GL);
-    {
-        std::ofstream f("glfw_diag.log", std::ios::app);
-        if (f) f << "Backend set to GLFW_GL; disabling vsync" << std::endl;
-    }
+#ifndef NDEBUG
+    std::ofstream f("glfw_diag.log", std::ios::app);
+    if (f) f << "Backend set to GLFW_GL; disabling vsync" << std::endl;
+#endif
     // Disable VSync to allow higher FPS by default
     SetVSyncEnabled(false);
 
@@ -2550,11 +2743,10 @@ void Viewport3D::Init() {
     // Enable normal cursor mode for window interaction
     glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-    if (debugLogging_) std::cout << "Viewport3D: Using GLFW with OpenGL for rendering." << std::endl;
-    {
-        std::ofstream f("glfw_diag.log", std::ios::app);
-        if (f) f << "Viewport3D::Init finished (GLFW path)" << std::endl;
-    }
+    // Show window after all initialization is complete
+    glfwShowWindow(glfwWindow);
+
+    if (debugLogging_) std::cout << "Viewport3D: GLFW initialization complete" << std::endl;
     return;
 #endif
 #ifndef USE_GLFW
@@ -2819,6 +3011,18 @@ void Viewport3D::Init() {
 }
 
 void Viewport3D::Render(const class Camera* camera, double playerX, double playerY, double playerZ, bool targetLocked, ecs::EntityManagerV2* entityManager, EntityManager* legacyEntityManager) {
+    // TODO: Advanced rendering system
+    // [ ] Multi-Threaded Rendering: Separate render thread with command buffers
+    // [ ] GPU-Driven Rendering: GPU-driven culling and mesh processing
+    // [ ] Render Graph: Flexible render graph for complex rendering pipelines
+    // [ ] Temporal Effects: Support for temporal rendering effects and accumulation
+    // [ ] Dynamic Resolution: Dynamic resolution scaling based on performance
+    // [ ] Render Profiling: Detailed GPU profiling and performance analysis
+    // [ ] Memory Management: Optimized GPU memory allocation and streaming
+    // [ ] Batching System: Automatic batching of similar draw calls
+    // [ ] Instanced Rendering: GPU instancing for repeated objects
+    // [ ] Level of Detail: Automatic LOD system based on distance and importance
+    
 #ifndef NDEBUG
     if (glDebugMessageCallback != nullptr) {
         glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 2, -1, "Viewport3D::Render");
@@ -3286,9 +3490,14 @@ void Viewport3D::DrawStaticGrid() {
         return;
     }
 
+#ifndef NDEBUG
     if (!g_ShowStaticGrid) {
         return;
     }
+#else
+    // In release mode, disable expensive static grid for better performance
+    return;
+#endif
 
     EnsureLineBatcher3D();
     if (!lineBatcher3D_) {
@@ -4365,28 +4574,50 @@ void Viewport3D::EnsureSpaceshipHudTexture() {
         return;
     }
 
-    SDL_Surface* surface = LoadSVGSurface("assets/ui/spaceship_hud.svg");
-    if (!surface) {
-        std::cerr << "Viewport3D: failed to load spaceship HUD SVG" << std::endl;
+    // Use automated HUD asset manager - deferred loading for faster startup
+    static bool hudSystemInitialized = false;
+    static int framesSinceStartup = 0;
+    
+    // Defer HUD loading until a few frames after window creation (reduces startup time)
+    if (!hudSystemInitialized) {
+        framesSinceStartup++;
+        if (framesSinceStartup < 3) {
+            // Skip HUD for first 2 frames to show window faster
+            return;
+        }
+        
+        if (!HudSystemIntegration::InitializeHudSystem()) {
+            std::cerr << "Viewport3D: Failed to initialize HUD system" << std::endl;
+            spaceshipHudTextureFailed_ = true;
+            return;
+        }
+        hudSystemInitialized = true;
+    }
+    
+    auto& hudManager = HudAssetManager::GetInstance();
+    
+    // Load the spaceship HUD texture using automated system
+    SDL_Texture* texture = hudManager.GetSDLTexture("spaceship_hud", sdlRenderer);
+    if (!texture) {
+        std::cerr << "Viewport3D: Failed to load spaceship HUD via automated system: " 
+                  << hudManager.GetLastError() << std::endl;
         spaceshipHudTextureFailed_ = true;
         return;
     }
-
-    spaceshipHudTextureWidth_ = surface->w;
-    spaceshipHudTextureHeight_ = surface->h;
-    spaceshipHudTexture_ = compat_CreateTextureFromSurface(sdlRenderer, surface);
-    compat_DestroySurface(surface);
-
-    if (!spaceshipHudTexture_) {
-        std::cerr << "Viewport3D: failed to create texture for spaceship HUD SVG: "
-                  << SDL_GetError() << std::endl;
-        spaceshipHudTextureFailed_ = true;
-        spaceshipHudTextureWidth_ = 0;
-        spaceshipHudTextureHeight_ = 0;
-        return;
+    
+    // Get texture dimensions
+    HudTexture* hudTexture = hudManager.GetHudTexture("spaceship_hud");
+    if (hudTexture) {
+        spaceshipHudTextureWidth_ = hudTexture->width;
+        spaceshipHudTextureHeight_ = hudTexture->height;
+    } else {
+        // Fallback: query SDL texture directly
+        SDL_QueryTexture(texture, nullptr, nullptr, &spaceshipHudTextureWidth_, &spaceshipHudTextureHeight_);
     }
-
-    SDL_SetTextureBlendMode(spaceshipHudTexture_, SDL_BLENDMODE_BLEND);
+    
+    spaceshipHudTexture_ = texture;
+    std::cout << "Viewport3D: Successfully loaded spaceship HUD via automated system ("
+              << spaceshipHudTextureWidth_ << "x" << spaceshipHudTextureHeight_ << ")" << std::endl;
 }
 #endif
 
@@ -4398,51 +4629,52 @@ void Viewport3D::EnsurePlayerHudTextureGL() {
     if (playerHudTextureGL_ != 0 || playerHudTextureGLFailed_) {
         return;
     }
-    SvgRasterizationOptions opts;
-    opts.targetWidth = 1920;
-    opts.targetHeight = 1080;
-    opts.preserveAspectRatio = true;
 
-    std::vector<std::uint8_t> pixels;
-    int width = 0;
-    int height = 0;
-    if (!LoadSvgToRgbaCached("assets/ui/player_hud.svg", pixels, width, height, opts)) {
-        std::cerr << "Viewport3D: failed to load player HUD SVG" << std::endl;
-        playerHudTextureGLFailed_ = true;
-        return;
+    // Use automated HUD asset manager - deferred loading for faster startup
+    static bool hudSystemInitialized = false;
+    static int framesSinceStartup = 0;
+    
+    // Defer HUD loading until a few frames after window creation (reduces startup time)
+    if (!hudSystemInitialized) {
+        framesSinceStartup++;
+        if (framesSinceStartup < 3) {
+            // Skip HUD for first 2 frames to show window faster
+            return;
+        }
+        
+        if (!HudSystemIntegration::InitializeHudSystem()) {
+            std::cerr << "Viewport3D: Failed to initialize HUD system" << std::endl;
+            playerHudTextureGLFailed_ = true;
+            return;
+        }
+        hudSystemInitialized = true;
     }
-
-    unsigned int textureId = 0;
-    glGenTextures(1, &textureId);
+    
+    auto& hudManager = HudAssetManager::GetInstance();
+    
+    // Load the player HUD texture using automated system
+    unsigned int textureId = hudManager.GetOpenGLTexture("player_hud");
     if (textureId == 0) {
-        std::cerr << "Viewport3D: glGenTextures failed for player HUD" << std::endl;
+        std::cerr << "Viewport3D: Failed to load player HUD via automated system: " 
+                  << hudManager.GetLastError() << std::endl;
         playerHudTextureGLFailed_ = true;
         return;
     }
-
-    glBindTexture(GL_TEXTURE_2D, textureId);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    glTexImage2D(GL_TEXTURE_2D,
-                 0,
-                 GL_RGBA8,
-                 width,
-                 height,
-                 0,
-                 GL_RGBA,
-                 GL_UNSIGNED_BYTE,
-                 pixels.data());
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
+    
+    // Get texture dimensions from HUD manager
+    HudTexture* hudTexture = hudManager.GetHudTexture("player_hud");
+    if (hudTexture) {
+        playerHudTextureGLWidth_ = hudTexture->width;
+        playerHudTextureGLHeight_ = hudTexture->height;
+    } else {
+        // Fallback dimensions
+        playerHudTextureGLWidth_ = 1920;
+        playerHudTextureGLHeight_ = 1080;
+    }
+    
     playerHudTextureGL_ = textureId;
-    playerHudTextureGLWidth_ = width;
-    playerHudTextureGLHeight_ = height;
+    std::cout << "Viewport3D: Successfully loaded player HUD via automated system ("
+              << playerHudTextureGLWidth_ << "x" << playerHudTextureGLHeight_ << ")" << std::endl;
 }
 
 void Viewport3D::DrawHUD(const class Camera* camera,
@@ -4451,6 +4683,18 @@ void Viewport3D::DrawHUD(const class Camera* camera,
                          double playerY,
                          double playerZ,
                          const struct EnergyHUDTelemetry* energyTelemetry) {
+    // TODO: Advanced HUD system
+    // [ ] Modern UI Framework: Implement modern UI framework with layouts and styling
+    // [ ] HUD Animation: Smooth animations and transitions for HUD elements
+    // [ ] Responsive Design: Responsive HUD design for different screen sizes
+    // [ ] HUD Themes: Support for multiple HUD themes and customization
+    // [ ] HUD Performance: Optimize HUD rendering performance with batching
+    // [ ] HUD Accessibility: Enhanced accessibility features for HUD elements
+    // [ ] HUD Scripting: Script-based HUD configuration and behavior
+    // [ ] HUD Profiling: Profile HUD rendering performance and memory usage
+    // [ ] HUD Events: Event system for HUD interactions and updates
+    // [ ] HUD Validation: Validate HUD layout and element positioning
+    
     (void)playerZ; // only used in SDL path; silence unused param warning for GLFW-only builds
     if (debugLogging_) std::cout << "Viewport3D::DrawHUD() called" << std::endl;
 #ifndef NDEBUG

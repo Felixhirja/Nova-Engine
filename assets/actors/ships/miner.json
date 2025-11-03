@@ -1,0 +1,34 @@
+{
+    "name": "Mining Vessel",
+    "type": "Miner",
+    "speed": 40.0,
+    "health": 1800,
+    "shield": 400,
+    "model": "mining_ship",
+    "faction": "civilian",
+    "ai": {
+        "behavior": "passive",
+        "workRadius": 500,
+        "responseTime": 10.0
+    },
+    "equipment": {
+        "miningLaser": {
+            "power": 150.0,
+            "range": 200.0,
+            "efficiency": 85.0
+        },
+        "refinery": {
+            "capacity": 500,
+            "processingRate": 10.0
+        }
+    },
+    "cargo": {
+        "capacity": 800,
+        "type": "raw_materials"
+    },
+    "engine": {
+        "thrust": 80.0,
+        "maneuverability": 1.5,
+        "fuelCapacity": 2000
+    }
+}

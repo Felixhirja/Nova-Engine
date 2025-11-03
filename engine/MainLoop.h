@@ -25,6 +25,7 @@ class VisualFeedbackSystem;
 class AudioFeedbackSystem;
 class HUDAlertSystem;
 class ECSInspector;
+class GameEditor;
 struct CameraViewState;
 
 class Camera;
@@ -68,6 +69,7 @@ private:
     // Canonical ECS entity manager
     std::unique_ptr<EntityManager> entityManager;
     std::unique_ptr<ECSInspector> ecsInspector;
+    std::unique_ptr<GameEditor> gameEditor;
     // Feedback systems
     std::unique_ptr<VisualFeedbackSystem> visualFeedbackSystem;
     std::unique_ptr<AudioFeedbackSystem> audioFeedbackSystem;

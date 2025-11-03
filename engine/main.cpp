@@ -1,4 +1,5 @@
 #include "MainLoop.h"
+#include "GameConfigInit.h"
 #include <iostream>
 #include <fstream>
 
@@ -8,6 +9,14 @@ extern "C" int SDL_main(int argc, char** argv) {
     std::ofstream log("sdl_diag.log", std::ios::app);
     log << "SDL_main started" << std::endl;
     log.close();
+    
+    // Initialize Configuration Management System
+    std::cout << "Initializing Configuration System..." << std::endl;
+    if (!NovaEngine::GameConfigInit::Initialize()) {
+        std::cerr << "Failed to initialize configuration system!" << std::endl;
+        return 1;
+    }
+    
     MainLoop engine;
     std::cout << "About to call engine.Init()" << std::endl;
     engine.Init();
@@ -16,6 +25,10 @@ extern "C" int SDL_main(int argc, char** argv) {
     engine.MainLoopFunc(0);
     std::cout << "MainLoopFunc completed, shutting down" << std::endl;
     engine.Shutdown();
+    
+    // Shutdown Configuration System with analytics
+    NovaEngine::GameConfigInit::Shutdown();
+    
     return 0;
 }
 #ifdef _WIN32
@@ -31,6 +44,14 @@ int main() {
     std::ofstream log("sdl_diag.log", std::ios::app);
     log << "main started" << std::endl;
     log.close();
+    
+    // Initialize Configuration Management System
+    std::cout << "Initializing Configuration System..." << std::endl;
+    if (!NovaEngine::GameConfigInit::Initialize()) {
+        std::cerr << "Failed to initialize configuration system!" << std::endl;
+        return 1;
+    }
+    
     std::cout << "main() started, about to create MainLoop" << std::endl;
     MainLoop engine;
     std::cout << "MainLoop created, about to call engine.Init()" << std::endl;
@@ -40,6 +61,10 @@ int main() {
     engine.MainLoopFunc(0);
     std::cout << "MainLoopFunc completed, shutting down" << std::endl;
     engine.Shutdown();
+    
+    // Shutdown Configuration System with analytics
+    NovaEngine::GameConfigInit::Shutdown();
+    
     return 0;
 }
 #endif

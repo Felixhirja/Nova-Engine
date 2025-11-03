@@ -59,7 +59,7 @@ void BulletPhysicsEngine::RunBulletSimulation(EntityManager& entityManager, doub
     // but with potential enhancements for Bullet-specific features
     
     // Apply gravity to all entities with RigidBody components
-    entityManager.ForEach<Position, Velocity, RigidBody>([&](Entity entity, Position& pos, Velocity& vel, RigidBody& body) {
+    entityManager.ForEach<Position, Velocity, RigidBody>([&](Entity /*entity*/, Position& /*pos*/, Velocity& vel, RigidBody& body) {
         if (body.inverseMass > 0.0f) { // Only apply gravity to non-static objects
             vel.vx += unifiedSystem_->GetGravityX() * dt;
             vel.vy += unifiedSystem_->GetGravityY() * dt; 
@@ -96,7 +96,7 @@ void BulletPhysicsEngine::RunBulletSimulation(EntityManager& entityManager, doub
     
     // Basic collision detection (simplified - assuming collision is enabled)
     // This would be enhanced with Bullet's collision detection in a full implementation
-    entityManager.ForEach<Position, BoxCollider>([&](Entity entity, Position& pos, BoxCollider& collider) {
+    entityManager.ForEach<Position, BoxCollider>([&](Entity /*entity*/, Position& pos, BoxCollider& /*collider*/) {
         // Simple boundary checking as a placeholder
         if (pos.x < -100.0) { pos.x = -100.0; }
         if (pos.x > 100.0) { pos.x = 100.0; }

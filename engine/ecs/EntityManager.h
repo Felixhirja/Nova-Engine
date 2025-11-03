@@ -2,6 +2,69 @@
 #ifndef ECS_ENTITY_MANAGER_H
 #define ECS_ENTITY_MANAGER_H
 
+// TODO: ECS System Architecture Roadmap
+//
+// PERFORMANCE OPTIMIZATIONS:
+// [ ] SIMD Component Processing: Vectorized operations for Position, Velocity, etc.
+// [ ] Cache-Friendly Memory Layout: Optimize component padding and alignment
+// [ ] Parallel Archetype Iteration: Multi-threaded ForEach with work stealing
+// [ ] Component Compression: Pack boolean flags and small enums efficiently
+// [ ] Memory Pool Recycling: Reuse component memory to reduce allocations
+// [ ] Hot/Cold Component Separation: Frequently vs rarely accessed components
+// [ ] Prefetch Optimization: Hardware prefetching for predictable access patterns
+//
+// ARCHETYPE SYSTEM ENHANCEMENTS:
+// [ ] Archetype Graph: Optimize component add/remove transitions
+// [ ] Sparse Set Integration: Hybrid storage for rare components
+// [ ] Component Bundles: Efficient multi-component operations
+// [ ] Archetype Fragmentation Detection: Monitor and defragment storage
+// [ ] Dynamic Archetype Creation: Runtime archetype generation for plugins
+// [ ] Archetype Sorting: Order by access frequency for better cache locality
+// [ ] Component Dependency Tracking: Automatic dependency resolution
+//
+// QUERY SYSTEM IMPROVEMENTS:
+// [ ] Compiled Queries: JIT compilation for frequently used queries
+// [ ] Query Caching: Cache query results for stable entity sets
+// [ ] Incremental Updates: Only process changed entities in queries
+// [ ] Query Optimization: Automatic query reordering for performance
+// [ ] Complex Filters: Support for OR operations and nested conditions
+// [ ] Entity Relationships: Parent-child queries and reference following
+// [ ] Spatial Queries: Octree/quadtree integration for position-based queries
+//
+// MEMORY MANAGEMENT:
+// [ ] Component Streaming: Load/unload components based on distance/relevance
+// [ ] Memory Budgeting: Configurable limits per component type
+// [ ] Garbage Collection: Automatic cleanup of unused archetypes
+// [ ] Memory Debugging: Track allocations and detect leaks
+// [ ] Custom Allocators: Per-archetype memory allocation strategies
+// [ ] Memory Mapping: Virtual memory for large worlds
+//
+// DEVELOPMENT TOOLS:
+// [ ] ECS Inspector: Runtime archetype and entity visualization
+// [ ] Performance Profiler: System timing and bottleneck analysis
+// [ ] Memory Profiler: Component memory usage and fragmentation tracking
+// [ ] Query Debugger: Visualize query execution and optimization
+// [ ] Entity Debugger: Real-time entity state inspection
+// [ ] Component Editor: Runtime component value modification
+// [ ] System Dependency Graph: Visualize system execution order
+//
+// SERIALIZATION & PERSISTENCE:
+// [ ] Binary Serialization: Efficient archetype-aware serialization
+// [ ] Incremental Save/Load: Delta compression for large worlds
+// [ ] Version Migration: Handle component schema changes gracefully
+// [ ] Asset References: Resolve external asset dependencies
+// [ ] Streaming Serialization: Load world chunks on demand
+// [ ] Cross-Platform Compatibility: Endianness and size handling
+//
+// ADVANCED FEATURES:
+// [ ] Entity Templates: Prefab system with inheritance and overrides
+// [ ] Component Events: Automatic notifications on component changes
+// [ ] System Scheduling: Automatic dependency-based system ordering
+// [ ] Plugin System: Runtime component and system registration
+// [ ] Network Synchronization: Efficient multiplayer entity replication
+// [ ] Scripting Integration: Lua/Python bindings for component access
+// [ ] Reflection System: Runtime type information and serialization
+
 #include <cassert>
 #include <array>
 #include <functional>
@@ -345,6 +408,18 @@ public:
         FlushDeferredCommands();
     }
     
+    // Get the archetype ID for an entity (needed for GetComponentTypes)
+    uint32_t GetArchetypeId(EntityHandle handle) const {
+        if (!IsAlive(handle)) {
+            return 0;  // Return empty archetype
+        }
+        EntityIndex index = handle.Index();
+        if (index >= entityMetadata_.size()) {
+            return 0;
+        }
+        return entityMetadata_[index].archetypeId;
+    }
+
 private:
     // Move entity between archetypes (copy components that exist in both)
     void MoveEntityToArchetype(EntityHandle handle, Archetype* from, Archetype* to) {
@@ -394,24 +469,27 @@ private:
             return *oldArchetype->GetComponent<T>(meta.indexInArchetype);
         }
 
-        Archetype* newArchetype = archetypeManager_.GetArchetypeWithAdded<T>(
-            oldArchetype->GetSignature());
+        // Use fast O(1) archetype transition graph
+        Archetype* newArchetype = archetypeManager_.GetArchetypeWithAddedFast<T>(oldArchetype);
 
         if (oldArchetype != newArchetype) {
             MoveEntityToArchetype(handle, oldArchetype, newArchetype);
+            // Metadata updated by MoveEntityToArchetype, refresh local reference
+            meta = entityMetadata_[index];
         }
 
+        // Get component after move - newArchetype now has the component type
         T* componentPtr = newArchetype->GetComponent<T>(meta.indexInArchetype);
         if (!componentPtr) {
             throw std::runtime_error("Component not found in new archetype");
         }
-        T& component = *componentPtr;
-        component = T(std::forward<Args>(args)...);
+        
+        *componentPtr = T(std::forward<Args>(args)...);
         
         if (!newArchetype->ValidateIntegrity()) {
             throw std::runtime_error("Archetype integrity validation failed after adding component");
         }
-        return component;
+        return *componentPtr;
     }
 
     template<typename T>
@@ -426,8 +504,8 @@ private:
             throw std::runtime_error("Entity's archetype is null");
         }
 
-        Archetype* newArchetype = archetypeManager_.GetArchetypeWithRemoved<T>(
-            oldArchetype->GetSignature());
+        // Use fast O(1) archetype transition graph
+        Archetype* newArchetype = archetypeManager_.GetArchetypeWithRemovedFast<T>(oldArchetype);
 
         MoveEntityToArchetype(handle, oldArchetype, newArchetype);
     }

@@ -10,6 +10,7 @@ Nova Engine is a 3D C++17 game engine focused on space simulation with physicall
 - **ECS System** (`engine/ecs/`): Dual ECS implementation (legacy EntityManager + modern EntityManagerV2 with archetypes)
   - Modern V2 uses contiguous arrays for 10-50x faster iteration with 70% less memory
   - Legacy system uses map-based storage with shared_ptr components (compatibility layer)
+  - **NEW:** Advanced Query System with `QueryBuilder`, parallel execution, caching, and composition
 - **Actor System** (`entities/`): Game objects (Spaceship, NPC, Station, Projectile) via `IActor` interface
   - **CRITICAL:** All actors use `ActorContext` to bridge entity and ECS manager
   - Include order matters: `EntityManager.h` MUST come before `ActorContext.h`
@@ -56,6 +57,27 @@ Entity entity = em.CreateEntity();
 em.AddComponent<Position>(entity, std::make_shared<Position>(x, y, z));
 ```
 
+#### Advanced Query System
+Use QueryBuilder for efficient entity queries with caching and parallel execution:
+
+```cpp
+// Basic query
+auto query = QueryBuilder(entityManager).With<Position, Velocity>();
+query.ForEach([](EntityHandle e, Position& pos, Velocity& vel) {
+    pos.x += vel.vx * deltaTime;
+});
+
+// Parallel execution for large datasets
+query.ForEachParallel([](EntityHandle e, Position& pos, Velocity& vel) {
+    // Automatically batched across available CPU cores
+});
+
+// Complex filtering with predicates
+query.Where([](EntityHandle e, Position& pos) { return pos.x > 0; })
+     .Take(100)  // Limit results
+     .ForEach([](EntityHandle e, Position& pos) { /* process */ });
+```
+
 #### Spaceship Assembly System
 Spaceships use modular component assembly with JSON configuration:
 
@@ -79,13 +101,18 @@ make clean             # Remove all build artifacts
 ```powershell
 mingw32-make            # Build engine
 mingw32-make test       # Build tests
-make run                # Build and launch
+mingw32-make run        # Build and launch
 ```
 
 **Incremental rebuilds:** To force recompilation of specific files:
 ```powershell
 Remove-Item engine/MainLoop.o -ErrorAction SilentlyContinue; mingw32-make nova-engine
 ```
+
+**Common build issues on Windows:**
+- Use `mingw32-make` instead of `make` 
+- Ensure MSYS2 bin directory is in PATH: `C:\msys64\mingw64\bin`
+- Run `scripts\check_dlls.ps1` to copy required DLLs before building
 
 ### Testing
 Tests are comprehensive and cover all major systems. Run specific tests:
@@ -350,11 +377,14 @@ Press `I` in-game to open ECS inspector. Use `[`/`]` to cycle filters, `0` to cl
 6. **Memory Ownership**: Understand shared ownership semantics in legacy ECS (shared_ptr), value semantics in V2
 7. **Incremental Compilation**: When rebuild fails, delete specific `.o` files to force recompilation (especially `MainLoop.o`, `Viewport3D.o`, `Simulation.o`)
 8. **Renderer Selection**: Use `EntityRenderer` for V2 ECS, `ActorRenderer` for legacy. Both have `Render()` and `RenderLegacy()` methods
+9. **Windows Build Environment**: Always use `mingw32-make` instead of `make` on Windows; ensure MSYS2 bin is in PATH
+10. **DLL Dependencies**: Run `scripts\check_dlls.ps1` before building to copy required runtime DLLs
+11. **Query Performance**: Use `QueryBuilder` for complex entity queries instead of nested `ForEach` loops
 
 ## Getting Started
 
 1. **Clone and Setup**: Follow README.md for platform-specific setup
-2. **Build**: `make` to compile, `make test` for test suite
+2. **Build**: `mingw32-make` (Windows) or `make` (Linux/macOS) to compile, `make test` for test suite
 3. **Run**: `./nova-engine` (Linux) or `scripts\run_engine.bat` (Windows)
 4. **Controls**: WASD + mouse for movement, `Q` to quit, `I` for ECS inspector
 5. **Documentation**: Check `docs/` for detailed system guides
@@ -369,3 +399,25 @@ The engine is migrating from legacy ECS to modern archetype-based system:
 **File Organization**: Related actor functionality is consolidated:
 - `SpaceshipSpawn.cpp` merged into `Spaceship.cpp` for better cohesion
 - Actor spawning logic centralized with spaceship catalog functionality
+
+## Key Files Reference
+
+### Build System
+- `Makefile`: Cross-platform build system with auto-detection for GLFW/FreeType
+- `engine/Entities.h`: Auto-generated from `entities/*.h` files - DO NOT edit manually
+- `scripts/check_dlls.ps1`: Windows DLL dependency checker and copier
+
+### ECS Core Files
+- `engine/ecs/EntityManager.h`: Legacy and V2 ECS implementations
+- `engine/ecs/QueryBuilder.h`: Advanced query system with parallel execution
+- `engine/ecs/ComponentTraits.h`: Type system for components
+
+### Actor System
+- `entities/*.h`: Actor implementations (auto-registered)
+- `engine/EntityCommon.h`: Required first include for actors
+- `engine/ActorContext.h`: Bridge between actors and ECS
+
+### Documentation
+- `docs/ECS_QUERY_SYSTEM.md`: Complete query system guide
+- `docs/engine_overview.md`: Framework architecture overview
+- `ECS_QUERY_IMPLEMENTATION.md`: Implementation status tracking

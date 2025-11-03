@@ -1,0 +1,12 @@
+{
+    "name": "gold",
+    "shader": "pbr",
+    "parameters": {
+        "baseColor": [1.0, 0.86, 0.57],
+        "roughness": 0.2,
+        "metalness": 1.0,
+        "emissive": [0.0, 0.0, 0.0],
+        "alpha": 1.0
+    },
+    "textures": {}
+}

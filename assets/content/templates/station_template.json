@@ -1,0 +1,75 @@
+{
+  "template": {
+    "id": "station_template",
+    "name": "Space Station Template",
+    "version": 1,
+    "description": "Standard template for creating space stations",
+    "category": "station",
+    "author": "Nova Engine Team",
+    "variables": [
+      {
+        "name": "station_name",
+        "type": "string",
+        "default": "Outpost",
+        "description": "Display name of the station",
+        "required": true
+      },
+      {
+        "name": "station_type",
+        "type": "string",
+        "default": "trading_post",
+        "description": "Station type",
+        "required": true,
+        "options": ["trading_post", "military_base", "mining_station", "research_facility", "shipyard"]
+      },
+      {
+        "name": "max_docking_bays",
+        "type": "integer",
+        "default": "4",
+        "description": "Number of available docking bays",
+        "required": true,
+        "range": [1, 20]
+      },
+      {
+        "name": "services",
+        "type": "array",
+        "default": "trading,repair",
+        "description": "Comma-separated list of services",
+        "required": true
+      }
+    ]
+  },
+  "content": {
+    "id": "${station_id}",
+    "type": "station",
+    "name": "${station_name}",
+    "stationType": "${station_type}",
+    "docking": {
+      "maxBays": ${max_docking_bays},
+      "availableBays": ${max_docking_bays},
+      "dockingFee": 100
+    },
+    "services": "${services}",
+    "inventory": {
+      "capacity": 10000,
+      "items": []
+    },
+    "position": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "appearance": {
+      "model": "stations/${station_type}.obj",
+      "texture": "stations/${station_type}_default.png",
+      "scale": [5.0, 5.0, 5.0],
+      "rotation": [0, 0, 0]
+    },
+    "metadata": {
+      "created": "${timestamp}",
+      "author": "${author}",
+      "version": 1,
+      "tags": ["station", "${station_type}"]
+    }
+  }
+}

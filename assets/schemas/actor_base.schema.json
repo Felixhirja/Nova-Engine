@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "nova://schemas/actor_base.schema.json",
+  "title": "Base Actor Configuration",
+  "description": "Base schema for all actor configurations in Nova Engine",
+  "type": "object",
+  "version": "1.0.0",
+  "required": ["name", "type"],
+  "properties": {
+    "$schema_version": {
+      "type": "string",
+      "description": "Schema version this configuration conforms to",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "$extends": {
+      "type": "string",
+      "description": "Path to parent configuration file for inheritance"
+    },
+    "$mixins": {
+      "type": "array",
+      "description": "Array of mixin configuration paths",
+      "items": {
+        "type": "string"
+      }
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Display name of the actor"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["Spaceship", "Station", "NPC", "Projectile", "Debris", "Effect"],
+      "description": "Actor type identifier"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this actor is enabled"
+    },
+    "tags": {
+      "type": "array",
+      "description": "Tags for categorizing and querying actors",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata for editor/tools",
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "modified": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

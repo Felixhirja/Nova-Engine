@@ -3,6 +3,7 @@
 #include <charconv>
 #include <cctype>
 #include <stdexcept>
+#include <functional>
 
 namespace simplejson {
 namespace {
@@ -407,6 +408,73 @@ ParseResult Parse(std::string_view input) {
     } else {
         result.errorOffset = pos;
     }
+    return result;
+}
+
+// Comparison operator implementation
+bool JsonValue::operator==(const JsonValue& other) const {
+    if (type_ != other.type_) return false;
+    return value_ == other.value_;
+}
+
+// Serialize implementation
+std::string Serialize(const JsonValue& value, bool pretty) {
+    std::string result;
+    std::function<void(const JsonValue&, int)> SerializeValue;
+    
+    SerializeValue = [&](const JsonValue& val, int indent) {
+        std::string indentStr = pretty ? std::string(indent * 2, ' ') : "";
+        std::string newline = pretty ? "\n" : "";
+        
+        switch (val.type()) {
+            case JsonValue::Type::Null:
+                result += "null";
+                break;
+            case JsonValue::Type::Boolean:
+                result += val.AsBoolean() ? "true" : "false";
+                break;
+            case JsonValue::Type::Number: {
+                auto num = val.AsNumber();
+                if (num == static_cast<int>(num)) {
+                    result += std::to_string(static_cast<int>(num));
+                } else {
+                    result += std::to_string(num);
+                }
+                break;
+            }
+            case JsonValue::Type::String:
+                result += "\"" + val.AsString() + "\"";
+                break;
+            case JsonValue::Type::Array: {
+                result += "[";
+                const auto& arr = val.AsArray();
+                for (size_t i = 0; i < arr.size(); ++i) {
+                    if (i > 0) result += ",";
+                    if (pretty) result += newline + std::string((indent + 1) * 2, ' ');
+                    SerializeValue(arr[i], indent + 1);
+                }
+                if (pretty && !arr.empty()) result += newline + indentStr;
+                result += "]";
+                break;
+            }
+            case JsonValue::Type::Object: {
+                result += "{";
+                const auto& obj = val.AsObject();
+                size_t i = 0;
+                for (const auto& [key, v] : obj) {
+                    if (i++ > 0) result += ",";
+                    if (pretty) result += newline + std::string((indent + 1) * 2, ' ');
+                    result += "\"" + key + "\":" + (pretty ? " " : "");
+                    SerializeValue(v, indent + 1);
+                }
+                if (pretty && !obj.empty()) result += newline + indentStr;
+                result += "}";
+                break;
+            }
+        }
+    };
+    
+    SerializeValue(value, 0);
     return result;
 }
 

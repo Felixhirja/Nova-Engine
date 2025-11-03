@@ -1,0 +1,17 @@
+{
+    "name": "rusty_metal",
+    "shader": "pbr",
+    "parameters": {
+        "baseColor": [0.8, 0.6, 0.4],
+        "roughness": 0.7,
+        "metalness": 0.9,
+        "emissive": [0.0, 0.0, 0.0],
+        "alpha": 1.0
+    },
+    "textures": {
+        "albedo": "assets/textures/metal_albedo.png",
+        "normal": "assets/textures/metal_normal.png",
+        "metallicRoughness": "assets/textures/metal_mr.png",
+        "ao": "assets/textures/metal_ao.png"
+    }
+}

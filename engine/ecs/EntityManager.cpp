@@ -213,6 +213,7 @@ std::vector<std::type_index> EntityManager::GetComponentTypes(Entity e) const {
     if (usingArchetypes_) {
         ecs::EntityHandle handle = GetModernHandle(e);
         if (!handle.IsNull()) {
+            // Get component types from EntityManagerV2
             auto archetypeTypes = archetypeManager_.GetComponentTypes(handle);
             for (const auto& typeIndex : archetypeTypes) {
                 if (seen.insert(typeIndex).second) {

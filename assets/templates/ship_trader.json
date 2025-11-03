@@ -1,0 +1,44 @@
+{
+    "_template": {
+        "name": "TraderShip",
+        "version": "1.0",
+        "description": "Trading vessel with large cargo capacity",
+        "category": "Ships",
+        "tags": ["trader", "cargo", "civilian"],
+        "author": "Nova Engine"
+    },
+    "name": "${SHIP_NAME:Merchant Vessel}",
+    "class": "Trader",
+    "health": "${HEALTH:1500}",
+    "shield": "${SHIELD:800}",
+    "speed": "${SPEED:120}",
+    "agility": "${AGILITY:0.3}",
+    "model": "trader_ship",
+    "faction": "${FACTION:neutral}",
+    "weapons": [
+        {
+            "type": "turret",
+            "damage": 30,
+            "fireRate": 3,
+            "range": 800,
+            "defensive": true
+        }
+    ],
+    "systems": {
+        "engine": "economy",
+        "reactor": "fusion_mk1",
+        "sensors": "trade",
+        "shieldBooster": true
+    },
+    "cargo": {
+        "capacity": "${CARGO_CAPACITY:100}",
+        "type": "general",
+        "refrigerated": "${REFRIGERATED:false}",
+        "secure": "${SECURE:false}"
+    },
+    "economics": {
+        "tradeBonus": 0.15,
+        "fuelEfficiency": 1.3,
+        "maintenanceCost": "low"
+    }
+}

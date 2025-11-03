@@ -1,0 +1,155 @@
+{
+  "schema": {
+    "id": "ship_schema",
+    "version": 1,
+    "type": "ship",
+    "description": "Schema definition for ship content"
+  },
+  "required": ["id", "type", "name", "class", "stats", "components"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the ship",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "type": {
+      "type": "string",
+      "const": "ship",
+      "description": "Content type identifier"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name of the ship",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "class": {
+      "type": "string",
+      "enum": ["fighter", "interceptor", "bomber", "freighter", "capital"],
+      "description": "Ship class category"
+    },
+    "stats": {
+      "type": "object",
+      "required": ["maxSpeed", "maxHealth", "acceleration", "turnRate", "mass"],
+      "properties": {
+        "maxSpeed": {
+          "type": "number",
+          "minimum": 50,
+          "maximum": 500,
+          "description": "Maximum speed in units/second"
+        },
+        "maxHealth": {
+          "type": "number",
+          "minimum": 50,
+          "maximum": 10000,
+          "description": "Maximum hull points"
+        },
+        "acceleration": {
+          "type": "number",
+          "minimum": 10,
+          "maximum": 200,
+          "description": "Acceleration rate"
+        },
+        "turnRate": {
+          "type": "number",
+          "minimum": 10,
+          "maximum": 180,
+          "description": "Turn rate in degrees/second"
+        },
+        "mass": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Ship mass affecting physics"
+        }
+      }
+    },
+    "components": {
+      "type": "object",
+      "required": ["hull", "weapons", "engine"],
+      "properties": {
+        "hull": {
+          "type": "string",
+          "description": "Reference to hull module",
+          "contentType": "hull_module"
+        },
+        "weapons": {
+          "type": "string",
+          "description": "Reference to weapon loadout",
+          "contentType": "weapon_loadout"
+        },
+        "engine": {
+          "type": "string",
+          "description": "Reference to engine module",
+          "contentType": "engine_module"
+        },
+        "shield": {
+          "type": "string",
+          "description": "Reference to shield module",
+          "contentType": "shield_module"
+        }
+      }
+    },
+    "appearance": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "Path to 3D model file"
+        },
+        "texture": {
+          "type": "string",
+          "description": "Path to texture file"
+        },
+        "scale": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "XYZ scale factors"
+        },
+        "color": {
+          "type": "array",
+          "items": {"type": "number", "minimum": 0, "maximum": 1},
+          "minItems": 4,
+          "maxItems": 4,
+          "description": "RGBA color tint"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "created": {"type": "string", "format": "date-time"},
+        "author": {"type": "string"},
+        "version": {"type": "integer", "minimum": 1},
+        "tags": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    }
+  },
+  "validation": {
+    "balance": {
+      "maxSpeed": {
+        "recommended": [100, 350],
+        "reason": "Too slow makes combat boring, too fast is hard to control"
+      },
+      "maxHealth": {
+        "recommended": [100, 500],
+        "reason": "Balance with weapon damage and TTK (time-to-kill)"
+      },
+      "dps_ratio": {
+        "formula": "maxHealth / (weaponDPS * 3)",
+        "recommended": [1.0, 5.0],
+        "reason": "Ships should survive 3-5 seconds of continuous fire"
+      }
+    },
+    "dependencies": {
+      "components.hull": "Must reference existing hull_module",
+      "components.weapons": "Must reference existing weapon_loadout",
+      "components.engine": "Must reference existing engine_module"
+    }
+  }
+}

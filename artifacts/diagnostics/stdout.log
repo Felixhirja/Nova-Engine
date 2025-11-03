@@ -1,5 +1,0 @@
-test_sdl: Before SDL_Init
-test_sdl: SDL_GetPlatform='Windows'
-test_sdl: SDL_Init rc=0, SDL_GetError='software not available'
-test_sdl: Win32 GetLastError=0
-dawd

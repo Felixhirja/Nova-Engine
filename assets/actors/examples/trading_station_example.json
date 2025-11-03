@@ -1,0 +1,8 @@
+{
+  "name": "Aurora Trading Station",
+  "description": "A bustling commercial hub serving traders and explorers",
+  "entityType": "station",
+  "services": ["trading", "refuel", "repair", "storage"],
+  "type": "trading",
+  "dockingCapacity": 12
+}

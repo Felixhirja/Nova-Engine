@@ -1,0 +1,8 @@
+{
+    "name": "Alpha Outpost",
+    "description": "A military station providing essential services",
+    "entityType": "station",
+    "services": ["trading", "repair", "missions"],
+    "type": "military",
+    "dockingCapacity": 6
+}

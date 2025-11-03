@@ -1,5 +1,68 @@
 #include "SpaceshipCatalog.h"
 
+// TODO: Spaceship Catalog System Roadmap
+//
+// PERFORMANCE OPTIMIZATIONS:
+// [ ] JSON Parsing Cache: Cache parsed JSON to avoid re-parsing identical files
+// [ ] Incremental Loading: Only reload changed files during hot reload
+// [ ] Memory Pool: Use custom allocators for catalog entry storage
+// [ ] Binary Serialization: Pre-compile JSON to binary format for faster loading
+// [ ] Parallel Loading: Load multiple catalog files concurrently
+// [ ] Lazy Validation: Defer expensive validation until catalog entry is accessed
+// [ ] Asset Dependency Tracking: Monitor component and asset file changes
+//
+// CATALOG MANAGEMENT:
+// [ ] Catalog Versioning: Handle schema evolution and migration
+// [ ] Catalog Merging: Combine multiple catalog sources (base game + mods)
+// [ ] Catalog Validation Levels: Strict, warnings-only, and permissive modes
+// [ ] Catalog Statistics: Track usage patterns and popular configurations
+// [ ] Catalog Compression: Reduce memory footprint of loaded catalog data
+// [ ] Catalog Indexing: Build indices for fast lookup by various criteria
+// [ ] Catalog Backup: Automatic backup of catalog state before modifications
+//
+// CONFIGURATION FEATURES:
+// [ ] Dynamic Ship Classes: Runtime creation of new ship classes
+// [ ] Configuration Inheritance: Ship classes that inherit from base templates
+// [ ] Configuration Validation Rules: Custom validation logic per ship class
+// [ ] Configuration Profiles: Different validation/feature sets for game modes
+// [ ] Configuration Scripting: Lua/script-driven configuration generation
+// [ ] Configuration Templates: Reusable configuration fragments
+// [ ] Configuration Diff System: Track and visualize configuration changes
+//
+// MODDING SUPPORT:
+// [ ] Mod Integration: Load configurations from mod directories
+// [ ] Mod Compatibility: Detect and resolve mod conflicts
+// [ ] Mod Asset Resolution: Resolve asset paths from multiple mod sources
+// [ ] Mod Hot Swapping: Enable/disable mods at runtime
+// [ ] Mod Configuration UI: In-game mod management interface
+// [ ] Mod Validation: Ensure mod configurations don't break game balance
+// [ ] Mod Documentation: Auto-generate documentation for modding APIs
+//
+// DEBUGGING & TOOLS:
+// [ ] Configuration Inspector: Runtime viewing and editing of ship configurations
+// [ ] Validation Reporter: Detailed validation reports with suggestions
+// [ ] Performance Profiler: Monitor catalog loading and access performance
+// [ ] Configuration Diff Tool: Compare configurations between versions
+// [ ] Asset Dependency Visualizer: Show which assets each configuration uses
+// [ ] Configuration Test Suite: Automated testing of all catalog entries
+// [ ] Hot Reload Notifications: Visual feedback when configurations change
+//
+// ASSET PIPELINE INTEGRATION:
+// [ ] Asset Validation: Ensure referenced assets exist and are valid
+// [ ] Asset Hot Reload: Update configurations when referenced assets change
+// [ ] Asset Optimization: Suggest asset optimizations based on usage patterns
+// [ ] Asset Bundling: Group related assets for efficient loading
+// [ ] Asset Versioning: Handle asset version compatibility
+// [ ] Asset Fallbacks: Graceful degradation when assets are missing
+//
+// GAMEPLAY FEATURES:
+// [ ] Dynamic Balancing: Adjust ship stats based on gameplay metrics
+// [ ] Procedural Variants: Generate ship variants algorithmically
+// [ ] Faction Customization: Faction-specific ship modifications
+// [ ] Player Customization: Allow players to modify ship configurations
+// [ ] Configuration Presets: Save and share custom ship configurations
+// [ ] Seasonal Content: Time-limited ship configurations and variants
+
 #include "SimpleJson.h"
 #include "../ecs/ShipAssembly.h"
 
@@ -44,6 +107,16 @@ struct CatalogState {
     bool loaded = false;
     bool hotReloadEnabled = false;
     std::unordered_map<std::string, FileTimePoint> fileTimes;
+    
+    // TODO: Add advanced catalog state management
+    // [ ] catalogVersion: Track catalog schema version for migration
+    // [ ] loadingProgress: Progress tracking for UI feedback
+    // [ ] memoryUsage: Monitor catalog memory consumption
+    // [ ] accessStatistics: Track which entries are accessed most frequently
+    // [ ] validationLevel: Configurable validation strictness
+    // [ ] cacheEnabled: Toggle for JSON parsing cache
+    // [ ] modSources: Track which entries come from which mods
+    // [ ] dependencyGraph: Asset and component dependency tracking
 };
 
 CatalogState& State() {
@@ -209,6 +282,16 @@ std::vector<std::string> BuildSlotIds(const std::vector<ComponentSlotSpec>& spec
 }
 
 void ValidateEntryAgainstTaxonomy(const SpaceshipClassCatalogEntry& entry, const std::filesystem::path& sourcePath) {
+    // TODO: Enhanced validation system
+    // [ ] Custom Validation Rules: Plugin architecture for custom validation logic
+    // [ ] Performance Impact Analysis: Validate configurations don't break game balance
+    // [ ] Asset Dependency Validation: Ensure all referenced assets exist
+    // [ ] Component Compatibility Validation: Check component slot compatibility
+    // [ ] Faction Constraint Validation: Ensure faction-specific rules are met
+    // [ ] Progression Validation: Validate unlock progression makes sense
+    // [ ] Multiplayer Balance Validation: Check configurations for multiplayer balance
+    // [ ] Localization Validation: Ensure all text has translations
+    
     auto taxonomyIt = Taxonomy().find(entry.type);
     if (taxonomyIt == Taxonomy().end()) {
         AppendError(sourcePath, "No taxonomy constraint registered for class type");
@@ -789,6 +872,18 @@ bool ParseCatalogEntry(const std::filesystem::path& path, const simplejson::Json
 }
 
 void LoadCatalogFromDisk() {
+    // TODO: Advanced loading system
+    // [ ] Progress Callbacks: Report loading progress for UI feedback
+    // [ ] Parallel Loading: Load multiple files concurrently
+    // [ ] Error Recovery: Graceful handling of corrupted files
+    // [ ] Incremental Loading: Only load changed files during hot reload
+    // [ ] Memory Optimization: Stream large catalogs instead of loading entirely
+    // [ ] Validation Levels: Configurable validation strictness
+    // [ ] Asset Preloading: Preload referenced assets during catalog loading
+    // [ ] Mod Integration: Load configurations from multiple mod directories
+    // [ ] Caching: Cache parsed JSON to avoid re-parsing identical files
+    // [ ] Configuration Merging: Merge base configurations with mod overrides
+    
     CatalogState& state = State();
     state.entries.clear();
     state.validationErrors.clear();
@@ -848,6 +943,18 @@ void LoadCatalogFromDisk() {
 }
 
 void EnsureLoaded() {
+    // TODO: Smart loading system
+    // [ ] Lazy Loading: Load only requested ship classes instead of entire catalog
+    // [ ] Background Loading: Load in background thread to avoid blocking
+    // [ ] Load Prioritization: Load frequently used ships first
+    // [ ] Memory Management: Unload unused ship data after timeout
+    // [ ] Dependency Tracking: Track which systems need which ship data
+    // [ ] Error Resilience: Graceful degradation when catalog fails to load
+    // [ ] Load Metrics: Track loading times and memory usage
+    // [ ] Progressive Loading: Show partial catalog while loading continues
+    // [ ] Asset Validation: Verify referenced assets exist during load
+    // [ ] Hot Reload Integration: Seamlessly reload changed ship definitions
+    
     if (!State().loaded) {
         LoadCatalogFromDisk();
     }
@@ -899,6 +1006,18 @@ const std::vector<SpaceshipClassCatalogEntry>& SpaceshipCatalog::All() {
 }
 
 const SpaceshipClassCatalogEntry* SpaceshipCatalog::FindById(const std::string& id) {
+    // TODO: Advanced catalog querying system
+    // [ ] Indexing: Build hash maps for O(1) lookup by ID
+    // [ ] Fuzzy Search: Support approximate matching for typos
+    // [ ] Alias System: Support multiple IDs/names for same ship
+    // [ ] Caching: Cache frequently accessed entries
+    // [ ] Query Language: Support complex queries (faction, size, role)
+    // [ ] Localization: Support localized name lookups
+    // [ ] Versioning: Handle multiple versions of same ship ID
+    // [ ] Wildcard Matching: Support pattern-based searches
+    // [ ] Performance Metrics: Track query performance and optimization
+    // [ ] Access Patterns: Analyze usage to optimize data structure
+    
     EnsureLoaded();
     const auto& entries = State().entries;
     auto it = std::find_if(entries.begin(), entries.end(), [&](const SpaceshipClassCatalogEntry& entry) {
@@ -911,6 +1030,18 @@ const SpaceshipClassCatalogEntry* SpaceshipCatalog::FindById(const std::string& 
 }
 
 void SpaceshipCatalog::Reload() {
+    // TODO: Enhanced reload system
+    // [ ] Selective Reload: Only reload changed files for performance
+    // [ ] Reload Validation: Verify integrity before applying changes
+    // [ ] Rollback System: Restore previous catalog if reload fails
+    // [ ] Live Entities: Update existing ships with new configurations
+    // [ ] Reload Events: Notify systems when catalog changes
+    // [ ] Atomic Updates: Ensure reload is atomic to avoid inconsistent state
+    // [ ] Reload Profiling: Track reload performance and bottlenecks
+    // [ ] Dependency Refresh: Update dependent systems automatically
+    // [ ] Error Recovery: Graceful handling of partial reload failures
+    // [ ] Configuration Diff: Show what changed during reload
+    
     LoadCatalogFromDisk();
 }
 
@@ -919,6 +1050,18 @@ void SpaceshipCatalog::EnableHotReload(bool enabled) {
 }
 
 void SpaceshipCatalog::TickHotReload() {
+    // TODO: Advanced hot reload system
+    // [ ] File Watching: Use platform-specific file system watchers
+    // [ ] Batch Processing: Group multiple file changes into single reload
+    // [ ] Throttling: Limit reload frequency to avoid thrashing
+    // [ ] Change Detection: Only reload on actual content changes, not timestamp
+    // [ ] Priority Queuing: Process critical ship changes first
+    // [ ] Background Processing: Reload in background thread
+    // [ ] Rollback on Error: Automatically revert if hot reload fails
+    // [ ] Developer UI: Show hot reload status and errors
+    // [ ] Asset Dependencies: Track and reload dependent assets
+    // [ ] Performance Monitoring: Track hot reload impact on game performance
+    
     MaybeReloadForHotReload();
 }
 

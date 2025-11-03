@@ -1,0 +1,62 @@
+{
+    "name": "Standard Cargo Container",
+    "capacity": 2500.0,
+    "cargoType": "general",
+    "model": "cargo_container_large",
+    "faction": "neutral",
+    "health": 750.0,
+    "secured": false,
+    "currentLoad": 0.0,
+    "description": "A standard interstellar cargo container suitable for general freight transport. Compatible with most station docking systems.",
+    "manufacturer": "Stellar Freight Dynamics",
+    "yearClass": 2387,
+    "dimensions": {
+        "length": 25.0,
+        "width": 8.0,
+        "height": 8.0
+    },
+    "operatingParameters": {
+        "temperatureRange": {
+            "min": -273.0,
+            "max": 373.0
+        },
+        "pressureRating": 2.5,
+        "radiationShielding": "basic"
+    },
+    "variants": [
+        {
+            "name": "Ore Hauler Container",
+            "cargoType": "ore",
+            "capacity": 3000.0,
+            "health": 900.0,
+            "description": "Heavy-duty container designed for raw mineral transport with reinforced hull plating."
+        },
+        {
+            "name": "Fuel Pod",
+            "cargoType": "fuel",
+            "capacity": 1800.0,
+            "health": 600.0,
+            "secured": true,
+            "description": "Specialized pressurized container for liquid fuel storage and transport."
+        },
+        {
+            "name": "Equipment Bay",
+            "cargoType": "equipment",
+            "capacity": 1200.0,
+            "health": 800.0,
+            "secured": true,
+            "description": "Climate-controlled container for sensitive equipment and high-value cargo."
+        }
+    ],
+    "interactions": {
+        "dockingCompatible": true,
+        "canBeScanned": true,
+        "requiresKey": false,
+        "accessTime": 2.5
+    },
+    "economicData": {
+        "baseValue": 15000,
+        "maintenanceCost": 50,
+        "insuranceClass": "standard"
+    }
+}

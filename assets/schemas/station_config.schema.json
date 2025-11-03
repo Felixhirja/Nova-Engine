@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "nova-engine://schemas/station_config.json",
+  "title": "Station Configuration Schema",
+  "description": "Schema for space station actors",
+  "allOf": [
+    {"$ref": "actor_config.schema.json"},
+    {
+      "type": "object",
+      "properties": {
+        "category": {
+          "const": "world"
+        },
+        "entityType": {
+          "const": "station"
+        },
+        "services": {
+          "type": "array",
+          "description": "Services provided by the station",
+          "items": {
+            "type": "string",
+            "enum": ["trading", "repair", "missions", "docking", "refuel", "upgrade", "storage", "manufacturing"]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "dockingCapacity": {
+          "type": "integer",
+          "description": "Maximum number of ships that can dock",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 4
+        },
+        "type": {
+          "type": "string",
+          "description": "Station type",
+          "enum": ["military", "trading", "mining", "research", "civilian", "industrial"]
+        },
+        "population": {
+          "type": "integer",
+          "description": "Station population",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "powerSystems": {
+          "type": "object",
+          "description": "Power generation and distribution",
+          "properties": {
+            "maxPower": {
+              "type": "number",
+              "description": "Maximum power generation (MW)",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "currentPower": {
+              "type": "number",
+              "description": "Current power consumption (MW)",
+              "minimum": 0
+            },
+            "backupPower": {
+              "type": "number",
+              "description": "Backup power capacity (MW)",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": true
+        },
+        "defenses": {
+          "type": "object",
+          "description": "Station defensive systems",
+          "properties": {
+            "shields": {
+              "type": "number",
+              "description": "Shield strength",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "armor": {
+              "type": "number",
+              "description": "Armor rating",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "turrets": {
+              "type": "integer",
+              "description": "Number of defensive turrets",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "required": ["services", "type"]
+    }
+  ]
+}

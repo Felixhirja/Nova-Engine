@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "nova://schemas/spaceship.schema.json",
+  "title": "Spaceship Configuration",
+  "description": "Configuration schema for spaceship actors",
+  "allOf": [
+    {
+      "$ref": "actor_base.schema.json"
+    }
+  ],
+  "type": "object",
+  "version": "2.1.0",
+  "required": ["class", "speed", "health"],
+  "properties": {
+    "class": {
+      "type": "string",
+      "enum": ["Fighter", "Cruiser", "Frigate", "Capital", "Miner", "Scout", "Interceptor"],
+      "description": "Ship class determining base capabilities"
+    },
+    "speed": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "Maximum speed in m/s"
+    },
+    "acceleration": {
+      "type": "number",
+      "minimum": 0,
+      "default": 4.0,
+      "description": "Acceleration rate"
+    },
+    "health": {
+      "type": "number",
+      "minimum": 1,
+      "description": "Maximum hull integrity points"
+    },
+    "shield": {
+      "type": "number",
+      "minimum": 0,
+      "default": 0,
+      "description": "Maximum shield strength"
+    },
+    "model": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "3D model asset identifier"
+    },
+    "faction": {
+      "type": "string",
+      "description": "Faction affiliation"
+    },
+    "mass": {
+      "type": "number",
+      "minimum": 0.1,
+      "default": 1000.0,
+      "description": "Ship mass in kg"
+    },
+    "thrust": {
+      "type": "number",
+      "minimum": 0,
+      "default": 5000.0,
+      "description": "Thrust force in Newtons"
+    },
+    "visual": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "type": "object",
+          "properties": {
+            "r": { "type": "number", "minimum": 0, "maximum": 1 },
+            "g": { "type": "number", "minimum": 0, "maximum": 1 },
+            "b": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "required": ["r", "g", "b"]
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 100,
+          "default": 1.0
+        }
+      }
+    },
+    "weapons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["laser", "missile", "railgun", "plasma"]
+          },
+          "damage": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cooldown": {
+            "type": "number",
+            "minimum": 0
+          },
+          "ammo": {
+            "type": "integer",
+            "minimum": -1
+          }
+        },
+        "required": ["type", "damage"]
+      }
+    },
+    "components": {
+      "type": "array",
+      "description": "Ship component configuration",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "z": { "type": "number" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

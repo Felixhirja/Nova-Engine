@@ -1,12 +1,18 @@
 CXX = g++
 CC = gcc
-CXXFLAGS = -std=c++17 -Wall -Wextra -D_USE_MATH_DEFINES
-CFLAGS = -Wall -Wextra
-LDFLAGS =
+# Optimization: -O3 for maximum performance, -march=native for CPU-specific optimizations
+# Fast-math for aggressive floating point optimizations (safe for game logic)
+CXXFLAGS = -std=c++17 -O3 -march=native -ffast-math -Wall -Wextra -D_USE_MATH_DEFINES -DNDEBUG
+CFLAGS = -O3 -march=native -ffast-math -Wall -Wextra
+LDFLAGS = -s
 
 TARGET := nova-engine
 
-SHELL = /usr/bin/bash
+ifeq ($(OS),Windows_NT)
+SHELL := cmd.exe
+else
+SHELL := /usr/bin/bash
+endif
 
 # GLAD include path (must come BEFORE system includes)
 GLAD_INCLUDE := -Ilib/glad/include
@@ -72,7 +78,8 @@ endif
 SRC := $(wildcard engine/*.cpp) $(wildcard entities/*.cpp) \
        $(wildcard engine/ecs/*.cpp) $(wildcard engine/physics/*.cpp) \
        $(wildcard engine/ai/*.cpp) $(wildcard engine/navigation/*.cpp) \
-       $(wildcard engine/gameplay/*.cpp)
+       $(wildcard engine/gameplay/*.cpp) $(wildcard engine/editor/*.cpp) \
+       $(wildcard engine/loop/*.cpp) $(wildcard engine/config/*.cpp)
 GLAD_SRC :=
 GLAD_OBJ :=
 
@@ -90,21 +97,12 @@ else
 	@echo >> $@
 endif
 	@echo // Auto-generated - includes all entity headers for registration >> $@
-ifeq ($(OS),Windows_NT)
-	@echo // Generated on: %DATE% %TIME% >> $@
-else
-	@echo // Generated on: $$(date) >> $@
-endif
 	@echo. >> $@
 	@echo // Include common entity headers first >> $@
 	@echo #include "EntityCommon.h" >> $@
 	@echo. >> $@
 	@echo // Include all entity headers to ensure automatic registration >> $@
-ifeq ($(OS),Windows_NT)
 	@echo // Total entities: $(words $(ACTOR_HEADERS)) >> $@
-else
-	@echo // Total entities: $$(echo $(ACTOR_HEADERS) | wc -w) >> $@
-endif
 	@echo. >> $@
 ifeq ($(OS),Windows_NT)
 	@for %%f in (entities\*.h) do @echo #include "../entities/%%~nxf" >> $@
@@ -138,13 +136,14 @@ TEST_BINS := tests/test_simulation \
 	tests/test_ship_battle_benchmark tests/test_ship_assembly_validation \
 	tests/test_subsystem_damage_stress \
         tests/test_frame_pacing_controller tests/test_mesh_submission_standalone \
+        tests/test_cargo_container \
         tests/test_system_manager tests/test_system_integration \
         tests/test_ecs_transition_fuzz tests/bench_ecs_hot_paths \
         tests/test_player_actor test_actor_rendering_full tests/test_camera_comprehensive
 
 # Files and binaries that should be removed by "make clean" on every platform.
 CLEAN_TARGETS := $(OBJ) $(GLAD_OBJ) $(TARGET) $(TARGET).exe $(TEST_BINS) \
-        $(addsuffix .exe,$(TEST_BINS))
+        $(addsuffix .exe,$(TEST_BINS)) test_memory_optimization test_memory_optimization.exe
 
 # Pre-quote the file list for the Windows command prompt so each path is removed
 # safely, even when it contains forward slashes.
@@ -230,6 +229,9 @@ tests/test_frame_pacing_controller: tests/test_frame_pacing_controller.cpp engin
 tests/test_primitive_mesh: tests/test_primitive_mesh.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_primitive_mesh.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
+tests/test_lifecycle_performance: tests/test_lifecycle_performance.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_lifecycle_performance.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+
 # A lightweight standalone build for the PrimitiveMesh unit test that avoids linking
 # the entire engine (safer for quick headless runs during development).
 tests/test_primitive_mesh_standalone:
@@ -250,6 +252,15 @@ tests/test_system_integration: tests/test_system_integration.cpp engine/ecs/Syst
 tests/test_player_actor: tests/test_player_actor.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_player_actor.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
+tests/test_schema_validation: tests/test_schema_validation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_schema_validation.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+
+tests/test_example_configs: tests/test_example_configs.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_example_configs.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+
+tests/test_schema_unit_tests: tests/test_schema_unit_tests.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_schema_unit_tests.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+
 test_actor_rendering_full: test_actor_rendering_full.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
 	$(CXX) $(CXXFLAGS) -I./engine -o $@ test_actor_rendering_full.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
@@ -258,6 +269,12 @@ tests/test_spaceship_actor: test_spaceship_actor.cpp entities/Spaceship.o engine
 
 test_include: test_include.cpp engine/Entities.h
 	$(CXX) $(CXXFLAGS) -o $@ test_include.cpp
+
+tests/test_cargo_container: tests/test_cargo_container.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ tests/test_cargo_container.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
+
+test_memory_optimization: test_memory_optimization.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ)
+	$(CXX) $(CXXFLAGS) -I./engine -o $@ test_memory_optimization.cpp $(filter-out engine/main.o,$(OBJ)) $(GLAD_OBJ) $(LDLIBS)
 
 ifeq ($(OS),Windows_NT)
 clean:

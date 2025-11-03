@@ -1,0 +1,74 @@
+{
+  "$schema": "nova://config/StationConfig/1.0",
+  "version": "1.0",
+  "actorType": "station",
+  
+  "stationType": "research",
+  "stationName": "Research Station Alpha",
+  
+  "structure": {
+    "dockingPorts": 4,
+    "maxOccupancy": 50,
+    "structuralIntegrity": 10000.0
+  },
+  
+  "services": {
+    "repair": {
+      "enabled": true,
+      "repairRate": 10.0,
+      "costPerUnit": 5.0
+    },
+    "refuel": {
+      "enabled": true,
+      "refuelRate": 50.0,
+      "costPerUnit": 2.0
+    },
+    "rearm": {
+      "enabled": true,
+      "availableWeapons": ["laser", "missile", "railgun"]
+    },
+    "trade": {
+      "enabled": true,
+      "inventory": {
+        "minerals": 1000,
+        "technology": 500,
+        "supplies": 2000
+      }
+    }
+  },
+  
+  "defense": {
+    "shields": {
+      "enabled": true,
+      "maxStrength": 5000.0,
+      "regenRate": 50.0
+    },
+    "turrets": {
+      "count": 8,
+      "weaponType": "laser",
+      "range": 100.0,
+      "damage": 30.0
+    }
+  },
+  
+  "position": {
+    "x": 1000.0,
+    "y": 0.0,
+    "z": 500.0,
+    "orbit": {
+      "enabled": false,
+      "parentBody": null,
+      "radius": 0.0,
+      "period": 0.0
+    }
+  },
+  
+  "visual": {
+    "model": "station_research.obj",
+    "scale": 10.0,
+    "lights": [
+      {"position": [0, 50, 0], "color": [1, 1, 1], "intensity": 100},
+      {"position": [0, -50, 0], "color": [1, 1, 1], "intensity": 100}
+    ]
+  }
+}

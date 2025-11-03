@@ -80,7 +80,7 @@ public:
     }
 
     // Convert world coords to screen coords (for 3D, simplified orthographic approximation)
-    void WorldToScreen(double wx, double wy, double wz, int screenW, int screenH, int &outX, int &outY) const {
+    void WorldToScreen(double wx, double wy, double /*wz*/, int screenW, int screenH, int &outX, int &outY) const {
         // Simplified: assume orthographic projection with zoom affecting scale
         double scale = zoom_ / kDefaultFovDegrees;
         outX = static_cast<int>((wx - x_) * scale + screenW / 2.0);
@@ -294,8 +294,8 @@ struct CameraFollowConfig {
         // Pitch limits: ensure min <= max and keep within near-pi/2
         if (pitchMin > pitchMax) std::swap(pitchMin, pitchMax);
         const double almostHalfPi = 0.98 * (kPI * 0.5);
-        pitchMin = std::clamp(pitchMin, -almostHalfPi, 0.0);
-        pitchMax = std::clamp(pitchMax,  0.0,          almostHalfPi);
+        pitchMin = std::clamp(pitchMin, -almostHalfPi, almostHalfPi);
+        pitchMax = std::clamp(pitchMax, -almostHalfPi, almostHalfPi);
 
         // near-vertical threshold safety
         nearVerticalDeg = std::clamp(nearVerticalDeg, 0.0, 89.9);
@@ -525,15 +525,10 @@ inline void CameraFollowController::ApplyFreeCameraMovement(Camera& camera,
         (movementInput.slow   ? 0.5                      : 1.0);
 
     // --- Build camera basis (X right, Y up, Z forward) ---
-    const double yaw   = camera.yaw();
-    const double pitch = camera.pitch();
-
     const Camera::Basis basis = camera.BuildBasis(config.pitchAffectsForward);
     const double fwdX = basis.forwardX;
-    const double fwdY = basis.forwardY;
     const double fwdZ = basis.forwardZ;
     const double rightX = basis.rightX;
-    const double rightY = basis.rightY;
     const double rightZ = basis.rightZ;
 
     // Input axes (−1..+1)
@@ -1191,7 +1186,6 @@ inline void UpdateTargetLockCamera(Camera& camera,
             if (hitResult) {
                 // Hit detected - move camera to hit point + normal * margin
                 const double margin = config.obstacleMargin;
-                const double oldNx = nx, oldNy = ny, oldNz = nz;
                 nx = hitResult->hitX + hitResult->normalX * margin;
                 ny = hitResult->hitY + hitResult->normalY * margin;
                 nz = hitResult->hitZ + hitResult->normalZ * margin;
@@ -1251,14 +1245,6 @@ inline void UpdateTargetLockCamera(Camera& camera,
     camera.SetOrientation(camPitch, camYaw);
 
     camera.SetPosition(nx, ny, nz);
-
-    // Debug: Log final camera position
-    static double lastNx = 0.0, lastNy = 0.0, lastNz = 0.0;
-    // Disabled frequent debug output for performance
-    // if (finalChange > 5.0) {  // Log large jumps
-    //     std::cout << "Camera jump detected: " << finalChange << " units to (" << nx << "," << ny << "," << nz << ")" << std::endl;
-    // }
-    lastNx = nx; lastNy = ny; lastNz = nz;
 
     if (teleportEnabled) {
         if (state.teleportFramesRemaining > 0) {

@@ -79,23 +79,68 @@ void Material::Bind(ShaderProgram* shader) const {
     if (!shader) return;
 
     // Bind material parameters
-    shader->SetUniform("material.baseColor", m_parameters.baseColor.x, m_parameters.baseColor.y, m_parameters.baseColor.z);
-    shader->SetUniform("material.roughness", m_parameters.roughness);
-    shader->SetUniform("material.metalness", m_parameters.metalness);
-    shader->SetUniform("material.emissive", m_parameters.emissive.x, m_parameters.emissive.y, m_parameters.emissive.z);
-    shader->SetUniform("material.alpha", m_parameters.alpha);
+    shader->SetUniform("u_BaseColor", m_parameters.baseColor.x, m_parameters.baseColor.y, m_parameters.baseColor.z);
+    shader->SetUniform("u_Roughness", m_parameters.roughness);
+    shader->SetUniform("u_Metalness", m_parameters.metalness);
+    shader->SetUniform("u_Emissive", m_parameters.emissive.x, m_parameters.emissive.y, m_parameters.emissive.z);
+    shader->SetUniform("u_Alpha", m_parameters.alpha);
 
-    // Bind textures
+    // Bind PBR textures with specific texture units
     int textureUnit = 0;
-    for (const auto& pair : m_textures) {
-        if (pair.second.loaded) {
-            glActiveTexture(GL_TEXTURE0 + textureUnit);
-            glBindTexture(GL_TEXTURE_2D, pair.second.textureId);
-
-            std::string uniformName = "material." + pair.first;
-            shader->SetUniform(uniformName.c_str(), textureUnit);
-            textureUnit++;
-        }
+    
+    // Albedo map (unit 0)
+    if (HasTexture("albedo")) {
+        glActiveTexture(GL_TEXTURE0 + textureUnit);
+        glBindTexture(GL_TEXTURE_2D, GetTexture("albedo"));
+        shader->SetUniform("u_AlbedoMap", textureUnit);
+        shader->SetUniform("u_HasAlbedoMap", true);
+        textureUnit++;
+    } else {
+        shader->SetUniform("u_HasAlbedoMap", false);
+    }
+    
+    // Normal map (unit 1)
+    if (HasTexture("normal")) {
+        glActiveTexture(GL_TEXTURE0 + textureUnit);
+        glBindTexture(GL_TEXTURE_2D, GetTexture("normal"));
+        shader->SetUniform("u_NormalMap", textureUnit);
+        shader->SetUniform("u_HasNormalMap", true);
+        textureUnit++;
+    } else {
+        shader->SetUniform("u_HasNormalMap", false);
+    }
+    
+    // Metallic-Roughness map (unit 2)
+    if (HasTexture("metallicRoughness")) {
+        glActiveTexture(GL_TEXTURE0 + textureUnit);
+        glBindTexture(GL_TEXTURE_2D, GetTexture("metallicRoughness"));
+        shader->SetUniform("u_MetallicRoughnessMap", textureUnit);
+        shader->SetUniform("u_HasMetallicRoughnessMap", true);
+        textureUnit++;
+    } else {
+        shader->SetUniform("u_HasMetallicRoughnessMap", false);
+    }
+    
+    // AO map (unit 3)
+    if (HasTexture("ao")) {
+        glActiveTexture(GL_TEXTURE0 + textureUnit);
+        glBindTexture(GL_TEXTURE_2D, GetTexture("ao"));
+        shader->SetUniform("u_AOMap", textureUnit);
+        shader->SetUniform("u_HasAOMap", true);
+        textureUnit++;
+    } else {
+        shader->SetUniform("u_HasAOMap", false);
+    }
+    
+    // Emissive map (unit 4)
+    if (HasTexture("emissive")) {
+        glActiveTexture(GL_TEXTURE0 + textureUnit);
+        glBindTexture(GL_TEXTURE_2D, GetTexture("emissive"));
+        shader->SetUniform("u_EmissiveMap", textureUnit);
+        shader->SetUniform("u_HasEmissiveMap", true);
+        textureUnit++;
+    } else {
+        shader->SetUniform("u_HasEmissiveMap", false);
     }
 }
 

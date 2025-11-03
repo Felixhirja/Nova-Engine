@@ -1,0 +1,54 @@
+{
+  "$schema": "nova://config/PlayerConfig/1.0",
+  "version": "1.0",
+  "description": "Example player configuration demonstrating all available options",
+  
+  "spawnPosition": {
+    "x": 0.0,
+    "y": 10.0,
+    "z": 0.0
+  },
+  
+  "movement": {
+    "forwardSpeed": 5.0,
+    "backwardSpeed": 3.0,
+    "strafeSpeed": 4.0,
+    "upDownSpeed": 3.0,
+    "acceleration": 4.0,
+    "deceleration": 5.0,
+    "friction": 0.1,
+    "maxSpeed": 20.0
+  },
+  
+  "physics": {
+    "enableGravity": false,
+    "gravityStrength": -9.8,
+    "maxAscentSpeed": 10.0,
+    "maxDescentSpeed": -20.0,
+    "mass": 1.0,
+    "drag": 0.05
+  },
+  
+  "visual": {
+    "r": 0.2,
+    "g": 0.8,
+    "b": 1.0,
+    "scale": 0.5,
+    "meshId": 0
+  },
+  
+  "camera": {
+    "priority": 100,
+    "isActive": true,
+    "fov": 75.0,
+    "nearPlane": 0.1,
+    "farPlane": 1000.0
+  },
+  
+  "combat": {
+    "maxHealth": 100.0,
+    "maxShields": 50.0,
+    "shieldRegenRate": 5.0,
+    "damageMultiplier": 1.0
+  }
+}

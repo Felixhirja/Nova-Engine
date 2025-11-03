@@ -1,0 +1,12 @@
+{
+  "$template": {
+    "name": "fighter_template",
+    "description": "Standard fighter ship configuration template",
+    "parameters": {
+      "tier": { "type": "number", "default": 1 }
+    }
+  },
+  "name": "Fighter",
+  "type": "Spaceship",
+  "class": "Fighter"
+}

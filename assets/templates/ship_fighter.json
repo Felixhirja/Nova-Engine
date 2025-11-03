@@ -1,0 +1,43 @@
+{
+    "_template": {
+        "name": "FighterShip",
+        "version": "1.0",
+        "description": "Fast, maneuverable fighter ship template",
+        "category": "Ships",
+        "tags": ["fighter", "combat", "fast"],
+        "author": "Nova Engine"
+    },
+    "name": "${SHIP_NAME:Interceptor}",
+    "class": "Fighter",
+    "health": "${HEALTH:800}",
+    "shield": "${SHIELD:400}",
+    "speed": "${SPEED:300}",
+    "agility": "${AGILITY:0.8}",
+    "model": "fighter_ship",
+    "faction": "${FACTION:player}",
+    "weapons": [
+        {
+            "type": "laser",
+            "damage": 50,
+            "fireRate": 5,
+            "range": 1000
+        },
+        {
+            "type": "missile",
+            "damage": 150,
+            "fireRate": 1,
+            "range": 2000,
+            "count": 6
+        }
+    ],
+    "systems": {
+        "engine": "afterburner",
+        "reactor": "fusion_mk2",
+        "sensors": "combat",
+        "countermeasures": true
+    },
+    "cargo": {
+        "capacity": 10,
+        "type": "military"
+    }
+}

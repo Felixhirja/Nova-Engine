@@ -1,0 +1,83 @@
+{
+  "hud_system_config": {
+    "version": "1.0",
+    "description": "Automated HUD asset loading and configuration",
+    "auto_discovery": true,
+    "cache_textures": true,
+    "default_resolution": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "hud_assets": {
+    "player_hud": {
+      "asset_path": "assets/ui/graphics/player_hud.svg",
+      "type": "svg",
+      "target_resolution": {
+        "width": 1920,
+        "height": 1080
+      },
+      "preserve_aspect_ratio": true,
+      "blend_mode": "blend",
+      "layer": 1,
+      "enabled": true,
+      "description": "Main player HUD overlay"
+    },
+    "spaceship_hud": {
+      "asset_path": "assets/ui/graphics/spaceship_hud.svg",
+      "type": "svg",
+      "target_resolution": {
+        "width": 1920,
+        "height": 1080
+      },
+      "preserve_aspect_ratio": true,
+      "blend_mode": "blend",
+      "layer": 2,
+      "enabled": true,
+      "description": "Spaceship-specific HUD elements"
+    }
+  },
+  "hud_layouts": {
+    "default": {
+      "name": "Default Layout",
+      "active_huds": ["player_hud", "spaceship_hud"],
+      "anchors": {
+        "player_hud": {
+          "x": 0,
+          "y": 0,
+          "anchor_type": "top_left"
+        },
+        "spaceship_hud": {
+          "x": 0,
+          "y": 0,
+          "anchor_type": "center"
+        }
+      }
+    },
+    "minimal": {
+      "name": "Minimal HUD",
+      "active_huds": ["player_hud"],
+      "anchors": {
+        "player_hud": {
+          "x": 10,
+          "y": 10,
+          "anchor_type": "top_left"
+        }
+      }
+    }
+  },
+  "asset_discovery": {
+    "ui_graphics_path": "assets/ui/graphics/",
+    "supported_formats": [".svg", ".png", ".jpg"],
+    "auto_register_new_assets": true,
+    "scan_subdirectories": true,
+    "cache_asset_list": true
+  },
+  "rendering_settings": {
+    "use_opengl_backend": true,
+    "use_sdl_backend": true,
+    "texture_filtering": "linear",
+    "mipmap_generation": false,
+    "compression": "none"
+  }
+}

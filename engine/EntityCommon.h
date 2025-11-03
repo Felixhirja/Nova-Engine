@@ -4,10 +4,13 @@
 // CRITICAL ORDER: EntityManager.h MUST come before ActorContext.h to avoid incomplete type issues
 #include "ecs/EntityManager.h"
 #include "ecs/Components.h"
-#include "IActor.h"
+#include "ecs/ShipAssembly.h"  // For SpaceshipClassType
 #include "ActorContext.h"
 #include "ActorContextImpl.h"
+#include "IActor.h"
 #include "ActorConfig.h"
+#include "EntityConfigManager.h"
+#include "EntityFactory.h"
 
 // Standard library includes commonly used by entities
 #include <string>

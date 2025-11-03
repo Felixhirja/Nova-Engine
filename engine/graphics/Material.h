@@ -58,6 +58,19 @@ public:
     void AddTexture(const std::string& slotName, const std::string& texturePath);
     bool HasTexture(const std::string& slotName) const;
     GLuint GetTexture(const std::string& slotName) const;
+    
+    // PBR texture slots
+    void SetAlbedoMap(const std::string& path) { AddTexture("albedo", path); }
+    void SetNormalMap(const std::string& path) { AddTexture("normal", path); }
+    void SetMetallicRoughnessMap(const std::string& path) { AddTexture("metallicRoughness", path); }
+    void SetAOMap(const std::string& path) { AddTexture("ao", path); }
+    void SetEmissiveMap(const std::string& path) { AddTexture("emissive", path); }
+    
+    bool HasAlbedoMap() const { return HasTexture("albedo"); }
+    bool HasNormalMap() const { return HasTexture("normal"); }
+    bool HasMetallicRoughnessMap() const { return HasTexture("metallicRoughness"); }
+    bool HasAOMap() const { return HasTexture("ao"); }
+    bool HasEmissiveMap() const { return HasTexture("emissive"); }
 
     // Shader binding
     void Bind(ShaderProgram* shader) const;

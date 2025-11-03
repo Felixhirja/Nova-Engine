@@ -349,6 +349,29 @@ public:
         }
     }
     
+    // Smart growth strategy for lazy creation
+    void EnsureCapacity(size_t requiredSize) {
+        if (entities_.capacity() >= requiredSize) {
+            return;
+        }
+        
+        // Growth strategy: double capacity until 1024, then grow by 50%
+        size_t newCapacity = entities_.capacity();
+        if (newCapacity == 0) {
+            newCapacity = 1;
+        }
+        
+        while (newCapacity < requiredSize) {
+            if (newCapacity < 1024) {
+                newCapacity *= 2;  // Aggressive growth for small archetypes
+            } else {
+                newCapacity += newCapacity / 2;  // Conservative growth for large archetypes
+            }
+        }
+        
+        Reserve(newCapacity);
+    }
+    
     // Clear all entities and components
     void Clear() {
         entities_.clear();
@@ -366,6 +389,23 @@ public:
             total += array->Capacity() * array->ElementSize();
         }
         return total;
+    }
+    
+    // Get wasted memory (capacity - size)
+    size_t GetWastedMemory() const {
+        size_t wasted = (entities_.capacity() - entities_.size()) * sizeof(EntityHandle);
+        for (const auto& [typeIndex, array] : componentArrays_) {
+            (void)typeIndex;
+            wasted += (array->Capacity() - array->Size()) * array->ElementSize();
+        }
+        return wasted;
+    }
+    
+    // Get utilization ratio (0.0 to 1.0)
+    double GetUtilization() const {
+        size_t used = GetMemoryUsage() - GetWastedMemory();
+        size_t total = GetMemoryUsage();
+        return total > 0 ? static_cast<double>(used) / total : 0.0;
     }
     
     // Get cache efficiency hint (entities per cache line)
@@ -473,12 +513,62 @@ public:
         auto it = componentArrays_.find(typeIndex);
         return it != componentArrays_.end() ? it->second.get() : nullptr;
     }
+    
+    // Archetype transition graph support for O(1) transitions
+    struct ArchetypeEdge {
+        Archetype* target = nullptr;
+        bool isValid = false;
+    };
+    
+    Archetype* GetTransitionAdd(std::type_index componentType) const {
+        auto it = transitionsAdd_.find(componentType);
+        return (it != transitionsAdd_.end() && it->second.isValid) 
+            ? it->second.target 
+            : nullptr;
+    }
+    
+    Archetype* GetTransitionRemove(std::type_index componentType) const {
+        auto it = transitionsRemove_.find(componentType);
+        return (it != transitionsRemove_.end() && it->second.isValid) 
+            ? it->second.target 
+            : nullptr;
+    }
+    
+    void SetTransitionAdd(std::type_index componentType, Archetype* target) {
+        transitionsAdd_[componentType] = {target, true};
+    }
+    
+    void SetTransitionRemove(std::type_index componentType, Archetype* target) {
+        transitionsRemove_[componentType] = {target, true};
+    }
+    
+    void InvalidateTransitions() {
+        for (auto& [type, edge] : transitionsAdd_) {
+            edge.isValid = false;
+        }
+        for (auto& [type, edge] : transitionsRemove_) {
+            edge.isValid = false;
+        }
+    }
+    
+    const std::unordered_map<std::type_index, ArchetypeEdge>& GetAddTransitions() const {
+        return transitionsAdd_;
+    }
+    
+    const std::unordered_map<std::type_index, ArchetypeEdge>& GetRemoveTransitions() const {
+        return transitionsRemove_;
+    }
 
 private:
     uint32_t id_;
     ComponentSignature signature_;
     std::vector<EntityHandle> entities_;
     std::unordered_map<std::type_index, std::unique_ptr<ComponentArray>> componentArrays_;
+    
+    // Transition graph edges for O(1) component add/remove
+    std::unordered_map<std::type_index, ArchetypeEdge> transitionsAdd_;
+    std::unordered_map<std::type_index, ArchetypeEdge> transitionsRemove_;
+    
     friend class TransitionPlan;
 };
 

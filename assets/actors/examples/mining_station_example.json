@@ -1,0 +1,8 @@
+{
+  "name": "Mining Platform Delta-7",
+  "description": "Asteroid mining operation extracting valuable resources",
+  "entityType": "station",
+  "services": ["trading", "refuel", "manufacturing"],
+  "type": "mining",
+  "dockingCapacity": 15
+}

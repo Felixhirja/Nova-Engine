@@ -1,0 +1,8 @@
+{
+  "name": "Fortress Omega",
+  "description": "A heavily fortified military outpost defending the sector",
+  "entityType": "station", 
+  "services": ["repair", "missions", "upgrade"],
+  "type": "military",
+  "dockingCapacity": 8
+}

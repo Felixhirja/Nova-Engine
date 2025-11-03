@@ -1,0 +1,46 @@
+{
+  "$schema": "nova://config/WeaponConfig/1.0",
+  "version": "1.0",
+  "weaponType": "laser",
+  
+  "damage": {
+    "base": 25.0,
+    "criticalMultiplier": 2.0,
+    "armorPenetration": 0.3
+  },
+  
+  "firing": {
+    "fireRate": 2.0,
+    "burstCount": 1,
+    "burstDelay": 0.1,
+    "reloadTime": 1.5,
+    "magazineSize": 30,
+    "projectileSpeed": 50.0
+  },
+  
+  "energy": {
+    "energyPerShot": 5.0,
+    "overheatThreshold": 100.0,
+    "coolingRate": 20.0
+  },
+  
+  "accuracy": {
+    "baseSpread": 0.05,
+    "movementSpread": 0.1,
+    "recoil": 0.02,
+    "recoilRecovery": 5.0
+  },
+  
+  "visual": {
+    "muzzleFlashColor": [1.0, 0.3, 0.1],
+    "projectileColor": [0.2, 0.8, 1.0],
+    "trailLength": 2.0,
+    "impactEffect": "laser_impact"
+  },
+  
+  "audio": {
+    "fireSound": "laser_fire.wav",
+    "reloadSound": "laser_reload.wav",
+    "overheatSound": "overheat.wav"
+  }
+}

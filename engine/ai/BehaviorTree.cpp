@@ -31,7 +31,7 @@ BehaviorStatus SelectorNode::Tick(Entity entity, EntityManager& entityManager, D
 ManeuverNode::ManeuverNode(std::function<void(NavigationState&)> maneuver)
     : maneuver_(std::move(maneuver)) {}
 
-BehaviorStatus ManeuverNode::Tick(Entity entity, EntityManager& entityManager, DeterministicRandom& random) {
+BehaviorStatus ManeuverNode::Tick(Entity entity, EntityManager& entityManager, DeterministicRandom& /*random*/) {
     auto* nav = entityManager.GetComponent<NavigationState>(entity);
     if (!nav) {
         return BehaviorStatus::Failure;

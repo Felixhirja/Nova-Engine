@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "nova-engine://schemas/ship_config.json",
+  "title": "Ship Configuration Schema",
+  "description": "Schema for ship-type actors (player ships, NPCs, etc.)",
+  "allOf": [
+    {"$ref": "actor_config.schema.json"},
+    {
+      "type": "object",
+      "properties": {
+        "category": {
+          "const": "ship"
+        },
+        "shipClass": {
+          "type": "string",
+          "description": "Ship classification",
+          "enum": ["fighter", "freighter", "cruiser", "destroyer", "scout", "miner", "capital"]
+        },
+        "hostileToPlayer": {
+          "type": "boolean",
+          "description": "Whether this ship is hostile to the player by default",
+          "default": false
+        },
+        "cargoCapacity": {
+          "type": "number",
+          "description": "Cargo storage capacity",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "engines": {
+          "type": "object",
+          "description": "Engine configuration",
+          "properties": {
+            "thrust": {
+              "type": "number",
+              "description": "Engine thrust force",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "efficiency": {
+              "type": "number",
+              "description": "Fuel efficiency (0.0 to 1.0)",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "maxSpeed": {
+              "type": "number",
+              "description": "Maximum velocity",
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "acceleration": {
+              "type": "number",
+              "description": "Acceleration rate",
+              "minimum": 0,
+              "maximum": 500
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "required": ["shipClass"]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "world_name": "Default World",
+  "version": "1.0",
+  "spawn_config": {
+    "auto_spawn_enabled": true,
+    "spawn_on_startup": true,
+    "spawn_radius": 1000.0
+  },
+  "entities": [
+    {
+      "id": "patrol_1",
+      "type": "patrol",
+      "position": {
+        "x": 50.0,
+        "y": 0.0,
+        "z": 25.0
+      },
+      "rotation": {
+        "yaw": 45.0,
+        "pitch": 0.0,
+        "roll": 0.0
+      },
+      "spawn_condition": "always",
+      "enabled": true
+    },
+    {
+      "id": "fighter_1",
+      "type": "fighter",
+      "position": {
+        "x": -30.0,
+        "y": 5.0,
+        "z": 40.0
+      },
+      "rotation": {
+        "yaw": 180.0,
+        "pitch": 0.0,
+        "roll": 0.0
+      },
+      "spawn_condition": "always",
+      "enabled": true
+    },
+    {
+      "id": "scout_1",
+      "type": "scout",
+      "position": {
+        "x": 80.0,
+        "y": 0.0,
+        "z": -20.0
+      },
+      "rotation": {
+        "yaw": 270.0,
+        "pitch": 0.0,
+        "roll": 0.0
+      },
+      "spawn_condition": "always",
+      "enabled": true
+    }
+  ]
+}

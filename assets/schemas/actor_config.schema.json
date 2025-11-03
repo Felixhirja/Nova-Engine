@@ -1,0 +1,421 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "nova-engine://schemas/actor_config.json",
+  "title": "Nova Engine Actor Configuration Schema",
+  "description": "Schema for validating actor configuration files in Nova Engine",
+  "type": "object",
+  "properties": {
+    "entityType": {
+      "type": "string",
+      "description": "The type of entity this configuration describes",
+      "examples": ["npc", "station", "projectile", "player", "cargo_container"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name of the actor",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "description": "Designer description of the actor's purpose",
+      "maxLength": 500
+    },
+    "category": {
+      "type": "string",
+      "description": "Entity category for organization",
+      "enum": ["ship", "world", "projectile", "effect", "ui"]
+    },
+    "gameplay": {
+      "type": "object",
+      "description": "Gameplay-related properties",
+      "properties": {
+        "health": {
+          "type": "number",
+          "description": "Maximum health points",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "shield": {
+          "type": "number",
+          "description": "Maximum shield points",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "capacity": {
+          "type": "number",
+          "description": "Cargo or storage capacity",
+          "minimum": 0
+        },
+        "speed": {
+          "type": "number",
+          "description": "Maximum movement speed",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "fireRate": {
+          "type": "number",
+          "description": "Weapon fire rate (shots per second)",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "damage": {
+          "type": "number",
+          "description": "Weapon damage per shot",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "range": {
+          "type": "number",
+          "description": "Weapon or sensor range",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "faction": {
+          "type": "string",
+          "description": "Faction affiliation",
+          "examples": ["player", "neutral", "pirates", "federation", "traders_guild"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "physics": {
+      "type": "object",
+      "description": "Physics simulation properties",
+      "properties": {
+        "mass": {
+          "type": "number",
+          "description": "Object mass in kg",
+          "minimum": 0.1,
+          "maximum": 1000000
+        },
+        "drag": {
+          "type": "number",
+          "description": "Air/space drag coefficient",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "static": {
+          "type": "boolean",
+          "description": "Whether the object is static (unmovable)",
+          "default": false
+        },
+        "collision": {
+          "type": "boolean",
+          "description": "Whether collision detection is enabled",
+          "default": true
+        },
+        "gravityEnabled": {
+          "type": "boolean",
+          "description": "Whether gravity affects this object",
+          "default": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "visual": {
+      "type": "object",
+      "description": "Visual appearance properties",
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "3D model identifier or path"
+        },
+        "meshPath": {
+          "type": "string",
+          "description": "Path to mesh file"
+        },
+        "material": {
+          "type": "string",
+          "description": "Material identifier",
+          "default": "default"
+        },
+        "scale": {
+          "type": "number",
+          "description": "Uniform scale factor",
+          "minimum": 0.01,
+          "maximum": 100,
+          "default": 1.0
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "array",
+              "description": "RGB color as array [r, g, b]",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            {
+              "type": "object",
+              "description": "RGB color as object",
+              "properties": {
+                "r": {"type": "number", "minimum": 0, "maximum": 1},
+                "g": {"type": "number", "minimum": 0, "maximum": 1},
+                "b": {"type": "number", "minimum": 0, "maximum": 1}
+              },
+              "required": ["r", "g", "b"],
+              "additionalProperties": false
+            }
+          ],
+          "default": [1.0, 1.0, 1.0]
+        },
+        "renderMode": {
+          "type": "string",
+          "description": "Rendering mode",
+          "enum": ["Mesh3D", "Billboard", "Sprite2D", "Particles", "Wireframe", "Custom"],
+          "default": "Mesh3D"
+        }
+      },
+      "additionalProperties": true
+    },
+    "rendering": {
+      "$ref": "#/properties/visual",
+      "description": "Alias for visual properties"
+    },
+    "vitals": {
+      "type": "object",
+      "description": "Health and shield system properties",
+      "properties": {
+        "maxHealth": {
+          "type": "number",
+          "description": "Maximum health points",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "health": {
+          "type": "number",
+          "description": "Current health points",
+          "minimum": 0
+        },
+        "maxShields": {
+          "type": "number",
+          "description": "Maximum shield points",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "shields": {
+          "type": "number",
+          "description": "Current shield points",
+          "minimum": 0
+        },
+        "shieldRegenRate": {
+          "type": "number",
+          "description": "Shield regeneration rate (points per second)",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      },
+      "additionalProperties": true
+    },
+    "position": {
+      "type": "object",
+      "description": "Initial position in 3D space",
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "X coordinate"
+        },
+        "y": {
+          "type": "number",
+          "description": "Y coordinate"
+        },
+        "z": {
+          "type": "number",
+          "description": "Z coordinate"
+        }
+      },
+      "required": ["x", "y", "z"],
+      "additionalProperties": false
+    },
+    "ai": {
+      "type": "object",
+      "description": "AI behavior configuration",
+      "properties": {
+        "behaviorType": {
+          "type": "string",
+          "description": "AI behavior pattern",
+          "enum": ["passive", "aggressive", "defensive", "trader", "patrol", "guard", "scout"]
+        },
+        "patrolRoute": {
+          "type": "boolean",
+          "description": "Whether AI follows patrol routes",
+          "default": false
+        },
+        "fleeOnDamage": {
+          "type": "boolean",
+          "description": "Whether AI flees when damaged",
+          "default": false
+        },
+        "pursuitRange": {
+          "type": "number",
+          "description": "Maximum distance to pursue targets",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "aggroRange": {
+          "type": "number",
+          "description": "Range at which AI becomes hostile",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "respondToDistress": {
+          "type": "boolean",
+          "description": "Whether AI responds to distress calls",
+          "default": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "weapons": {
+      "type": "object",
+      "description": "Weapon system configuration",
+      "properties": {
+        "primaryWeapon": {
+          "type": "string",
+          "description": "Primary weapon type identifier"
+        },
+        "secondaryWeapon": {
+          "type": "string",
+          "description": "Secondary weapon type identifier"
+        },
+        "fireRate": {
+          "type": "number",
+          "description": "Weapon fire rate (shots per second)",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "damage": {
+          "type": "number",
+          "description": "Damage per shot",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "range": {
+          "type": "number",
+          "description": "Weapon effective range",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "accuracy": {
+          "type": "number",
+          "description": "Weapon accuracy (0.0 to 1.0)",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "services": {
+      "type": "array",
+      "description": "Services provided by this entity (for stations)",
+      "items": {
+        "type": "string",
+        "enum": ["trading", "repair", "missions", "docking", "refuel", "upgrade", "storage"]
+      },
+      "uniqueItems": true
+    },
+    "dockingCapacity": {
+      "type": "integer",
+      "description": "Number of ships that can dock simultaneously",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "behaviorScript": {
+      "type": "string",
+      "description": "Path to behavior script file"
+    },
+    "type": {
+      "type": "string",
+      "description": "Entity subtype",
+      "examples": ["military", "trading", "mining", "research", "civilian"]
+    },
+    "variants": {
+      "type": "object",
+      "description": "Named variants of this entity type",
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+          "$ref": "#"
+        }
+      },
+      "additionalProperties": false
+    },
+    "defaults": {
+      "type": "object",
+      "description": "Default values applied to all variants",
+      "properties": {
+        "physics": {"$ref": "#/properties/physics"},
+        "vitals": {"$ref": "#/properties/vitals"},
+        "rendering": {"$ref": "#/properties/visual"},
+        "visual": {"$ref": "#/properties/visual"},
+        "weapons": {"$ref": "#/properties/weapons"},
+        "ai": {"$ref": "#/properties/ai"}
+      },
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Metadata about the configuration",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Configuration file version",
+          "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+          "default": "1.0"
+        },
+        "author": {
+          "type": "string",
+          "description": "Configuration author name",
+          "maxLength": 100
+        },
+        "created": {
+          "type": "string",
+          "description": "Creation date (ISO 8601 format)",
+          "format": "date-time"
+        },
+        "modified": {
+          "type": "string",
+          "description": "Last modification date (ISO 8601 format)",
+          "format": "date-time"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Configuration tags for organization",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "maxItems": 20,
+          "uniqueItems": true
+        },
+        "compatibility": {
+          "type": "object",
+          "description": "Compatibility information",
+          "properties": {
+            "minEngineVersion": {
+              "type": "string",
+              "description": "Minimum engine version required",
+              "pattern": "^\\d+\\.\\d+(\\.\\d+)?$"
+            },
+            "maxEngineVersion": {
+              "type": "string",
+              "description": "Maximum compatible engine version",
+              "pattern": "^\\d+\\.\\d+(\\.\\d+)?$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "anyOf": [
+    {"required": ["name"]},
+    {"required": ["entityType"]}
+  ]
+}

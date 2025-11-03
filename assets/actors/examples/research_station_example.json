@@ -1,0 +1,8 @@
+{
+  "name": "Research Outpost Kepler",
+  "description": "Scientific research facility studying deep space phenomena",
+  "entityType": "station",
+  "services": ["refuel", "upgrade", "storage"],
+  "type": "research",
+  "dockingCapacity": 6
+}

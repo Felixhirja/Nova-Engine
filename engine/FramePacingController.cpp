@@ -11,7 +11,7 @@ FramePacingController::FramePacingController() {
     if (targetFPSEnv) {
         try {
             double envFPS = std::stod(targetFPSEnv);
-            settings_.targetFPS = std::clamp(envFPS, 30.0, 360.0);
+            settings_.targetFPS = std::clamp(envFPS, 30.0, 1000.0);
             forceTargetFPS_ = true; // Don't adapt if set via environment
         } catch (...) {
             // Invalid value, keep default
@@ -32,7 +32,7 @@ void FramePacingController::SetTargetFPS(double fps) {
         return;
     }
 
-    const double clamped = std::clamp(fps, 0.0, 360.0);
+    const double clamped = std::clamp(fps, 0.0, 1000.0);  // Allow up to 1000 FPS
     settings_.targetFPS = clamped;
 }
 
@@ -88,7 +88,7 @@ void FramePacingController::UpdateFromTimings(const FrameTimingAverages& timing)
             if (frameDuration > 0.0 && std::isfinite(frameDuration)) {
                 const double measuredFPS = 1.0 / frameDuration;
                 const double smoothing = 0.1;
-                const double clampedMeasured = std::clamp(measuredFPS, 30.0, 360.0);
+                const double clampedMeasured = std::clamp(measuredFPS, 30.0, 1000.0);
                 settings_.targetFPS = (1.0 - smoothing) * settings_.targetFPS + smoothing * clampedMeasured;
             }
             return;
@@ -98,15 +98,15 @@ void FramePacingController::UpdateFromTimings(const FrameTimingAverages& timing)
         if (!disableAdaptiveVSync && idleRatio > 0.25) {
             settings_.vsyncEnabled = true;
             if (frameDuration > 0.0 && std::isfinite(frameDuration)) {
-                settings_.targetFPS = std::clamp(1.0 / frameDuration, 30.0, 360.0);
+                settings_.targetFPS = std::clamp(1.0 / frameDuration, 30.0, 1000.0);
             }
             return;
         }
     }
 
     if (settings_.targetFPS <= 0.0) {
-        const double fallback = frameDuration > 0.0 ? 1.0 / frameDuration : 60.0;
-        settings_.targetFPS = std::clamp(fallback, 30.0, 360.0);
+        const double fallback = frameDuration > 0.0 ? 1.0 / frameDuration : 400.0;
+        settings_.targetFPS = std::clamp(fallback, 30.0, 1000.0);
     }
 
     // Don't adapt target FPS if it was set via environment variable
@@ -126,7 +126,7 @@ void FramePacingController::UpdateFromTimings(const FrameTimingAverages& timing)
     }
 
     double recommendedFPS = 1.0 / recommendedDuration;
-    recommendedFPS = std::clamp(recommendedFPS, 30.0, 360.0);
+    recommendedFPS = std::clamp(recommendedFPS, 30.0, 1000.0);
 
     const double smoothing = 0.15;
     settings_.targetFPS = (1.0 - smoothing) * settings_.targetFPS + smoothing * recommendedFPS;

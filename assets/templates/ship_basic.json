@@ -1,0 +1,60 @@
+{
+    "_template": {
+        "name": "BasicShip",
+        "version": "1.0",
+        "description": "Basic ship configuration template",
+        "category": "Ships",
+        "author": "Nova Engine",
+        "parameters": [
+            {
+                "name": "SHIP_NAME",
+                "type": "string",
+                "required": true,
+                "description": "Display name of the ship"
+            },
+            {
+                "name": "SHIP_CLASS",
+                "type": "string",
+                "default": "Fighter",
+                "description": "Ship class (Fighter, Cruiser, etc.)"
+            },
+            {
+                "name": "HEALTH",
+                "type": "number",
+                "default": 1000,
+                "description": "Maximum health points"
+            },
+            {
+                "name": "SHIELD",
+                "type": "number",
+                "default": 500,
+                "description": "Maximum shield points"
+            },
+            {
+                "name": "SPEED",
+                "type": "number",
+                "default": 150,
+                "description": "Maximum speed"
+            },
+            {
+                "name": "FACTION",
+                "type": "string",
+                "default": "neutral",
+                "description": "Ship faction"
+            }
+        ]
+    },
+    "name": "${SHIP_NAME}",
+    "class": "${SHIP_CLASS}",
+    "health": "${HEALTH}",
+    "shield": "${SHIELD}",
+    "speed": "${SPEED}",
+    "model": "fighter_ship",
+    "faction": "${FACTION}",
+    "weapons": [],
+    "systems": {
+        "engine": "standard",
+        "reactor": "fusion_mk1",
+        "sensors": "basic"
+    }
+}

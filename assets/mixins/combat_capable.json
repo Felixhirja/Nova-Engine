@@ -1,0 +1,8 @@
+{
+  "$mixin": true,
+  "description": "Mixin for combat-capable entities",
+  "weapons": {
+    "primary": { "type": "laser", "damage": 50 }
+  },
+  "tags": ["combat_capable"]
+}

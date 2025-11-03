@@ -1,0 +1,5 @@
+GLFW_LIBS value: -LC:/msys64/mingw64/lib -lglfw3 -lgdi32 -lwinmm -lshell32
+GLFW detected: building with GLFW support
+The system cannot find the path specified.
+The system cannot find the path specified.
+make: 'engine/Entities.h' is up to date.

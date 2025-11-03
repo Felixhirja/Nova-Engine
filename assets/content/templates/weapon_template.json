@@ -1,0 +1,109 @@
+{
+  "template": {
+    "id": "weapon_template",
+    "name": "Weapon Template",
+    "version": 1,
+    "description": "Standard template for creating weapons",
+    "category": "weapon",
+    "author": "Nova Engine Team",
+    "variables": [
+      {
+        "name": "weapon_name",
+        "type": "string",
+        "default": "Laser Cannon",
+        "description": "Display name of the weapon",
+        "required": true
+      },
+      {
+        "name": "weapon_type",
+        "type": "string",
+        "default": "energy",
+        "description": "Weapon damage type",
+        "required": true,
+        "options": ["energy", "kinetic", "explosive", "missile"]
+      },
+      {
+        "name": "damage",
+        "type": "number",
+        "default": "25",
+        "description": "Base damage per hit",
+        "required": true,
+        "range": [1, 500]
+      },
+      {
+        "name": "fire_rate",
+        "type": "number",
+        "default": "2.0",
+        "description": "Shots per second",
+        "required": true,
+        "range": [0.1, 20.0]
+      },
+      {
+        "name": "projectile_speed",
+        "type": "number",
+        "default": "500",
+        "description": "Projectile velocity",
+        "required": true,
+        "range": [100, 2000]
+      },
+      {
+        "name": "range",
+        "type": "number",
+        "default": "1000",
+        "description": "Maximum effective range",
+        "required": true,
+        "range": [100, 5000]
+      },
+      {
+        "name": "energy_cost",
+        "type": "number",
+        "default": "10",
+        "description": "Energy consumed per shot",
+        "required": true,
+        "range": [1, 100]
+      }
+    ]
+  },
+  "content": {
+    "id": "${weapon_id}",
+    "type": "weapon",
+    "name": "${weapon_name}",
+    "weaponType": "${weapon_type}",
+    "stats": {
+      "damage": ${damage},
+      "fireRate": ${fire_rate},
+      "projectileSpeed": ${projectile_speed},
+      "range": ${range},
+      "energyCost": ${energy_cost},
+      "accuracy": 0.9,
+      "reloadTime": 0.5
+    },
+    "projectile": {
+      "type": "${weapon_type}_projectile",
+      "model": "projectiles/${weapon_type}_bolt.obj",
+      "texture": "projectiles/${weapon_type}_glow.png",
+      "scale": [0.1, 0.1, 0.5],
+      "trail": true,
+      "trailColor": [1.0, 0.5, 0.0, 1.0]
+    },
+    "sounds": {
+      "fire": "weapons/${weapon_type}_fire.wav",
+      "impact": "weapons/${weapon_type}_impact.wav"
+    },
+    "effects": {
+      "muzzleFlash": "effects/muzzle_flash.particle",
+      "impactEffect": "effects/${weapon_type}_impact.particle"
+    },
+    "balance": {
+      "dps": "${damage * fire_rate}",
+      "energyPerSecond": "${energy_cost * fire_rate}",
+      "damagePerEnergy": "${damage / energy_cost}"
+    },
+    "metadata": {
+      "created": "${timestamp}",
+      "author": "${author}",
+      "version": 1,
+      "tags": ["weapon", "${weapon_type}"]
+    }
+  }
+}

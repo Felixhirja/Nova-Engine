@@ -3,6 +3,13 @@
 #include "Components.h"
 #include "../physics/PhysicsEngine.h"
 
+// TODO: Implement automatic entity spawning system
+// - EntityFactory should automatically load entities from JSON configs
+// - No hardcoded entity creation in engine code
+// - Data-driven system that reads spawn configurations
+// - Support for conditional/dynamic spawning based on game state
+// See: Auto Entity Factory System TODO items
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -617,7 +624,7 @@ void UnifiedSystem::UpdateMovementSystem(EntityManager& entityManager, double dt
     int posVelCount = 0;
     
     if (firstRun) {
-        std::cout << "[MovementSystem] FIRST RUN" << std::endl;
+        // std::cout << "[MovementSystem] FIRST RUN" << std::endl;  // DISABLED FOR PERFORMANCE
         firstRun = false;
     }
 
@@ -683,7 +690,7 @@ void UnifiedSystem::UpdatePlayerControlSystem(EntityManager& entityManager, doub
     int entityCount = 0;
     
     if (firstRun) {
-        std::cout << "[PlayerControlSystem] FIRST RUN" << std::endl;
+        std::cout << "[PlayerControlSystem] FIRST RUN - No auto-loading, using existing components" << std::endl;
         firstRun = false;
     }
 
@@ -717,21 +724,21 @@ void UnifiedSystem::UpdatePlayerControlSystem(EntityManager& entityManager, doub
             friction = std::max(0.0, movement->friction);
         }
 
-        // Apply input to velocity
+        // Apply input to velocity - Fixed coordinate system: Y=Up/Down, Z=Forward/Backward, X=Left/Right
         if (controller.moveForward) {
-            velocity.vy += forwardAcceleration * dt;
-            if (velocity.vy > forwardMaxSpeed) velocity.vy = forwardMaxSpeed;
+            velocity.vz += forwardAcceleration * dt;
+            if (velocity.vz > forwardMaxSpeed) velocity.vz = forwardMaxSpeed;
         } else if (controller.moveBackward) {
-            velocity.vy -= backwardAcceleration * dt;
-            if (velocity.vy < -backwardMaxSpeed) velocity.vy = -backwardMaxSpeed;
+            velocity.vz -= backwardAcceleration * dt;
+            if (velocity.vz < -backwardMaxSpeed) velocity.vz = -backwardMaxSpeed;
         } else {
             // Deceleration
-            if (velocity.vy > 0) {
-                velocity.vy -= forwardDeceleration * dt;
-                if (velocity.vy < 0) velocity.vy = 0;
-            } else if (velocity.vy < 0) {
-                velocity.vy += backwardDeceleration * dt;
-                if (velocity.vy > 0) velocity.vy = 0;
+            if (velocity.vz > 0) {
+                velocity.vz -= forwardDeceleration * dt;
+                if (velocity.vz < 0) velocity.vz = 0;
+            } else if (velocity.vz < 0) {
+                velocity.vz += backwardDeceleration * dt;
+                if (velocity.vz > 0) velocity.vz = 0;
             }
         }
 
@@ -750,6 +757,40 @@ void UnifiedSystem::UpdatePlayerControlSystem(EntityManager& entityManager, doub
                 velocity.vx += strafeDeceleration * dt;
                 if (velocity.vx > 0) velocity.vx = 0;
             }
+        }
+
+        // Y-axis movement (Up/Down) - Space/C keys
+        if (controller.moveUp) {
+            velocity.vy += forwardAcceleration * dt;  // Use same acceleration as forward
+            if (velocity.vy > forwardMaxSpeed) velocity.vy = forwardMaxSpeed;
+        } else if (controller.moveDown) {
+            velocity.vy -= forwardAcceleration * dt;
+            if (velocity.vy < -forwardMaxSpeed) velocity.vy = -forwardMaxSpeed;
+        } else {
+            // Deceleration for Y-axis
+            if (velocity.vy > 0) {
+                velocity.vy -= forwardDeceleration * dt;
+                if (velocity.vy < 0) velocity.vy = 0;
+            } else if (velocity.vy < 0) {
+                velocity.vy += forwardDeceleration * dt;
+                if (velocity.vy > 0) velocity.vy = 0;
+            }
+        }
+
+        // Jump logic - handle jumpRequested
+        if (controller.jumpRequested) {
+            const PlayerPhysics* physics = entityManager.GetComponent<PlayerPhysics>(entity);
+            const LocomotionComponent* locomotion = entityManager.GetComponent<LocomotionComponent>(entity);
+            
+            if (physics && locomotion) {
+                // Only jump if grounded and not already jumping
+                if (locomotion->isGrounded && velocity.vy <= 0.1) {
+                    velocity.vy = physics->jumpImpulse;  // Apply jump impulse
+                    std::cout << "[PlayerControlSystem] Jump applied! impulse=" << physics->jumpImpulse << std::endl;
+                }
+            }
+            // Reset jump request to prevent continuous jumping
+            controller.jumpRequested = false;
         }
 
         // Apply friction
@@ -815,7 +856,7 @@ void UnifiedSystem::UpdateTargetingSystem(EntityManager& entityManager, double d
 
 void UnifiedSystem::UpdateShieldSystem(EntityManager& entityManager, double dt) {
     // Shield system logic - handle recharge
-    entityManager.ForEach<ShieldComponent>([&](Entity entity, ShieldComponent& shield) {
+    entityManager.ForEach<ShieldComponent>([&](Entity /*entity*/, ShieldComponent& shield) {
         if (!shield.isActive) return;
         
         // Update last damage time
@@ -854,8 +895,8 @@ void UnifiedSystem::UpdateMissionScriptSystem(EntityManager& entityManager, doub
 }
 
 // Shield management methods
-void UnifiedSystem::InitializeShield(Entity entity, double maxCapacity, double rechargeRate, 
-                                   double rechargeDelay, double absorptionRatio, const std::string& shieldType) {
+void UnifiedSystem::InitializeShield(Entity entity, double /*maxCapacity*/, double /*rechargeRate*/, 
+                                   double /*rechargeDelay*/, double absorptionRatio, const std::string& shieldType) {
     // Note: In a real implementation, we'd add ShieldComponent to the entity
     // For now, we'll store metadata for testing purposes
     shieldAbsorptionRatios_[entity] = absorptionRatio;
@@ -865,13 +906,13 @@ void UnifiedSystem::InitializeShield(Entity entity, double maxCapacity, double r
     // This method is mainly for initialization metadata
 }
 
-const ShieldComponent* UnifiedSystem::GetShieldState(Entity entity) const {
+const ShieldComponent* UnifiedSystem::GetShieldState(Entity /*entity*/) const {
     // This method needs access to EntityManager, so it should be called during system updates
     // For testing purposes, we'll return nullptr and let the test handle component access directly
     return nullptr;
 }
 
-double UnifiedSystem::GetShieldPercentage(Entity entity) const {
+double UnifiedSystem::GetShieldPercentage(Entity /*entity*/) const {
     // This would need EntityManager access, simplified for testing
     return 1.0;
 }
@@ -1116,4 +1157,11 @@ bool UnifiedSystem::CheckBoxSphere(const struct BoxCollider& box, const struct P
 
 void UnifiedSystem::ResolveCollisionPair(const CollisionPair& pair, double dt) {
     (void)pair; (void)dt;
+}
+
+// Auto-loading component system - DISABLED
+void UnifiedSystem::AutoLoadPlayerComponents(EntityManager& entityManager) {
+    // Auto-loading disabled - entities should define their own components
+    std::cout << "[AutoLoader] Auto-loading disabled - entities manage their own components" << std::endl;
+    (void)entityManager;  // Suppress unused parameter warning
 }

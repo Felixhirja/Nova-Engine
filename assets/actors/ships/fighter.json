@@ -1,0 +1,24 @@
+{
+    "name": "Light Fighter",
+    "type": "Fighter",
+    "speed": 180.0,
+    "health": 600,
+    "shield": 300,
+    "model": "fighter_ship",
+    "faction": "military",
+    "ai": {
+        "behavior": "aggressive",
+        "attackRange": 800,
+        "responseTime": 2.0
+    },
+    "weapons": {
+        "primary": "laser_cannon",
+        "secondary": "missiles",
+        "fireRate": 3.0
+    },
+    "engine": {
+        "thrust": 250.0,
+        "maneuverability": 8.5,
+        "fuelCapacity": 400
+    }
+}

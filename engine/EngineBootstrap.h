@@ -5,6 +5,7 @@
 #include "ecs/ShipAssembly.h"
 #include "ActorContext.h"
 #include "BootstrapConfiguration.h"
+#include "FrameworkManager.h"
 
 #include <string>
 #include <vector>
@@ -38,6 +39,8 @@ public:
         BootstrapConfiguration configuration;
         std::vector<SubsystemStatus> subsystemChecklist;
         std::vector<std::string> warnings;
+        std::vector<std::string> loadedFrameworks;  // NEW: Track loaded frameworks
+        ValidationResult frameworkValidation;        // NEW: Framework validation results
     };
 
     static const std::vector<InitializationStep>& InitializationSequence();

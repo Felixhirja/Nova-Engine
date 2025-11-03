@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "nova-engine://schemas/simple_station_config.json",
+  "title": "Simple Station Configuration Schema", 
+  "description": "Simplified schema for testing station validation",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Display name for the actor"
+    },
+    "description": {
+      "type": "string", 
+      "description": "Detailed description of the actor"
+    },
+    "entityType": {
+      "type": "string",
+      "const": "station"
+    },
+    "services": {
+      "type": "array",
+      "description": "Services provided by the station",
+      "items": {
+        "type": "string",
+        "enum": ["trading", "repair", "missions", "docking", "refuel", "upgrade", "storage", "manufacturing"]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "type": {
+      "type": "string",
+      "description": "Station type",
+      "enum": ["military", "trading", "mining", "research", "civilian", "industrial"]
+    },
+    "dockingCapacity": {
+      "type": "integer",
+      "description": "Maximum number of ships that can dock",
+      "minimum": 1,
+      "maximum": 50
+    }
+  },
+  "required": ["name", "entityType", "services", "type"],
+  "additionalProperties": false
+}

@@ -1,3 +1,81 @@
+// TODO: MainLoop Enhancement Roadmap
+// 
+// ═══════════════════════════════════════════════════════════════════════════════════
+// MAIN LOOP SYSTEM - COMPREHENSIVE IMPROVEMENT PLAN
+// ═══════════════════════════════════════════════════════════════════════════════════
+//
+// 🎮 GAME LOOP ARCHITECTURE
+// [ ] Multi-Threading: Separate render, update, and input threads
+// [ ] Frame Pacing: Advanced frame rate control and VSync management
+// [ ] Time Management: Improved time step handling and delta time smoothing
+// [ ] Loop Profiling: Detailed profiling of each loop iteration
+// [ ] State Transitions: Enhanced game state management with proper transitions
+// [ ] Loop Recovery: Recovery from stalls and performance hiccups
+// [ ] Headless Mode: Complete headless operation for server/testing
+// [ ] Loop Metrics: Real-time metrics collection and analysis
+// [ ] Priority Scheduling: Priority-based system update scheduling
+// [ ] Adaptive Quality: Dynamic quality adjustment based on performance
+//
+// ⚡ PERFORMANCE OPTIMIZATIONS
+// [ ] Frame Scheduling: Intelligent frame scheduling to maintain target FPS
+// [ ] Update Batching: Batch similar operations for better cache performance
+// [ ] Memory Management: Reduce allocations in hot paths
+// [ ] CPU Optimization: Profile and optimize CPU-intensive operations
+// [ ] GPU Synchronization: Better CPU-GPU synchronization
+// [ ] Temporal Coherence: Leverage frame-to-frame coherence for optimizations
+// [ ] LOD Management: Level-of-detail management for distant objects
+// [ ] Culling Systems: Frustum and occlusion culling optimizations
+// [ ] Asset Streaming: Background asset loading and streaming
+// [ ] Garbage Collection: Minimize garbage collection impact
+//
+// 🎯 INPUT SYSTEM IMPROVEMENTS
+// [ ] Input Buffering: Buffer input events to prevent loss during frame drops
+// [ ] Multi-Device Support: Enhanced support for multiple input devices
+// [ ] Input Remapping: Runtime key binding and input remapping
+// [ ] Input Validation: Validate and sanitize all input events
+// [ ] Gesture Recognition: Support for complex input gestures
+// [ ] Input Prediction: Predict input for smoother movement
+// [ ] Input Recording: Record and replay input sequences for testing
+// [ ] Accessibility: Enhanced accessibility features for input
+// [ ] Input Analytics: Collect analytics on input usage patterns
+// [ ] Custom Controllers: Support for custom and specialized controllers
+//
+// 📱 PLATFORM ENHANCEMENTS
+// [ ] Cross-Platform Input: Unified input handling across all platforms
+// [ ] Platform Detection: Runtime platform detection and adaptation
+// [ ] Resource Management: Platform-specific resource management
+// [ ] Window Management: Enhanced window and display management
+// [ ] Power Management: Power-aware performance adjustments
+// [ ] Mobile Support: Touch input and mobile-specific optimizations
+// [ ] Console Support: Console platform integration
+// [ ] VR/AR Support: Virtual and augmented reality integration
+// [ ] Cloud Gaming: Cloud gaming platform optimizations
+// [ ] Legacy Support: Backward compatibility with older hardware
+//
+// 🔧 DEBUGGING & DIAGNOSTICS
+// [ ] Frame Debugger: Detailed frame debugging and inspection tools
+// [ ] Performance Profiler: Built-in performance profiling and analysis
+// [ ] Memory Profiler: Real-time memory usage tracking and leak detection
+// [ ] Debug Overlays: Comprehensive debug information overlays
+// [ ] Error Recovery: Graceful error handling and recovery mechanisms
+// [ ] Crash Reporting: Automatic crash reporting and analysis
+// [ ] Debug Commands: Runtime debug commands and console integration
+// [ ] Telemetry: Comprehensive telemetry collection for optimization
+// [ ] Automated Testing: Automated testing framework integration
+// [ ] Remote Debugging: Remote debugging and profiling capabilities
+//
+// 🎨 RENDERING INTEGRATION
+// [ ] Render Threading: Multi-threaded rendering pipeline
+// [ ] Command Buffers: GPU command buffer management
+// [ ] Resource Binding: Efficient resource binding and state management
+// [ ] Temporal Effects: Support for temporal rendering effects
+// [ ] Dynamic Resolution: Dynamic resolution scaling for performance
+// [ ] Render Scheduling: Intelligent scheduling of render operations
+// [ ] GPU Profiling: GPU performance profiling and optimization
+// [ ] Render Debugging: Comprehensive render debugging tools
+// [ ] Post-Processing: Advanced post-processing pipeline integration
+// [ ] Async Rendering: Asynchronous rendering operations
+
 #include "MainLoop.h"
 #include "Viewport3D.h"
 #include "Input.h"
@@ -13,6 +91,7 @@
 #include "ecs/EntityManager.h"
 #include "ecs/Components.h"
 #include "ecs/ECSInspector.h"
+#include "GameEditor.h"
 #include "VisualFeedbackSystem.h"
 #include "AudioFeedbackSystem.h"
 #include "HUDAlertSystem.h"
@@ -92,7 +171,21 @@ MainLoop::MainLoop()
     , mouseLookYawOffset(0.0)
     , mouseLookPitchOffset(0.0)
     , cameraPresets(GetDefaultCameraPresets()) {
+    
+    // TODO: Enhanced MainLoop constructor
+    // [ ] Configuration Loading: Load main loop settings from configuration files
+    // [ ] Profile Selection: Support for different performance/quality profiles
+    // [ ] Hardware Detection: Detect hardware capabilities during construction
+    // [ ] Resource Pre-allocation: Pre-allocate frequently used resources
+    // [ ] Subsystem Registration: Automatic registration of engine subsystems
+    // [ ] Error Handling: Comprehensive error handling during initialization
+    // [ ] Memory Budgeting: Set up memory budgets for different subsystems
+    // [ ] Threading Setup: Initialize threading model and worker threads
+    // [ ] Diagnostics Setup: Set up performance monitoring and diagnostics
+    // [ ] Plugin Loading: Load and initialize engine plugins
+    
     ecsInspector = std::make_unique<ECSInspector>();
+    gameEditor = std::make_unique<GameEditor>();
     currentState_ = GameState::PLAYING;  // Start directly in playing mode for debugging
     mainMenu_.SetActive(false);  // Don't show main menu
     mainMenu_.ClearLastAction();
@@ -104,12 +197,23 @@ MainLoop::~MainLoop() {
 }
 
 void MainLoop::Init() {
-    // std::cout << "DEBUG: MainLoop::Init() STARTED" << std::endl;
-    // std::cerr << "DEBUG: MainLoop::Init() STARTED (cerr)" << std::endl;
-    // Log to file
+    // TODO: Enhanced initialization system
+    // [ ] Parallel Initialization: Initialize independent systems concurrently
+    // [ ] Initialization Ordering: Proper dependency-based initialization order
+    // [ ] Error Recovery: Graceful handling of initialization failures
+    // [ ] Progress Reporting: Real-time initialization progress reporting
+    // [ ] Resource Validation: Validate all required resources are available
+    // [ ] Configuration Validation: Validate all configuration settings
+    // [ ] Hardware Compatibility: Check hardware compatibility and capabilities
+    // [ ] Fallback Systems: Initialize fallback systems for missing features
+    // [ ] Initialization Profiling: Profile initialization performance
+    // [ ] State Persistence: Save initialization state for faster subsequent starts
+    
+#ifndef NDEBUG
     std::ofstream log("sdl_diag.log", std::ios::app);
     log << "MainLoop::Init started" << std::endl;
     log.close();
+#endif
     running = true;
     Input::Init();
     stateMachine.TransitionTo(EngineState::Bootstrapping);
@@ -118,6 +222,7 @@ void MainLoop::Init() {
         auto& gamepadManager = GamepadManager::Instance();
         bool xinputReady = gamepadManager.EnsureInitialized();
 
+#ifndef NDEBUG
         std::ofstream diagLog("sdl_diag.log", std::ios::app);
         if (diagLog) {
             diagLog << "GamepadManager: attempt="
@@ -130,38 +235,22 @@ void MainLoop::Init() {
             }
             diagLog << std::endl;
         }
-
-        if (xinputReady) {
-            // std::cout << "GamepadManager: XInput available via "
-            //           << gamepadManager.ActiveLibraryNameUtf8() << std::endl;
-        } else {
-            const std::string errorDescription = gamepadManager.LastError();
-            if (!errorDescription.empty()) {
-                // std::cout << "GamepadManager: XInput unavailable (" << errorDescription << ")" << std::endl;
-            } else {
-                // std::cout << "GamepadManager: XInput unavailable" << std::endl;
-            }
-        }
+#else
+        (void)xinputReady; // Suppress unused warning in release
+#endif
     }
 
     viewport = std::make_unique<Viewport3D>();
-    {
-        std::ofstream log2("sdl_diag.log", std::ios::app);
-        if (log2) log2 << "Viewport3D constructed" << std::endl;
-    }
     viewport->Init();
-    {
-        std::ofstream log2("sdl_diag.log", std::ios::app);
-        if (log2) log2 << "Viewport3D::Init returned" << std::endl;
-    }
-    // std::cout << "Viewport3D::Init() completed" << std::endl;
 
     if (viewport) {
         viewport->ConfigureLayouts(Viewport3D::CreateDefaultLayouts());
         viewport->SetLayoutConfigPath("assets/config/viewport_layouts.json");
         viewport->SetFramePacingHint(framePacingController.IsVSyncEnabled(), framePacingController.TargetFPS());
+#ifndef NDEBUG
         std::ofstream log2("sdl_diag.log", std::ios::app);
         if (log2) log2 << "Layouts configured & frame pacing hint set" << std::endl;
+#endif
     }
 
     CameraFollow::CameraFollowConfig cameraConfigDefaults;
@@ -273,6 +362,12 @@ void MainLoop::Init() {
         ecsInspector = std::make_unique<ECSInspector>();
     }
     ecsInspector->SetEntityManager(entityManager.get());
+    
+    if (!gameEditor) {
+        gameEditor = std::make_unique<GameEditor>();
+    }
+    gameEditor->SetEntityManager(entityManager.get());
+    gameEditor->Initialize();
     simulation = std::make_unique<Simulation>();
     // Performance optimization: disable advanced systems for better FPS
     simulation->SetEnableAdvancedSystems(false);
@@ -326,6 +421,18 @@ void MainLoop::Init() {
 
 
 void MainLoop::MainLoopFunc(int maxSeconds) {
+    // TODO: Advanced main loop implementation
+    // [ ] Frame Rate Control: Sophisticated frame rate limiting and VSync management
+    // [ ] Time Step Management: Improved fixed/variable time step handling
+    // [ ] Load Balancing: Dynamic load balancing between update and render
+    // [ ] Performance Monitoring: Real-time performance monitoring and adjustment
+    // [ ] Memory Management: Frame-based memory management and cleanup
+    // [ ] Thread Coordination: Coordination between multiple engine threads
+    // [ ] Error Recovery: Recovery from frame drops and performance issues
+    // [ ] Adaptive Quality: Dynamic quality adjustment based on performance
+    // [ ] Profiler Integration: Deep integration with profiling tools
+    // [ ] Loop Optimization: Continuous optimization of loop performance
+    
     // std::cout << "MainLoopFunc started" << std::endl;
     if (!running) {
         // std::cout << "Engine not initialized!" << std::endl;
@@ -343,7 +450,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     const double fixedDt = 1.0 / updateHz;
     FrameSchedulerConfig schedulerConfig;
     schedulerConfig.fixedUpdateHz = updateHz;
-    schedulerConfig.maxRenderHz = framePacingController.TargetFPS();
+    schedulerConfig.maxRenderHz = 0.0;  // Unlimited FPS for maximum performance!
 
     FrameScheduler scheduler(schedulerConfig);
 
@@ -362,7 +469,8 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         framePacingController.SetTargetFPS(0.0);
         scheduler.SetMaxRenderHz(0.0);
     } else {
-        scheduler.SetMaxRenderHz(framePacingController.TargetFPS());
+        // For maximum performance, allow unlimited FPS (don't artificially limit with sleep)
+        scheduler.SetMaxRenderHz(0.0);  // Unlimited FPS - let hardware determine limit
     }
 
     FrameSchedulerCallbacks callbacks;
@@ -372,6 +480,18 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     };
 
     callbacks.onFrameStart = [&](double deltaSeconds) {
+        // TODO: Enhanced frame start processing
+        // [ ] Input Event Batching: Batch input events for more efficient processing
+        // [ ] System State Validation: Validate system states at frame start
+        // [ ] Memory Usage Monitoring: Monitor memory usage and trigger cleanup
+        // [ ] Performance Metrics: Collect detailed performance metrics
+        // [ ] Resource Management: Manage resources that need per-frame updates
+        // [ ] Threading Coordination: Coordinate with worker threads
+        // [ ] Event Processing: Process engine-wide events and messages
+        // [ ] State Synchronization: Synchronize shared state across systems
+        // [ ] Debug Information: Collect debug information for development
+        // [ ] Profiler Markers: Add profiler markers for detailed analysis
+        
         runtime.mouseDeltaX = 0.0;
         runtime.mouseDeltaY = 0.0;
 
@@ -530,6 +650,10 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             // std::cout << "ECS inspector: " << (ecsInspector->IsEnabled() ? "ENABLED" : "DISABLED") << std::endl;
         }
 
+        if ((key == 'e' || key == 'E') && gameEditor) {
+            gameEditor->Toggle();
+        }
+
         if (ecsInspector && ecsInspector->IsEnabled()) {
             if (key == '[' || key == '{') {
                 ecsInspector->PreviousFilter();
@@ -548,27 +672,28 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         bool up = Input::IsKeyHeld(' ');
         bool down = Input::IsKeyHeld('c') || Input::IsKeyHeld('C');
 
-        // Check if we're controlling any entity (any entity with CameraComponent AND movement components)
+        // Check if we're controlling any entity (player with movement capabilities)
         bool controllingEntity = false;
-        if (entityManager) {
-            // Check all entities for camera + movement capabilities
-            entityManager->ForEach<CameraComponent, Velocity, PlayerPhysics>(
-                [&](Entity /*entity*/, CameraComponent& cam, Velocity& /*vel*/, PlayerPhysics& /*physics*/) {
-                    if (cam.isActive) {
-                        controllingEntity = true;
-                    }
-                }
-            );
+        if (entityManager && simulation) {
+            Entity playerEntity = simulation->GetPlayerEntity();
+            // Check if player entity exists and has movement components
+            if (entityManager->IsAlive(playerEntity) && 
+                entityManager->GetComponent<PlayerController>(playerEntity) &&
+                entityManager->GetComponent<Velocity>(playerEntity)) {
+                controllingEntity = true;
+            }
         }
 
         // Camera controls: arrow keys always work, WASD only when NOT controlling entity
+        // But disable ALL camera movement when GameEditor is active
+        bool editorActive = gameEditor && gameEditor->IsActive();
 #ifdef USE_GLFW
-        bool cameraForward = Input::IsArrowKeyHeld(GLFW_KEY_UP) || (!controllingEntity && forward);
-        bool cameraBackward = Input::IsArrowKeyHeld(GLFW_KEY_DOWN) || (!controllingEntity && backward);
-        bool cameraLeft = Input::IsArrowKeyHeld(GLFW_KEY_LEFT) || (!controllingEntity && strafeLeft);
-        bool cameraRight = Input::IsArrowKeyHeld(GLFW_KEY_RIGHT) || (!controllingEntity && strafeRight);
-        bool cameraUp = (Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_UP)) || (!controllingEntity && up);
-        bool cameraDown = (Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_DOWN)) || (!controllingEntity && down);
+        bool cameraForward = !editorActive && (Input::IsArrowKeyHeld(GLFW_KEY_UP) || (!controllingEntity && forward));
+        bool cameraBackward = !editorActive && (Input::IsArrowKeyHeld(GLFW_KEY_DOWN) || (!controllingEntity && backward));
+        bool cameraLeft = !editorActive && (Input::IsArrowKeyHeld(GLFW_KEY_LEFT) || (!controllingEntity && strafeLeft));
+        bool cameraRight = !editorActive && (Input::IsArrowKeyHeld(GLFW_KEY_RIGHT) || (!controllingEntity && strafeRight));
+        bool cameraUp = !editorActive && ((Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_UP)) || (!controllingEntity && up));
+        bool cameraDown = !editorActive && ((Input::IsKeyHeld(' ') && Input::IsArrowKeyHeld(GLFW_KEY_DOWN)) || (!controllingEntity && down));
 #else
         bool cameraForward = false;
         bool cameraBackward = false;
@@ -625,6 +750,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         }
 #endif
 
+        // Player input enabled for player movement
         double playerInputYaw = 0.0;  // Player yaw will come from simulation entity
         if (simulation) {
             simulation->SetPlayerInput(forward, backward, up, down, strafeLeft, strafeRight, playerInputYaw);
@@ -647,6 +773,12 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
                     } else {
                         runtime.mouseDeltaX = cursorX - runtime.lastCursorX;
                         runtime.mouseDeltaY = cursorY - runtime.lastCursorY;
+                    }
+
+                    // Disable mouse camera rotation when GameEditor is active
+                    if (editorActive) {
+                        runtime.mouseDeltaX = 0.0;
+                        runtime.mouseDeltaY = 0.0;
                     }
 
                     runtime.lastCursorX = cursorX;
@@ -694,86 +826,41 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         if (camera) {
             double cameraMoveSpeed = 10.0;  // Increased from 0.5 for better responsiveness
             double deltaTime = deltaSeconds > 0.0 ? deltaSeconds : fixedDt;
+            
             // Process mouse input for camera offsets BEFORE camera update
             const double mouseDecay = 0.96;
-            if (runtime.targetLocked) {
-                const double targetLockSensitivity = 0.004;
-                double accelerationFactor = 1.0;
-                double mouseSpeed = std::sqrt(runtime.mouseDeltaX * runtime.mouseDeltaX +
-                                              runtime.mouseDeltaY * runtime.mouseDeltaY);
-                if (mouseSpeed > 5.0) {
-                    accelerationFactor = 1.0 + (mouseSpeed - 5.0) * 0.02;
-                }
+            const double targetLockSensitivity = 0.003;  // Reduced from 0.012 for smoother movement without acceleration
+            double accelerationFactor = 1.0;  // Fixed 1.0 for consistent movement
+            
+            // Disable acceleration for consistent mouse movement
+            // if (mouseSpeed > 5.0) {
+            //     accelerationFactor = 1.0 + (mouseSpeed - 5.0) * 0.02;
+            // }
 
-                if (std::abs(runtime.mouseDeltaX) > 1.0 || std::abs(runtime.mouseDeltaY) > 1.0) {
-                    // For target-lock mode, don't accumulate offsets - pass raw deltas
-                    const double yawDelta = runtime.mouseDeltaX * targetLockSensitivity * accelerationFactor;
-                    const double pitchDelta = -runtime.mouseDeltaY * targetLockSensitivity * accelerationFactor;
-                    // CameraFollow applies invertLockYaw/invertLockPitch when consuming these offsets.
+            // Process mouse input for any significant movement (reduced threshold for better responsiveness)
+            if (std::abs(runtime.mouseDeltaX) > 0.1 || std::abs(runtime.mouseDeltaY) > 0.1) {
+                // Convert mouse deltas to camera offsets
+                const double yawDelta = runtime.mouseDeltaX * targetLockSensitivity * accelerationFactor;
+                const double pitchDelta = -runtime.mouseDeltaY * targetLockSensitivity * accelerationFactor;
 
-                    mouseLookYawOffset = yawDelta;
-                    mouseLookPitchOffset = pitchDelta;
+                mouseLookYawOffset = yawDelta;
+                mouseLookPitchOffset = pitchDelta;
 
-                    // Clamp to prevent extreme values
-                    const double maxDelta = 0.5; // radians per frame
-                    mouseLookYawOffset = std::clamp(mouseLookYawOffset, -maxDelta, maxDelta);
-                    mouseLookPitchOffset = std::clamp(mouseLookPitchOffset, -maxDelta, maxDelta);
-                } else {
-                    mouseLookYawOffset = 0.0;
-                    mouseLookPitchOffset = 0.0;
-                }
+                // Clamp to prevent extreme values
+                const double maxDelta = 0.5; // radians per frame
+                mouseLookYawOffset = std::clamp(mouseLookYawOffset, -maxDelta, maxDelta);
+                mouseLookPitchOffset = std::clamp(mouseLookPitchOffset, -maxDelta, maxDelta);
             } else {
                 mouseLookYawOffset *= mouseDecay;
                 mouseLookPitchOffset *= mouseDecay;
             }
 
-            // Check if we have an entity with CameraComponent to follow
-            Entity cameraTargetEntity = 0;
-            int highestPriority = -1;
-            bool foundCameraTarget = false;
-            
-            if (entityManager) {
-                // Find the highest priority entity with CameraComponent
-                entityManager->ForEach<Position, CameraComponent>(
-                    [&](Entity e, Position& pos, CameraComponent& cam) {
-                        if (cam.isActive && cam.priority > highestPriority) {
-                            cameraTargetEntity = e;
-                            highestPriority = cam.priority;
-                            foundCameraTarget = true;
-                            static int debugCounter = 0;
-                            if (debugCounter++ % 120 == 0) {
-                                std::cout << "[Camera] Following entity " << e 
-                                          << " at (" << pos.x << ", " << pos.y << ", " << pos.z 
-                                          << ") priority=" << cam.priority << std::endl;
-                            }
-                        }
-                    }
-                );
-            }
-
+            // Camera operates as free camera - no entity following
             CameraViewState cameraAnchor;
-            if (foundCameraTarget && entityManager) {
-                // Follow the entity with CameraComponent
-                auto pos = entityManager->GetComponent<Position>(cameraTargetEntity);
-                if (pos) {
-                    cameraAnchor.worldX = pos->x;
-                    cameraAnchor.worldY = pos->y;
-                    cameraAnchor.worldZ = pos->z;
-                    cameraAnchor.isTargetLocked = false;
-                } else {
-                    // Fallback to camera's current position
-                    cameraAnchor.worldX = camera->x();
-                    cameraAnchor.worldY = camera->y();
-                    cameraAnchor.worldZ = camera->z();
-                    cameraAnchor.isTargetLocked = false;
-                }
-            } else {
-                // Free camera mode - use camera's current position
-                cameraAnchor.worldX = camera->x();
-                cameraAnchor.worldY = camera->y();
-                cameraAnchor.worldZ = camera->z();
-                cameraAnchor.isTargetLocked = false;
-            }
+            cameraAnchor.worldX = camera->x();
+            cameraAnchor.worldY = camera->y();
+            cameraAnchor.worldZ = camera->z();
+            cameraAnchor.isTargetLocked = false;  // Always free camera mode
             runtime.targetLocked = cameraAnchor.isTargetLocked;
 
             CameraFollow::CameraFollowInput followInput;
@@ -800,11 +887,26 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     };
 
     callbacks.onFixedUpdate = [&](double step) {
+        // TODO: Enhanced fixed update system
+        // [ ] Update Scheduling: Intelligent scheduling of system updates
+        // [ ] System Prioritization: Priority-based system update ordering
+        // [ ] Update Batching: Batch similar updates for better performance
+        // [ ] State Management: Proper game state management during updates
+        // [ ] Error Handling: Graceful handling of update errors
+        // [ ] Performance Monitoring: Monitor update performance per system
+        // [ ] Resource Cleanup: Clean up temporary resources after updates
+        // [ ] Update Validation: Validate system states after updates
+        // [ ] Threading Support: Support for multi-threaded updates
+        // [ ] Update Dependencies: Handle dependencies between system updates
+        
         if (currentState_ != GameState::PLAYING || !stateMachine.Is(EngineState::Running)) {
             return;
         }
         if (simulation) {
             simulation->Update(step);
+        }
+        if (gameEditor) {
+            gameEditor->Update(step);
         }
         if (visualFeedbackSystem) {
             visualFeedbackSystem->Update(step);
@@ -812,6 +914,18 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     };
 
     callbacks.onRender = [&](double /*interpolation*/) {
+        // TODO: Advanced rendering system integration
+        // [ ] Render Threading: Multi-threaded rendering for better performance
+        // [ ] Command Buffer Management: Efficient GPU command buffer usage
+        // [ ] Resource Binding: Optimize resource binding and state changes
+        // [ ] Culling Systems: Implement frustum and occlusion culling
+        // [ ] LOD Management: Level-of-detail management for complex scenes
+        // [ ] Temporal Effects: Support for temporal rendering effects
+        // [ ] Dynamic Resolution: Dynamic resolution scaling for performance
+        // [ ] Render Profiling: Detailed GPU profiling and optimization
+        // [ ] Debug Visualization: Comprehensive debug visualization tools
+        // [ ] Async Rendering: Asynchronous rendering operations
+        
         if (runtime.headlessMode) {
             return;
         }
@@ -855,35 +969,19 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 
         // Render all entities with ViewportID component (fallback to cube if no model)
         if (entityManager) {
-            static int renderDebugCounter = 0;
-            int entityCount = 0;
-            
-            // Debug: Check if player entity has required components
-            if (renderDebugCounter == 0) {
-                bool hasPos = entityManager->GetComponent<Position>(playerEntity) != nullptr;
-                bool hasVp = entityManager->GetComponent<ViewportID>(playerEntity) != nullptr;
-                std::cout << "[MainLoop] Player entity " << playerEntity << " has Position: " << hasPos 
-                          << ", ViewportID: " << hasVp << std::endl;
-            }
-            
-            // WORKAROUND: Legacy EntityManager's ForEach<T1, T2> doesn't work with mixed storage
-            // Use single-component ForEach instead
+            // PERFORMANCE: Removed debug logging and optimized entity rendering
+            // Use single-component ForEach for better performance
             entityManager->ForEach<ViewportID>([&](Entity e, ViewportID& vp) {
-                if (auto* pos = entityManager->GetComponent<Position>(e)) {
-                    entityCount++;
-                    if (e != playerEntity && vp.viewportId == 0) {  // Skip player, render entities in viewport 0
+                if (e != playerEntity && vp.viewportId == 0) {  // Skip player, render entities in viewport 0
+                    if (auto* pos = entityManager->GetComponent<Position>(e)) {
                         Transform entityTransform;
                         entityTransform.x = pos->x;
                         entityTransform.y = pos->y;
                         entityTransform.z = pos->z;
-                        viewport->DrawEntity(e, entityTransform);  // Will use cube as fallback
+                        viewport->DrawEntity(e, entityTransform);
                     }
                 }
             });
-            
-            if (++renderDebugCounter % 120 == 0) {  // Log every 2 seconds
-                std::cout << "[MainLoop] Rendering " << entityCount << " entities with Position+ViewportID" << std::endl;
-            }
         }
 
         if (camera) {
@@ -912,6 +1010,9 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         if (ecsInspector) {
             ecsInspector->Render(*viewport);
         }
+        if (gameEditor) {
+            gameEditor->Render(*viewport);
+        }
 
         const char* cap = std::getenv("STAR_CAPTURE");
         if (cap && std::string(cap) == "1") {
@@ -923,6 +1024,18 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
     };
 
     callbacks.onFrameComplete = [&](const FrameSchedulerFrameInfo& info) {
+        // TODO: Enhanced frame completion processing
+        // [ ] Performance Analysis: Analyze frame performance and identify bottlenecks
+        // [ ] Adaptive Quality: Adjust quality settings based on performance
+        // [ ] Memory Management: Perform frame-based memory cleanup
+        // [ ] Statistics Collection: Collect comprehensive frame statistics
+        // [ ] Load Balancing: Adjust load balancing between systems
+        // [ ] Resource Optimization: Optimize resource usage based on frame data
+        // [ ] Debugging Support: Provide debugging information for frame analysis
+        // [ ] Telemetry: Send telemetry data for performance optimization
+        // [ ] Profiler Integration: Integrate with external profiling tools
+        // [ ] Frame Validation: Validate frame completion and system states
+        
         runtime.frameCount++;
         runtime.framesThisSecond++;
 
@@ -934,7 +1047,8 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
             scheduler.SetMaxRenderHz(0.0);
         } else {
             framePacingController.UpdateFromTimings(info.rolling);
-            scheduler.SetMaxRenderHz(framePacingController.TargetFPS());
+            // For maximum performance, allow unlimited FPS (don't artificially limit with sleep)
+            scheduler.SetMaxRenderHz(0.0);  // Unlimited FPS - let hardware determine limit
             if (viewport) {
                 viewport->SetFramePacingHint(framePacingController.IsVSyncEnabled(), framePacingController.TargetFPS());
             }
@@ -956,7 +1070,7 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
         }
 
         if (std::chrono::duration<double>(info.frameEnd - runtime.fpsTimer).count() >= 1.0) {
-            // std::cout << "FPS: " << runtime.framesThisSecond << std::endl;
+            std::cout << "FPS: " << runtime.framesThisSecond << std::endl;
             runtime.currentFPS = runtime.framesThisSecond;
             runtime.framesThisSecond = 0;
             runtime.fpsTimer = info.frameEnd;
@@ -969,6 +1083,18 @@ void MainLoop::MainLoopFunc(int maxSeconds) {
 }
 
 void MainLoop::ConfigureEnergyTelemetry() {
+    // TODO: Advanced energy system integration
+    // [ ] Dynamic Energy Models: Support for different energy calculation models
+    // [ ] Energy Efficiency: Optimize energy calculations for performance
+    // [ ] Energy Balancing: Advanced energy balancing algorithms
+    // [ ] Energy Events: Event system for energy state changes
+    // [ ] Energy Analytics: Collect analytics on energy usage patterns
+    // [ ] Energy UI: Enhanced UI for energy management and visualization
+    // [ ] Energy Simulation: More realistic energy simulation models
+    // [ ] Energy Networking: Network synchronization of energy states
+    // [ ] Energy Modding: Support for modding energy systems
+    // [ ] Energy Testing: Automated testing of energy system functionality
+    
     energyTelemetry = EnergyHUDTelemetry{};
     hudShieldCurrentMJ = 0.0;
     hudShieldRechargeTimer = 0.0;
@@ -1113,6 +1239,18 @@ void MainLoop::ConfigureEnergyTelemetry() {
 }
 
 void MainLoop::UpdateEnergyTelemetry(double deltaSeconds) {
+    // TODO: Enhanced energy telemetry system
+    // [ ] Performance Optimization: Optimize energy calculations for better performance
+    // [ ] Predictive Analytics: Predict energy usage patterns
+    // [ ] Energy Alerts: Advanced alert system for energy management
+    // [ ] Energy History: Track energy usage history for analysis
+    // [ ] Energy Balancing: Automatic energy balancing algorithms
+    // [ ] Energy Events: Event-driven energy state changes
+    // [ ] Energy Networking: Network synchronization of energy data
+    // [ ] Energy Debugging: Enhanced debugging tools for energy systems
+    // [ ] Energy Validation: Validate energy calculations and constraints
+    // [ ] Energy Caching: Cache energy calculations for performance
+    
     if (!energyTelemetry.valid || !energyManagementSystem || hudEnergyEntityId == 0) {
         return;
     }
@@ -1295,6 +1433,18 @@ void MainLoop::LoadSavedGame() {
 
 #ifdef USE_GLFW
 void MainLoop::HandleKeyEvent(int key, int /*scancode*/, int action, int mods) {
+    // TODO: Advanced input handling system
+    // [ ] Input Buffering: Buffer input events to prevent loss during frame drops
+    // [ ] Input Validation: Validate and sanitize all input events
+    // [ ] Input Remapping: Runtime key binding and input remapping
+    // [ ] Input Macros: Support for input macros and complex gestures
+    // [ ] Input Analytics: Collect analytics on input usage patterns
+    // [ ] Input Accessibility: Enhanced accessibility features for input
+    // [ ] Input Prediction: Predict input for smoother interaction
+    // [ ] Input Recording: Record and replay input sequences for testing
+    // [ ] Custom Input: Support for custom input devices and controllers
+    // [ ] Input Security: Secure input handling to prevent injection attacks
+    
     (void)mods;
     if (action != GLFW_PRESS && action != GLFW_REPEAT) {
         return;
@@ -1302,6 +1452,12 @@ void MainLoop::HandleKeyEvent(int key, int /*scancode*/, int action, int mods) {
 
     if (IsInMainMenu()) {
         mainMenu_.HandleKeyPress(key);
+        return;
+    }
+
+    // Handle GameEditor input (GLFW keys like arrows)
+    if (gameEditor && gameEditor->IsActive()) {
+        gameEditor->HandleKeyPress(key);
         return;
     }
 
@@ -1333,6 +1489,25 @@ void MainLoop::HandleKeyEvent(int key, int /*scancode*/, int action, int mods) {
 }
 
 void MainLoop::HandleMouseButtonEvent(int button, int action, int /*mods*/) {
+    // Handle GameEditor mouse input first (if active)
+    if (gameEditor && gameEditor->IsActive()) {
+        if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_LEFT && viewport) {
+            double xpos = 0.0;
+            double ypos = 0.0;
+            GLFWwindow* window = static_cast<GLFWwindow*>(viewport->GetGLFWWindow());
+            if (window) {
+                glfwGetCursorPos(window, &xpos, &ypos);
+                gameEditor->HandleMouseClick(
+                    static_cast<int>(xpos),
+                    static_cast<int>(ypos),
+                    viewport->GetWidth(),
+                    viewport->GetHeight());
+            }
+        }
+        return;
+    }
+
+    // Handle main menu mouse input
     if (!IsInMainMenu()) {
         return;
     }
@@ -1375,6 +1550,18 @@ void MainLoop::HandleCursorPosEvent(double xpos, double ypos) {
 #endif
 
 void MainLoop::ApplyCameraPreset(size_t index) {
+    // TODO: Enhanced camera preset system
+    // [ ] Dynamic Presets: Support for dynamically created camera presets
+    // [ ] Preset Interpolation: Smooth interpolation between camera presets
+    // [ ] Preset Validation: Validate camera preset configurations
+    // [ ] Preset Persistence: Save and load custom camera presets
+    // [ ] Preset Animation: Animated transitions between presets
+    // [ ] Preset Events: Event system for camera preset changes
+    // [ ] Preset UI: Enhanced UI for camera preset management
+    // [ ] Preset Scripting: Script-based camera preset creation
+    // [ ] Preset Sharing: Share camera presets between users
+    // [ ] Preset Analytics: Collect analytics on preset usage
+    
     if (!camera || index >= cameraPresets.size()) {
 #if defined(DEBUG) || defined(_DEBUG)
         std::cerr << "ApplyCameraPreset: invalid index " << index << std::endl;
@@ -1403,6 +1590,18 @@ void MainLoop::ApplyCameraPreset(size_t index) {
 }
 
 void MainLoop::Shutdown() {
+    // TODO: Enhanced shutdown system
+    // [ ] Graceful Shutdown: Ensure all systems shut down gracefully
+    // [ ] Resource Cleanup: Comprehensive cleanup of all allocated resources
+    // [ ] State Persistence: Save critical state before shutdown
+    // [ ] Shutdown Events: Event system for shutdown notifications
+    // [ ] Error Handling: Handle errors during shutdown process
+    // [ ] Memory Validation: Validate all memory is properly freed
+    // [ ] Thread Cleanup: Properly clean up all worker threads
+    // [ ] Shutdown Profiling: Profile shutdown performance
+    // [ ] Emergency Shutdown: Fast emergency shutdown for critical situations
+    // [ ] Shutdown Recovery: Recovery procedures for interrupted shutdowns
+    
     if (!stateMachine.Is(EngineState::ShuttingDown)) {
         stateMachine.TransitionTo(EngineState::ShuttingDown);
     }
@@ -1437,6 +1636,9 @@ void MainLoop::Shutdown() {
 
     if (ecsInspector) {
         ecsInspector->SetEntityManager(nullptr);
+    }
+    if (gameEditor) {
+        gameEditor->SetEntityManager(nullptr);
     }
 }
 

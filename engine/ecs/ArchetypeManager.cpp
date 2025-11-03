@@ -1,5 +1,6 @@
 #include "ArchetypeManager.h"
 #include "Components.h"
+#include "TestComponents.h"
 
 #include <typeindex>
 
@@ -49,6 +50,8 @@ bool RegisterKnownComponentType(Archetype* archetype, const std::type_index& typ
     if (RegisterIfMatches<ConstantForce>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<CharacterController>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<Joint>(archetype, typeIndex)) return true;
+    if (RegisterIfMatches<CameraComponent>(archetype, typeIndex)) return true;
+    if (RegisterIfMatches<ViewportID>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<CelestialBodyComponent>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<OrbitalComponent>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<VisualCelestialComponent>(archetype, typeIndex)) return true;
@@ -58,6 +61,12 @@ bool RegisterKnownComponentType(Archetype* archetype, const std::type_index& typ
     if (RegisterIfMatches<StarComponent>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<AsteroidBeltComponent>(archetype, typeIndex)) return true;
     if (RegisterIfMatches<PlanetComponent>(archetype, typeIndex)) return true;
+    
+    // Test components for memory optimization tests
+    if (RegisterIfMatches<SimplePosition>(archetype, typeIndex)) return true;
+    if (RegisterIfMatches<SimpleVelocity>(archetype, typeIndex)) return true;
+    if (RegisterIfMatches<SimpleTestComponent>(archetype, typeIndex)) return true;
+    
     return false;
 }
 

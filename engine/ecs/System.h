@@ -1,5 +1,46 @@
 #pragma once
 
+// TODO: ECS System Architecture Roadmap
+//
+// SYSTEM EXECUTION OPTIMIZATION:
+// [ ] Automatic Dependency Analysis: Detect read/write dependencies between systems
+// [ ] Parallel System Execution: Run independent systems in parallel automatically
+// [ ] System Fusion: Merge compatible systems for better cache locality
+// [ ] System Scheduling: Dynamic scheduling based on entity count and complexity
+// [ ] System Batching: Group similar operations across multiple systems
+// [ ] System Priority: Weighted scheduling for time-critical systems
+// [ ] System Load Balancing: Distribute work evenly across available cores
+//
+// SYSTEM LIFECYCLE MANAGEMENT:
+// [ ] Hot System Reloading: Replace system implementations at runtime
+// [ ] System State Persistence: Save/restore system state during transitions
+// [ ] Conditional System Execution: Enable/disable systems based on game state
+// [ ] System Profiling Integration: Automatic performance measurement
+// [ ] System Error Handling: Graceful recovery from system failures
+// [ ] System Debugging: Runtime inspection of system state and execution
+//
+// ADVANCED SYSTEM FEATURES:
+// [ ] System Events: Publish/subscribe pattern for inter-system communication
+// [ ] System Parameters: Runtime configuration of system behavior
+// [ ] System Templates: Generic systems that work with different component types
+// [ ] System Composition: Build complex behaviors from simple system primitives
+// [ ] System Validation: Ensure system preconditions and postconditions
+// [ ] System Versioning: Handle system interface changes gracefully
+//
+// PERFORMANCE MONITORING:
+// [ ] System Performance Metrics: Execution time, memory usage, entity throughput
+// [ ] System Bottleneck Detection: Identify performance hotspots automatically
+// [ ] System Resource Usage: Monitor CPU, memory, and cache usage per system
+// [ ] System Scaling Analysis: Measure performance vs entity count relationships
+// [ ] System Dependency Visualization: Show system execution order and dependencies
+//
+// SYSTEM INTEGRATION:
+// [ ] Plugin System Interface: Load systems from external libraries
+// [ ] Scripting System Support: Lua/Python systems alongside C++ systems
+// [ ] Network System Synchronization: Coordinate systems across network instances
+// [ ] System Asset Dependencies: Track which assets each system requires
+// [ ] Cross-System State Sharing: Efficient data sharing between related systems
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -117,6 +158,9 @@ public:
     void DivertPower(Entity entity, PowerPriority priority, double amount);
     bool HasPower(Entity entity, PowerPriority priority) const;
     void SetEnergyAllocation(Entity entity, double shieldAlloc, double weaponAlloc, double thrusterAlloc);
+
+    // Auto-loading component system
+    void AutoLoadPlayerComponents(EntityManager& entityManager);
 
 private:
     // System-specific update methods

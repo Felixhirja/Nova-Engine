@@ -51,6 +51,10 @@ public:
 
     JsonArray& AsArray();
     JsonObject& AsObject();
+    
+    // Comparison operator
+    bool operator==(const JsonValue& other) const;
+    bool operator!=(const JsonValue& other) const { return !(*this == other); }
 
 private:
     Type type_ = Type::Null;
@@ -65,6 +69,9 @@ struct ParseResult {
 };
 
 ParseResult Parse(std::string_view input);
+
+// Serialize to JSON string
+std::string Serialize(const JsonValue& value, bool pretty = false);
 
 } // namespace simplejson
 

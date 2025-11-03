@@ -1,0 +1,44 @@
+{
+  "player": {
+    "spawn": {
+      "position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "comment": "Starting position in world coordinates (X=Left/Right, Y=Up/Down, Z=Forward/Back)"
+    },
+    "movement": {
+      "forward_speed": 5.0,
+      "backward_speed": 5.0,
+      "strafe_speed": 5.0,
+      "up_down_speed": 5.0,
+      "acceleration": 4.0,
+      "deceleration": 4.0,
+      "friction": 0.0,
+      "comment": "Movement speeds and responsiveness settings"
+    },
+    "physics": {
+      "enable_gravity": false,
+      "gravity_strength": -9.8,
+      "max_ascent_speed": 10.0,
+      "max_descent_speed": -20.0,
+      "comment": "Physics behavior - set enable_gravity to true for realistic falling"
+    },
+    "visual": {
+      "color": {
+        "r": 0.2,
+        "g": 0.8,
+        "b": 1.0
+      },
+      "scale": 0.5,
+      "mesh_id": 0,
+      "comment": "Player appearance - color (RGB 0-1), scale, and mesh (0=cube)"
+    },
+    "camera": {
+      "priority": 100,
+      "is_active": true,
+      "comment": "Camera settings - higher priority takes control"
+    }
+  }
+}
